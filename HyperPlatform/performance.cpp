@@ -24,7 +24,7 @@ _Use_decl_annotations_ NTSTATUS PerfInitialization()
 {
   PAGED_CODE();
 
-  PerfCollector * perf_collector = reinterpret_cast<PerfCollector*>(ExAllocatePoolWithTag(NonPagedPool, sizeof(PerfCollector), TAG));
+  PerfCollector * perf_collector = reinterpret_cast<PerfCollector*>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(PerfCollector), TAG));
   if (!perf_collector) {
     return STATUS_MEMORY_NOT_ALLOCATED;
   }

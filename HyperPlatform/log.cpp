@@ -12,7 +12,7 @@
 #pragma prefast(disable : 30030)
 
 extern "C" {
-// A size for log buffer in NonPagedPool. Two buffers are allocated with this size.
+// A size for log buffer in NonPagedPoolNx. Two buffers are allocated with this size.
 // Exceeded logs are ignored silently. Make it bigger if a buffered log size often reach this size.
 static const auto kLogpBufferSizeInPages = 16ul;
 
@@ -121,14 +121,14 @@ _Use_decl_annotations_ static NTSTATUS LogpInitializeBufferInfo(const wchar_t *l
     }
     info->resource_initialized = true;
 
-    // Allocate two log buffers on NonPagedPool.
-    info->log_buffer1 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPool, kLogpBufferSize, TAG));
+    // Allocate two log buffers on NonPagedPoolNx.
+    info->log_buffer1 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG));
     if (!info->log_buffer1) {
         LogpFinalizeBufferInfo(info);
         return STATUS_INSUFFICIENT_RESOURCES;
     }
 
-    info->log_buffer2 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPool, kLogpBufferSize, TAG));
+    info->log_buffer2 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG));
     if (!info->log_buffer2) {
         LogpFinalizeBufferInfo(info);
         return STATUS_INSUFFICIENT_RESOURCES;

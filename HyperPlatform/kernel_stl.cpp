@@ -64,7 +64,7 @@ _IRQL_requires_max_(DISPATCH_LEVEL) void *__cdecl operator new(_In_ size_t size)
     size = 1;
   }
 
-  const auto p = ExAllocatePoolWithTag(NonPagedPool, size, kKstlpPoolTag);
+  const auto p = ExAllocatePoolWithTag(NonPagedPoolNx, size, kKstlpPoolTag);
   if (!p) {
     KernelStlpRaiseException(MUST_SUCCEED_POOL_EMPTY);
   }

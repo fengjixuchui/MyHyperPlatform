@@ -1243,7 +1243,6 @@ _Use_decl_annotations_ static void VmmpHandleVmCallTermination(GuestContext *gue
     // Store an address of the management structure to the context parameter
     const auto result_ptr = reinterpret_cast<ProcessorData **>(context);
     *result_ptr = guest_context->stack->processor_data;
-    HYPERPLATFORM_LOG_DEBUG_SAFE("Context at %p %p", context, guest_context->stack->processor_data);
 
     // Set rip to the next instruction of VMCALL
     const auto exit_instruction_length = UtilVmRead(VmcsField::kVmExitInstructionLen);

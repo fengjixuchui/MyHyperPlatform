@@ -305,7 +305,7 @@ _Use_decl_annotations_ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemor
     }
 
     SIZE_T memory_block_size = sizeof(PhysicalMemoryDescriptor) + sizeof(PhysicalMemoryRun) * (number_of_runs - 1);
-    PhysicalMemoryDescriptor * pm_block = reinterpret_cast<PhysicalMemoryDescriptor *>(ExAllocatePoolWithTag(NonPagedPool, memory_block_size, TAG));
+    PhysicalMemoryDescriptor * pm_block = reinterpret_cast<PhysicalMemoryDescriptor *>(ExAllocatePoolWithTag(NonPagedPoolNx, memory_block_size, TAG));
     if (!pm_block) {
         ExFreePoolWithTag(pm_ranges, 'hPmM');
         return nullptr;
@@ -379,7 +379,7 @@ _Use_decl_annotations_ NTSTATUS UtilForEachProcessorDpc(PKDEFERRED_ROUTINE defer
       return status;
     }
 
-    const auto dpc = reinterpret_cast<PRKDPC>(ExAllocatePoolWithTag(NonPagedPool, sizeof(KDPC), TAG));
+    const auto dpc = reinterpret_cast<PRKDPC>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(KDPC), TAG));
     if (!dpc) {
       return STATUS_MEMORY_NOT_ALLOCATED;
     }
@@ -610,42 +610,20 @@ _Use_decl_annotations_ NTSTATUS UtilVmCall(HypercallNumber hypercall_number, voi
 }
 
 
+_Use_decl_annotations_ void UtilDumpGpRegisters(const AllRegisters *all_regs, ULONG_PTR stack_pointer)
 // Debug prints registers
-_Use_decl_annotations_ void UtilDumpGpRegisters(const AllRegisters *all_regs, ULONG_PTR stack_pointer) 
 {
-  const auto current_irql = KeGetCurrentIrql();
-  if (current_irql < DISPATCH_LEVEL) {
-    KeRaiseIrqlToDpcLevel();
-  }
+    UNREFERENCED_PARAMETER(all_regs);
+    UNREFERENCED_PARAMETER(stack_pointer);
 
-#if defined(_AMD64_)
-  HYPERPLATFORM_LOG_DEBUG_SAFE(
-      "Context at %p: "
-      "rax= %016Ix rbx= %016Ix rcx= %016Ix "
-      "rdx= %016Ix rsi= %016Ix rdi= %016Ix "
-      "rsp= %016Ix rbp= %016Ix "
-      " r8= %016Ix  r9= %016Ix r10= %016Ix "
-      "r11= %016Ix r12= %016Ix r13= %016Ix "
-      "r14= %016Ix r15= %016Ix efl= %08Ix",
-      _ReturnAddress(), all_regs->gp.ax, all_regs->gp.bx, all_regs->gp.cx,
-      all_regs->gp.dx, all_regs->gp.si, all_regs->gp.di, stack_pointer,
-      all_regs->gp.bp, all_regs->gp.r8, all_regs->gp.r9, all_regs->gp.r10,
-      all_regs->gp.r11, all_regs->gp.r12, all_regs->gp.r13, all_regs->gp.r14,
-      all_regs->gp.r15, all_regs->flags.all);
-#else
-  HYPERPLATFORM_LOG_DEBUG_SAFE(
-      "Context at %p: "
-      "eax= %08Ix ebx= %08Ix ecx= %08Ix "
-      "edx= %08Ix esi= %08Ix edi= %08Ix "
-      "esp= %08Ix ebp= %08Ix efl= %08x",
-      _ReturnAddress(), all_regs->gp.ax, all_regs->gp.bx, all_regs->gp.cx,
-      all_regs->gp.dx, all_regs->gp.si, all_regs->gp.di, stack_pointer,
-      all_regs->gp.bp, all_regs->flags.all);
-#endif
+    const auto current_irql = KeGetCurrentIrql();
+    if (current_irql < DISPATCH_LEVEL) {
+        KeRaiseIrqlToDpcLevel();
+    }
 
-  if (current_irql < DISPATCH_LEVEL) {
-    KeLowerIrql(current_irql);
-  }
+    if (current_irql < DISPATCH_LEVEL) {
+        KeLowerIrql(current_irql);
+    }
 }
 
 

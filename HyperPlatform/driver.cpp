@@ -36,8 +36,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
     __debugbreak();
 
     driver_object->DriverUnload = DriverpDriverUnload;
-
-    ExInitializeDriverRuntime(DrvRtPoolNxOptIn);// Request NX Non-Paged Pool when available
     
     bool need_reinitialization = false;
     static const wchar_t kLogFilePath[] = L"\\SystemRoot\\HyperPlatform.log";

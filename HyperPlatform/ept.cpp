@@ -325,13 +325,13 @@ _Use_decl_annotations_ EptData *EptInitialization()
 
     static const auto kEptPageWalkLevel = 4ul;
     
-    EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPool, sizeof(EptData), TAG));// Allocate ept_data
+    EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
     if (!ept_data) {
         return nullptr;
     }
     RtlZeroMemory(ept_data, sizeof(EptData));
     
-    EptPointer * ept_poiner = reinterpret_cast<EptPointer *>(ExAllocatePoolWithTag(NonPagedPool, PAGE_SIZE, TAG));// Allocate EptPointer
+    EptPointer * ept_poiner = reinterpret_cast<EptPointer *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));// Allocate EptPointer
     if (!ept_poiner) {
         ExFreePoolWithTag(ept_data, TAG);
         return nullptr;
@@ -339,7 +339,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     RtlZeroMemory(ept_poiner, PAGE_SIZE);
 
     // Allocate EPT_PML4 and initialize EptPointer
-    EptCommonEntry * ept_pml4 = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPool, PAGE_SIZE, TAG));
+    EptCommonEntry * ept_pml4 = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));
     if (!ept_pml4) {
         ExFreePoolWithTag(ept_poiner, TAG);
         ExFreePoolWithTag(ept_data, TAG);
@@ -380,7 +380,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
 
     // Allocate preallocated_entries
     const SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
-    const auto preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPool, preallocated_entries_size, TAG));
+    const auto preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
     if (!preallocated_entries) {
         EptpDestructTables(ept_pml4, 4);
         ExFreePoolWithTag(ept_poiner, TAG);
@@ -504,7 +504,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
   static const auto kAllocSize = 512 * sizeof(EptCommonEntry);
   static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
-  const auto entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPool, kAllocSize, TAG));
+  const auto entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
   if (!entry) {
     return nullptr;
   }

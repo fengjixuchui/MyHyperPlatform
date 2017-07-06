@@ -177,7 +177,7 @@ _Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
 {
     PAGED_CODE();
 
-    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPool, sizeof(SharedProcessorData), TAG));
+    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG));
     if (!shared_data) {
         return nullptr;
     }
@@ -208,7 +208,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()
 {
     PAGED_CODE();
 
-    const auto msr_bitmap = ExAllocatePoolWithTag(NonPagedPool, PAGE_SIZE, TAG);
+    const auto msr_bitmap = ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG);
     if (!msr_bitmap) {
         return nullptr;
     }
@@ -249,7 +249,7 @@ _Use_decl_annotations_ static UCHAR * BuildIoBitmaps()
 {
     PAGED_CODE();
 
-    const auto io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPool, PAGE_SIZE * 2, TAG));// Allocate two IO bitmaps as one contiguous 4K+4K page
+    const auto io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE * 2, TAG));// Allocate two IO bitmaps as one contiguous 4K+4K page
     if (!io_bitmaps) {
         return nullptr;
     }
@@ -299,7 +299,7 @@ _Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer
         return;
     }
     
-    ProcessorData * processor_data = reinterpret_cast<ProcessorData *>(ExAllocatePoolWithTag(NonPagedPool, sizeof(ProcessorData), TAG));// Allocate related structures
+    ProcessorData * processor_data = reinterpret_cast<ProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(ProcessorData), TAG));// Allocate related structures
     if (!processor_data) {
         return;
     }
@@ -318,13 +318,13 @@ _Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer
     }
     RtlZeroMemory(processor_data->vmm_stack_limit, KERNEL_STACK_SIZE);
 
-    processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPool, kVmxMaxVmcsSize, TAG));
+    processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG));
     if (!processor_data->vmcs_region) {
         goto ReturnFalse;
     }
     RtlZeroMemory(processor_data->vmcs_region, kVmxMaxVmcsSize);
 
-    processor_data->vmxon_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPool, kVmxMaxVmcsSize, TAG));
+    processor_data->vmxon_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG));
     if (!processor_data->vmxon_region) {
         goto ReturnFalse;
     }

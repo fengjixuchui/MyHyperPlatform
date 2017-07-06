@@ -62,13 +62,13 @@ static HardwarePte *UtilpAddressToPte(_In_ const void *address);
 #pragma alloc_text(INIT, UtilpBuildPhysicalMemoryRanges)
 #pragma alloc_text(PAGE, UtilForEachProcessor)
 #pragma alloc_text(PAGE, UtilSleep)
-#pragma alloc_text(PAGE, UtilGetSystemProcAddress)
+#pragma alloc_text(PAGE, GetSystemProcAddress)
 #endif
 
 static RtlPcToFileHeaderType *g_utilp_RtlPcToFileHeader;
 static LIST_ENTRY *g_utilp_PsLoadedModuleList;
 static PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
-static MmAllocateContiguousNodeMemoryType *g_utilp_MmAllocateContiguousNodeMemory;
+static MmAllocateContiguousNodeMemoryType *g_MmAllocateContiguousNodeMemory;
 
 static ULONG_PTR g_utilp_pxe_base = 0;
 static ULONG_PTR g_utilp_ppe_base = 0;
@@ -106,7 +106,9 @@ _Use_decl_annotations_ NTSTATUS UtilInitialization(PDRIVER_OBJECT driver_object)
         return status;
     }
 
-    g_utilp_MmAllocateContiguousNodeMemory = reinterpret_cast<MmAllocateContiguousNodeMemoryType *>(UtilGetSystemProcAddress(L"MmAllocateContiguousNodeMemory"));
+    g_MmAllocateContiguousNodeMemory = reinterpret_cast<MmAllocateContiguousNodeMemoryType *>(GetSystemProcAddress(L"MmAllocateContiguousNodeMemory"));
+    ASSERT(g_MmAllocateContiguousNodeMemory);//win8“‘«∞”√MmAllocateContiguousMemory
+
     return status;
 }
 
@@ -169,7 +171,7 @@ _Use_decl_annotations_ static NTSTATUS UtilpInitializePageTableVariables()
     }
 
     // Get PTE_BASE from MmGetVirtualForPhysical
-    const auto p_MmGetVirtualForPhysical = UtilGetSystemProcAddress(L"MmGetVirtualForPhysical");
+    const auto p_MmGetVirtualForPhysical = GetSystemProcAddress(L"MmGetVirtualForPhysical");
     if (!p_MmGetVirtualForPhysical) {
         return STATUS_PROCEDURE_NOT_FOUND;
     }
@@ -217,7 +219,7 @@ _Use_decl_annotations_ static NTSTATUS UtilpInitializeRtlPcToFileHeader(PDRIVER_
     PAGED_CODE();
 
     if (kUtilpUseRtlPcToFileHeader) {
-        const auto p_RtlPcToFileHeader = UtilGetSystemProcAddress(L"RtlPcToFileHeader");
+        const auto p_RtlPcToFileHeader = GetSystemProcAddress(L"RtlPcToFileHeader");
         if (p_RtlPcToFileHeader) {
             g_utilp_RtlPcToFileHeader = reinterpret_cast<RtlPcToFileHeaderType *>(p_RtlPcToFileHeader);
             return STATUS_SUCCESS;
@@ -425,26 +427,26 @@ _Use_decl_annotations_ void *UtilMemMem(const void *search_base, SIZE_T search_s
 }
 
 
+_Use_decl_annotations_ void *GetSystemProcAddress(const wchar_t *proc_name)
 // A wrapper of MmGetSystemRoutineAddress
-_Use_decl_annotations_ void *UtilGetSystemProcAddress(const wchar_t *proc_name) 
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  UNICODE_STRING proc_name_U = {};
-  RtlInitUnicodeString(&proc_name_U, proc_name);
-  return MmGetSystemRoutineAddress(&proc_name_U);
+    UNICODE_STRING proc_name_U = {};
+    RtlInitUnicodeString(&proc_name_U, proc_name);
+    return MmGetSystemRoutineAddress(&proc_name_U);
 }
 
 
+bool UtilIsX86Pae() 
 // Returns true when a system is on the x86 PAE mode
-/*_Use_decl_annotations_*/ bool UtilIsX86Pae() 
 {
-  return (!IsX64() && Cr4{__readcr4()}.fields.pae);
+    return (!IsX64() && Cr4{ __readcr4() }.fields.pae);
 }
 
 
-// Return true if the given address is accessible.
 _Use_decl_annotations_ bool UtilIsAccessibleAddress(void *address) 
+// Return true if the given address is accessible.
 {
   if (!UtilpIsCanonicalFormAddress(address)) {
     return false;
@@ -569,29 +571,23 @@ _Use_decl_annotations_ void *UtilVaFromPfn(PFN_NUMBER pfn)
 }
 
 
+_Use_decl_annotations_ void * AllocateContiguousMemory(SIZE_T number_of_bytes)
 // Allocates continuous physical memory
-_Use_decl_annotations_ void *UtilAllocateContiguousMemory(SIZE_T number_of_bytes) 
 {
-  PHYSICAL_ADDRESS highest_acceptable_address = {};
-  highest_acceptable_address.QuadPart = -1;
-  if (g_utilp_MmAllocateContiguousNodeMemory) {
+    PHYSICAL_ADDRESS highest_acceptable_address = {};
+    highest_acceptable_address.QuadPart = -1;
+
     // Allocate NX physical memory
     PHYSICAL_ADDRESS lowest_acceptable_address = {};
     PHYSICAL_ADDRESS boundary_address_multiple = {};
-    return g_utilp_MmAllocateContiguousNodeMemory(number_of_bytes, lowest_acceptable_address, highest_acceptable_address, boundary_address_multiple, PAGE_READWRITE, MM_ANY_NODE_OK);
-  } else {
-#pragma warning(push)
-#pragma warning(disable : 30029)
-    return MmAllocateContiguousMemory(number_of_bytes, highest_acceptable_address);
-#pragma warning(pop)
-  }
+    return g_MmAllocateContiguousNodeMemory(number_of_bytes, lowest_acceptable_address, highest_acceptable_address, boundary_address_multiple, PAGE_READWRITE, MM_ANY_NODE_OK);
 }
 
 
-// Frees an address allocated by UtilAllocateContiguousMemory()
-_Use_decl_annotations_ void UtilFreeContiguousMemory(void *base_address) 
+_Use_decl_annotations_ void UtilFreeContiguousMemory(void *base_address)
+// Frees an address allocated by AllocateContiguousMemory()
 {
-  MmFreeContiguousMemory(base_address);
+    MmFreeContiguousMemory(base_address);
 }
 
 

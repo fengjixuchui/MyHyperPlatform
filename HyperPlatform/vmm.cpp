@@ -973,26 +973,23 @@ _Use_decl_annotations_ static void VmmpHandleVmx(GuestContext *guest_context)
 // VMCALL
 _Use_decl_annotations_ static void VmmpHandleVmCall(GuestContext *guest_context)
 {
-  // VMCALL convention for HyperPlatform:
-  //  ecx: hyper-call number (always 32bit)
-  //  edx: arbitrary context parameter (pointer size)
-  // Any unsuccessful VMCALL will inject #UD into a guest
+    // VMCALL convention for HyperPlatform:
+    //  ecx: hyper-call number (always 32bit)
+    //  edx: arbitrary context parameter (pointer size)
+    // Any unsuccessful VMCALL will inject #UD into a guest
     const auto hypercall_number = static_cast<HypercallNumber>(guest_context->gp_regs->cx);
     const auto context = reinterpret_cast<void *>(guest_context->gp_regs->dx);
 
     switch (hypercall_number)
     {
-    case HypercallNumber::kTerminateVmm:
-      // Unloading requested. This VMCALL is allowed to execute only from CPL=0
+    case HypercallNumber::kTerminateVmm:// Unloading requested. This VMCALL is allowed to execute only from CPL=0
         if (VmmpGetGuestCpl() == 0) {
             VmmpHandleVmCallTermination(guest_context, context);
-        }
-        else {
+        } else {
             VmmpIndicateUnsuccessfulVmcall(guest_context);
         }
         break;
-    case HypercallNumber::kPingVmm:
-      // Sample VMCALL handler
+    case HypercallNumber::kPingVmm:// Sample VMCALL handler
         HYPERPLATFORM_LOG_INFO_SAFE("Pong by VMM! (context = %p)", context);
         VmmpIndicateSuccessfulVmcall(guest_context);
         break;
@@ -1000,8 +997,7 @@ _Use_decl_annotations_ static void VmmpHandleVmCall(GuestContext *guest_context)
         *reinterpret_cast<void **>(context) = guest_context->stack->processor_data->shared_data;
         VmmpIndicateSuccessfulVmcall(guest_context);
         break;
-    default:
-      // Unsupported hypercall
+    default:// Unsupported hypercall
         VmmpIndicateUnsuccessfulVmcall(guest_context);
     }
 }
@@ -1174,7 +1170,7 @@ static void VmmpDumpGuestState()
 
 
 // Advances guest's IP to the next instruction
-_Use_decl_annotations_ static void VmmpAdjustGuestInstructionPointer(GuestContext *guest_context) 
+_Use_decl_annotations_ static void VmmpAdjustGuestInstructionPointer(GuestContext *guest_context)
 {
     const auto exit_inst_length = UtilVmRead(VmcsField::kVmExitInstructionLen);
     UtilVmWrite(VmcsField::kGuestRip, guest_context->ip + exit_inst_length);
@@ -1200,7 +1196,7 @@ _Use_decl_annotations_ void __stdcall VmmVmxFailureHandler(AllRegisters *all_reg
 // Indicates successful VMCALL
 _Use_decl_annotations_ static void VmmpIndicateSuccessfulVmcall(GuestContext *guest_context)
 {
-  // See: CONVENTIONS
+    // See: CONVENTIONS
     guest_context->flag_reg.fields.cf = false;
     guest_context->flag_reg.fields.pf = false;
     guest_context->flag_reg.fields.af = false;

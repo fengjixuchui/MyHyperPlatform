@@ -103,7 +103,7 @@ void *UtilMemMem(_In_ const void *search_base, _In_ SIZE_T search_size, _In_ con
 /// Get an address of an exported symbol by the kernel or HAL
 /// @param proc_name  A name of a symbol to locate an address
 /// @return An address of the symbol or nullptr
-void *UtilGetSystemProcAddress(_In_ const wchar_t *proc_name);
+void * GetSystemProcAddress(_In_ const wchar_t *proc_name);
 
 /// Checks if the system is a PAE-enabled x86 system
 /// @return true if the system is a PAE-enabled x86 system
@@ -155,10 +155,10 @@ void *UtilVaFromPfn(_In_ PFN_NUMBER pfn);
 /// @return A base address of an allocated memory or nullptr
 ///
 /// A returned value must be freed with UtilFreeContiguousMemory().
-_Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) void *UtilAllocateContiguousMemory(_In_ SIZE_T number_of_bytes);
+_Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) void *AllocateContiguousMemory(_In_ SIZE_T number_of_bytes);
 
-/// Frees an address allocated by UtilAllocateContiguousMemory()
-/// @param base_address A return value of UtilAllocateContiguousMemory() to free
+/// Frees an address allocated by AllocateContiguousMemory()
+/// @param base_address A return value of AllocateContiguousMemory() to free
 _IRQL_requires_max_(DISPATCH_LEVEL) void UtilFreeContiguousMemory(_In_ void *base_address);
 
 /// Executes VMCALL

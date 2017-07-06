@@ -312,7 +312,7 @@ _Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer
         goto ReturnFalse;
     }
     
-    processor_data->vmm_stack_limit = UtilAllocateContiguousMemory(KERNEL_STACK_SIZE);// Allocate other processor data fields
+    processor_data->vmm_stack_limit = AllocateContiguousMemory(KERNEL_STACK_SIZE);// Allocate other processor data fields
     if (!processor_data->vmm_stack_limit) {
         goto ReturnFalse;
     }

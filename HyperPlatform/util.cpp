@@ -683,17 +683,6 @@ _Use_decl_annotations_ VmxStatus UtilVmWrite64(VmcsField field, ULONG64 field_va
 #endif
 }
 
-
-// Writes natural-width MSR
-_Use_decl_annotations_ void UtilWriteMsr(Msr msr, ULONG_PTR value) {
-  __writemsr(static_cast<unsigned long>(msr), value);
-}
-
-// Writes 64bit-width MSR
-_Use_decl_annotations_ void UtilWriteMsr64(Msr msr, ULONG64 value) {
-  __writemsr(static_cast<unsigned long>(msr), value);
-}
-
 // Executes the INVEPT instruction and invalidates EPT entry cache
 /*_Use_decl_annotations_*/ VmxStatus UtilInveptGlobal() {
   InvEptDescriptor desc = {};

@@ -128,10 +128,9 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
 
     int index = 0;
     MtrrData *mtrr_entries = g_eptp_mtrr_entries;
-
-    // Get and store the default memory type
+    
     Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };
-    g_eptp_mtrr_default_type = default_type.fields.default_mtemory_type;
+    g_eptp_mtrr_default_type = default_type.fields.default_mtemory_type;// Get and store the default memory type
     
     Ia32MtrrCapabilitiesMsr mtrr_capabilities = { __readmsr(0xFE) };// Read MTRR capability
 
@@ -244,10 +243,9 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         if (!mtrr_mask.fields.valid) {
             continue;
         }
-
-        // Get a length this MTRR manages
+        
         ULONG length;
-        BitScanForward64(&length, mtrr_mask.fields.phys_mask * PAGE_SIZE);
+        BitScanForward64(&length, mtrr_mask.fields.phys_mask * PAGE_SIZE);// Get a length this MTRR manages
 
         // Read MTRR base and calculate a range this MTRR manages
         const auto phy_base = static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2;
@@ -305,12 +303,10 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
         }
 
         // Otherwise, processor behavior is undefined.
-        // We just use the last MTRR describes the memory address.
-        result_type = mtrr_entry.type;
+        result_type = mtrr_entry.type;// We just use the last MTRR describes the memory address.
     }
-
-    // Use the default MTRR if no MTRR entry is found
-    if (result_type == MAXUCHAR) {
+    
+    if (result_type == MAXUCHAR) {// Use the default MTRR if no MTRR entry is found
         result_type = g_eptp_mtrr_default_type;
     }
 
@@ -417,9 +413,8 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
 {
     switch (table_level)
     {
-    case 4:
+    case 4:// table == PML4 (512 GB)
     {
-        // table == PML4 (512 GB)
         const auto pxe_index = EptpAddressToPxeIndex(physical_address);
         const auto ept_pml4_entry = &table[pxe_index];
         if (!ept_pml4_entry->all) {
@@ -431,9 +426,8 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pml4_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
     }
-    case 3:
+    case 3:// table == PDPT (1 GB)
     {
-        // table == PDPT (1 GB)
         const auto ppe_index = EptpAddressToPpeIndex(physical_address);
         const auto ept_pdpt_entry = &table[ppe_index];
         if (!ept_pdpt_entry->all) {
@@ -445,9 +439,8 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdpt_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
     }
-    case 2:
+    case 2:// table == PDT (2 MB)
     {
-        // table == PDT (2 MB)
         const auto pde_index = EptpAddressToPdeIndex(physical_address);
         const auto ept_pdt_entry = &table[pde_index];
         if (!ept_pdt_entry->all) {
@@ -459,9 +452,8 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdt_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
     }
-    case 1:
+    case 1:// table == PT (4 KB)
     {
-        // table == PT (4 KB)
         const auto pte_index = EptpAddressToPteIndex(physical_address);
         const auto ept_pt_entry = &table[pte_index];
         NT_ASSERT(!ept_pt_entry->all);
@@ -475,117 +467,120 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
 }
 
 
-_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data) 
+_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data)
 // Return a new EPT entry either by creating new one or from pre-allocated ones
 {
-  if (ept_data) {
-    return EptpAllocateEptEntryFromPreAllocated(ept_data);
-  } else {
-    return EptpAllocateEptEntryFromPool();
-  }
+    if (ept_data) {
+        return EptpAllocateEptEntryFromPreAllocated(ept_data);
+    }
+    else {
+        return EptpAllocateEptEntryFromPool();
+    }
 }
 
 
+_Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)
 // Return a new EPT entry from pre-allocated ones.
-_Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data) 
 {
-  const auto count = InterlockedIncrement(&ept_data->preallocated_entries_count);
-  if (count > kEptpNumberOfPreallocatedEntries) {
-    HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kExhaustedPreallocatedEntries, count, reinterpret_cast<ULONG_PTR>(ept_data), 0);
-  }
+    const auto count = InterlockedIncrement(&ept_data->preallocated_entries_count);
+    if (count > kEptpNumberOfPreallocatedEntries) {
+        HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kExhaustedPreallocatedEntries, count, reinterpret_cast<ULONG_PTR>(ept_data), 0);
+    }
 
-  return ept_data->preallocated_entries[count - 1];
+    return ept_data->preallocated_entries[count - 1];
 }
 
 
+_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
 // Return a new EPT entry either by creating new one
-_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool() 
 {
-  static const auto kAllocSize = 512 * sizeof(EptCommonEntry);
-  static_assert(kAllocSize == PAGE_SIZE, "Size check");
+    static const auto kAllocSize = 512 * sizeof(EptCommonEntry);
+    static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
-  const auto entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
-  if (!entry) {
-    return nullptr;
-  }
-  RtlZeroMemory(entry, kAllocSize);
-  return entry;
+    const auto entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
+    if (!entry) {
+        return nullptr;
+    }
+    RtlZeroMemory(entry, kAllocSize);
+
+    return entry;
 }
 
 
+
+_Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)
 // Initialize an EPT entry with a "pass through" attribute
-_Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address) 
 {
-  entry->fields.read_access = true;
-  entry->fields.write_access = true;
-  entry->fields.execute_access = true;
-  entry->fields.physial_address = UtilPfnFromPa(physical_address);
-  if (table_level == 1) {
-    entry->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(physical_address));
-  }
+    entry->fields.read_access = true;
+    entry->fields.write_access = true;
+    entry->fields.execute_access = true;
+    entry->fields.physial_address = UtilPfnFromPa(physical_address);
+    if (table_level == 1) {
+        entry->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(physical_address));
+    }
 }
 
 
+_Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
 // Return an address of PXE
-_Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address) 
 {
-  const auto index = (physical_address >> kEptpPxiShift) & kEptpPtxMask;
-  return index;
+    const auto index = (physical_address >> kEptpPxiShift) & kEptpPtxMask;
+    return index;
 }
 
 
+_Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
 // Return an address of PPE
-_Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address) 
 {
-  const auto index = (physical_address >> kEptpPpiShift) & kEptpPtxMask;
-  return index;
+    const auto index = (physical_address >> kEptpPpiShift) & kEptpPtxMask;
+    return index;
 }
 
 
+_Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
 // Return an address of PDE
-_Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address) 
 {
-  const auto index = (physical_address >> kEptpPdiShift) & kEptpPtxMask;
-  return index;
+    const auto index = (physical_address >> kEptpPdiShift) & kEptpPtxMask;
+    return index;
 }
 
 
+_Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
 // Return an address of PTE
-_Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address) 
 {
-  const auto index = (physical_address >> kEptpPtiShift) & kEptpPtxMask;
-  return index;
+    const auto index = (physical_address >> kEptpPtiShift) & kEptpPtxMask;
+    return index;
 }
 
 
+_Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
 // Deal with EPT violation VM-exit.
-_Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data) 
 {
-  const EptViolationQualification exit_qualification = {UtilVmRead(VmcsField::kExitQualification)};
-  const auto fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
-  const auto fault_va = reinterpret_cast<void *>(exit_qualification.fields.valid_guest_linear_address ? UtilVmRead(VmcsField::kGuestLinearAddress) : 0);
+    const EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
+    const auto fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
+    const auto fault_va = reinterpret_cast<void *>(exit_qualification.fields.valid_guest_linear_address ? UtilVmRead(VmcsField::kGuestLinearAddress) : 0);
 
-  if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
-      KdBreakPoint();
-    HYPERPLATFORM_LOG_ERROR_SAFE("[UNK1] VA = %p, PA = %016llx", fault_va, fault_pa);
-    return;
-  }
+    if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
+        KdBreakPoint();
+        HYPERPLATFORM_LOG_ERROR_SAFE("[UNK1] VA = %p, PA = %016llx", fault_va, fault_pa);
+        return;
+    }
 
-  const auto ept_entry = EptGetEptPtEntry(ept_data, fault_pa);
-  if (ept_entry && ept_entry->all) {
-      KdBreakPoint();
-    HYPERPLATFORM_LOG_ERROR_SAFE("[UNK2] VA = %p, PA = %016llx", fault_va, fault_pa);
-    return;
-  }
+    const auto ept_entry = EptGetEptPtEntry(ept_data, fault_pa);
+    if (ept_entry && ept_entry->all) {
+        KdBreakPoint();
+        HYPERPLATFORM_LOG_ERROR_SAFE("[UNK2] VA = %p, PA = %016llx", fault_va, fault_pa);
+        return;
+    }
 
-  // EPT entry miss. It should be device memory.
-  HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
-  if (!IsReleaseBuild()) {
-    NT_VERIFY(EptpIsDeviceMemory(fault_pa));
-  }
-  EptpConstructTables(ept_data->ept_pml4, 4, fault_pa, ept_data);
+    // EPT entry miss. It should be device memory.
+    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
+    if (!IsReleaseBuild()) {
+        NT_VERIFY(EptpIsDeviceMemory(fault_pa));
+    }
+    EptpConstructTables(ept_data->ept_pml4, 4, fault_pa, ept_data);
 
-  UtilInveptGlobal();
+    UtilInveptGlobal();
 }
 
 
@@ -607,92 +602,89 @@ _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 }
 
 
+_Use_decl_annotations_ EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address)
 // Returns an EPT entry corresponds to the physical_address
-_Use_decl_annotations_ EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address) 
 {
-  return EptpGetEptPtEntry(ept_data->ept_pml4, 4, physical_address);
+    return EptpGetEptPtEntry(ept_data->ept_pml4, 4, physical_address);
 }
 
 
+_Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address)
 // Returns an EPT entry corresponds to the physical_address
-_Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address) 
 {
-  if (!table) {
-    return nullptr;
-  }
-  switch (table_level)
-  {
-    case 4:
-    {
-      // table == PML4
-      const auto pxe_index = EptpAddressToPxeIndex(physical_address);
-      const auto ept_pml4_entry = &table[pxe_index];
-      if (!ept_pml4_entry->all) {
+    if (!table) {
         return nullptr;
-      }
-      return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pml4_entry->fields.physial_address)), table_level - 1, physical_address);
     }
-    case 3:
+
+    switch (table_level)
     {
-      // table == PDPT
-      const auto ppe_index = EptpAddressToPpeIndex(physical_address);
-      const auto ept_pdpt_entry = &table[ppe_index];
-      if (!ept_pdpt_entry->all) {
-        return nullptr;
-      }
-      return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdpt_entry->fields.physial_address)), table_level - 1, physical_address);
+    case 4:// table == PML4
+    {
+        const auto pxe_index = EptpAddressToPxeIndex(physical_address);
+        const auto ept_pml4_entry = &table[pxe_index];
+        if (!ept_pml4_entry->all) {
+            return nullptr;
+        }
+        return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pml4_entry->fields.physial_address)), table_level - 1, physical_address);
     }
-    case 2:
+    case 3:// table == PDPT
     {
-      // table == PDT
-      const auto pde_index = EptpAddressToPdeIndex(physical_address);
-      const auto ept_pdt_entry = &table[pde_index];
-      if (!ept_pdt_entry->all) {
-        return nullptr;
-      }
-      return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdt_entry->fields.physial_address)), table_level - 1, physical_address);
+        const auto ppe_index = EptpAddressToPpeIndex(physical_address);
+        const auto ept_pdpt_entry = &table[ppe_index];
+        if (!ept_pdpt_entry->all) {
+            return nullptr;
+        }
+        return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdpt_entry->fields.physial_address)), table_level - 1, physical_address);
     }
-    case 1:
+    case 2:// table == PDT
     {
-      // table == PT
-      const auto pte_index = EptpAddressToPteIndex(physical_address);
-      const auto ept_pt_entry = &table[pte_index];
-      return ept_pt_entry;
+        const auto pde_index = EptpAddressToPdeIndex(physical_address);
+        const auto ept_pdt_entry = &table[pde_index];
+        if (!ept_pdt_entry->all) {
+            return nullptr;
+        }
+        return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdt_entry->fields.physial_address)), table_level - 1, physical_address);
+    }
+    case 1:// table == PT
+    {
+        const auto pte_index = EptpAddressToPteIndex(physical_address);
+        const auto ept_pt_entry = &table[pte_index];
+        return ept_pt_entry;
     }
     default:
         KdBreakPoint();
-      return nullptr;
-  }
+        return nullptr;
+    }
 }
 
 
+_Use_decl_annotations_ void EptTermination(EptData *ept_data)
 // Frees all EPT stuff
-_Use_decl_annotations_ void EptTermination(EptData *ept_data) 
 {
-  HYPERPLATFORM_LOG_DEBUG("Used pre-allocated entries  = %2d / %2d", ept_data->preallocated_entries_count, kEptpNumberOfPreallocatedEntries);
+    HYPERPLATFORM_LOG_DEBUG("Used pre-allocated entries  = %2d / %2d", ept_data->preallocated_entries_count, kEptpNumberOfPreallocatedEntries);
 
-  EptpFreeUnusedPreAllocatedEntries(ept_data->preallocated_entries, ept_data->preallocated_entries_count);
-  EptpDestructTables(ept_data->ept_pml4, 4);
-  ExFreePoolWithTag(ept_data->ept_pointer, TAG);
-  ExFreePoolWithTag(ept_data, TAG);
+    EptpFreeUnusedPreAllocatedEntries(ept_data->preallocated_entries, ept_data->preallocated_entries_count);
+    EptpDestructTables(ept_data->ept_pml4, 4);
+    ExFreePoolWithTag(ept_data->ept_pointer, TAG);
+    ExFreePoolWithTag(ept_data, TAG);
 }
 
 
-_Use_decl_annotations_ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEntry **preallocated_entries, long used_count) 
+_Use_decl_annotations_ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEntry **preallocated_entries, long used_count)
 // Frees all unused pre-allocated EPT entries. Other used entries should be freed with EptpDestructTables().
 {
-  for (auto i = used_count; i < kEptpNumberOfPreallocatedEntries; ++i) 
-  {
-    if (!preallocated_entries[i]) {
-      break;
-    }
+    for (auto i = used_count; i < kEptpNumberOfPreallocatedEntries; ++i)
+    {
+        if (!preallocated_entries[i]) {
+            break;
+        }
 #pragma warning(push)
 #pragma warning(disable : 6001)
-    ExFreePoolWithTag(preallocated_entries[i], TAG);
+        ExFreePoolWithTag(preallocated_entries[i], TAG);
 #pragma warning(pop)
-  }
+    }
 
-  ExFreePoolWithTag(preallocated_entries, TAG);
+    ExFreePoolWithTag(preallocated_entries, TAG);
 }
 
 

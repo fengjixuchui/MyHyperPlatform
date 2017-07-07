@@ -161,7 +161,7 @@ _Use_decl_annotations_ static NTSTATUS VmpSetLockBitCallback(void *context)
         return STATUS_SUCCESS;
     }
     vmx_feature_control.fields.lock = true;
-    UtilWriteMsr64(Msr::kIa32FeatureControl, vmx_feature_control.all);
+    __writemsr(0x03A, vmx_feature_control.all);
     vmx_feature_control.all = __readmsr(0x03A);
     if (!vmx_feature_control.fields.lock) {
         HYPERPLATFORM_LOG_ERROR("The lock bit is still clear.");

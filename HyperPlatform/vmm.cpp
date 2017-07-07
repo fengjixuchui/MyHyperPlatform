@@ -457,7 +457,7 @@ _Use_decl_annotations_ static void VmmpHandleMsrAccess(GuestContext *guest_conte
             }
         }
         else {
-            UtilWriteMsr64(msr, msr_value.QuadPart);
+            __writemsr((ULONG)msr, msr_value.QuadPart);
         }
     }
 
@@ -486,7 +486,8 @@ _Use_decl_annotations_ static void VmmpHandleGdtrOrIdtrAccess(GuestContext *gues
     if (!exit_qualification.fields.index_register_invalid) {
         const auto register_used = VmmpSelectRegister(exit_qualification.fields.index_register, guest_context);
         index_value = *register_used;
-        switch (static_cast<Scaling>(exit_qualification.fields.scalling)) {
+        switch (static_cast<Scaling>(exit_qualification.fields.scalling))
+        {
         case Scaling::kNoScaling:
             index_value = index_value;
             break;

@@ -194,16 +194,6 @@ VmxStatus UtilVmWrite(_In_ VmcsField field, _In_ ULONG_PTR field_value);
 /// @return A result of the VMWRITE instruction
 VmxStatus UtilVmWrite64(_In_ VmcsField field, _In_ ULONG64 field_value);
 
-/// Writes natural-width MSR
-/// @param msr  MSR to write
-/// @param value  A value to write
-void UtilWriteMsr(_In_ Msr msr, _In_ ULONG_PTR value);
-
-/// Writes 64bit-width MSR
-/// @param msr  MSR to write
-/// @param value  A value to write
-void UtilWriteMsr64(_In_ Msr msr, _In_ ULONG64 value);
-
 /// Executes the INVEPT instruction and invalidates EPT entry cache
 /// @return A result of the INVEPT instruction
 VmxStatus UtilInveptGlobal();

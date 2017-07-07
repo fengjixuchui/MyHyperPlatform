@@ -65,15 +65,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpIsHyperPlatformInstalled();
 #endif
 
 
-// Define GetSegmentLimit if it is not defined yet (it is only defined on x64)
-#if !defined(GetSegmentLimit)
-inline ULONG GetSegmentLimit(_In_ ULONG selector)
-{
-  return __segmentlimit(selector);
-}
-#endif
-
-
 _Use_decl_annotations_ NTSTATUS VmInitialization()
 // Checks if a VMM can be installed, and so, installs it
 {

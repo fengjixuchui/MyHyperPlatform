@@ -237,20 +237,21 @@ _Use_decl_annotations_ VOID static LogpReinitializationRoutine(_DRIVER_OBJECT *d
 }
 
 
-// Terminates the log functions without releasing resources.
 _Use_decl_annotations_ void LogIrpShutdownHandler() 
+// Terminates the log functions without releasing resources.
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  HYPERPLATFORM_LOG_DEBUG("Flushing... (Max log usage = %Iu/%lu bytes)", g_logp_log_buffer_info.log_max_usage, kLogpBufferSize);
-  HYPERPLATFORM_LOG_INFO("Bye!");
-  g_logp_debug_flag = kLogPutLevelDisable;
+    HYPERPLATFORM_LOG_DEBUG("Flushing... (Max log usage = %Iu/%lu bytes)", g_logp_log_buffer_info.log_max_usage, kLogpBufferSize);
+    HYPERPLATFORM_LOG_INFO("Bye!");
+    g_logp_debug_flag = kLogPutLevelDisable;
 
-  // Wait until the log buffer is emptied.
-  auto &info = g_logp_log_buffer_info;
-  while (info.log_buffer_head[0]) {
-    LogpSleep(kLogpLogFlushIntervalMsec);
-  }
+    // Wait until the log buffer is emptied.
+    auto &info = g_logp_log_buffer_info;
+    while (info.log_buffer_head[0])
+    {
+        LogpSleep(kLogpLogFlushIntervalMsec);
+    }
 }
 
 

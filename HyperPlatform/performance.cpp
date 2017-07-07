@@ -20,57 +20,57 @@ static PerfCollector::FinalOutputRoutine PerfpFinalOutputRoutine;
 PerfCollector* g_performance_collector;
 
 
-_Use_decl_annotations_ NTSTATUS PerfInitialization() 
+_Use_decl_annotations_ NTSTATUS PerfInitialization()
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  PerfCollector * perf_collector = reinterpret_cast<PerfCollector*>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(PerfCollector), TAG));
-  if (!perf_collector) {
-    return STATUS_MEMORY_NOT_ALLOCATED;
-  }
+    PerfCollector * perf_collector = reinterpret_cast<PerfCollector*>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(PerfCollector), TAG));
+    if (!perf_collector) {
+        return STATUS_MEMORY_NOT_ALLOCATED;
+    }
 
-  // No lock to avoid calling kernel APIs from VMM and race condition here is not an issue.
-  perf_collector->Initialize(PerfpOutputRoutine, PerfpInitialOutputRoutine, PerfpFinalOutputRoutine);
+    // No lock to avoid calling kernel APIs from VMM and race condition here is not an issue.
+    perf_collector->Initialize(PerfpOutputRoutine, PerfpInitialOutputRoutine, PerfpFinalOutputRoutine);
 
-  g_performance_collector = perf_collector;
-  return STATUS_SUCCESS;
+    g_performance_collector = perf_collector;
+    return STATUS_SUCCESS;
 }
 
 
-_Use_decl_annotations_ void PerfTermination() 
+_Use_decl_annotations_ void PerfTermination()
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  if (g_performance_collector) {
-    g_performance_collector->Terminate();
-    ExFreePoolWithTag(g_performance_collector, TAG);
-    g_performance_collector = nullptr;
-  }
+    if (g_performance_collector) {
+        g_performance_collector->Terminate();
+        ExFreePoolWithTag(g_performance_collector, TAG);
+        g_performance_collector = nullptr;
+    }
 }
 
 
-/*_Use_decl_annotations_*/ ULONG64 PerfGetTime() 
+/*_Use_decl_annotations_*/ ULONG64 PerfGetTime()
 {
-  LARGE_INTEGER counter = KeQueryPerformanceCounter(nullptr);
-  return static_cast<ULONG64>(counter.QuadPart);
+    LARGE_INTEGER counter = KeQueryPerformanceCounter(nullptr);
+    return static_cast<ULONG64>(counter.QuadPart);
 }
 
 
-_Use_decl_annotations_ static void PerfpInitialOutputRoutine(void* output_context) 
+_Use_decl_annotations_ static void PerfpInitialOutputRoutine(void* output_context)
 {
-  UNREFERENCED_PARAMETER(output_context);
-  HYPERPLATFORM_LOG_INFO("%-45s,%-20s,%-20s", "FunctionName(Line)", "Execution Count", "Elapsed Time");
+    UNREFERENCED_PARAMETER(output_context);
+    HYPERPLATFORM_LOG_INFO("%-45s,%-20s,%-20s", "FunctionName(Line)", "Execution Count", "Elapsed Time");
 }
 
 
-_Use_decl_annotations_ static void PerfpOutputRoutine(const char* location_name, ULONG64 total_execution_count, ULONG64 total_elapsed_time, void* output_context) 
+_Use_decl_annotations_ static void PerfpOutputRoutine(const char* location_name, ULONG64 total_execution_count, ULONG64 total_elapsed_time, void* output_context)
 {
-  UNREFERENCED_PARAMETER(output_context);
-  HYPERPLATFORM_LOG_INFO("%-45s,%20I64u,%20I64u,", location_name, total_execution_count, total_elapsed_time);
+    UNREFERENCED_PARAMETER(output_context);
+    HYPERPLATFORM_LOG_INFO("%-45s,%20I64u,%20I64u,", location_name, total_execution_count, total_elapsed_time);
 }
 
 
-_Use_decl_annotations_ static void PerfpFinalOutputRoutine(void* output_context) 
+_Use_decl_annotations_ static void PerfpFinalOutputRoutine(void* output_context)
 {
-  UNREFERENCED_PARAMETER(output_context);
+    UNREFERENCED_PARAMETER(output_context);
 }

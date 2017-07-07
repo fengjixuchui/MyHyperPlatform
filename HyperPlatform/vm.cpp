@@ -189,7 +189,7 @@ _Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
         return nullptr;
     }
 
-    const auto io_bitmaps = BuildIoBitmaps();// Setup IO bitmaps
+    UCHAR * io_bitmaps = BuildIoBitmaps();// Setup IO bitmaps
     if (!io_bitmaps) {
         ExFreePoolWithTag(shared_data->msr_bitmap, TAG);
         ExFreePoolWithTag(shared_data, TAG);
@@ -208,15 +208,15 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()
 {
     PAGED_CODE();
 
-    const auto msr_bitmap = ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG);
+    void * msr_bitmap = ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG);
     if (!msr_bitmap) {
         return nullptr;
     }
     RtlZeroMemory(msr_bitmap, PAGE_SIZE);
 
     // Activate VM-exit for RDMSR against all MSRs
-    const auto bitmap_read_low = reinterpret_cast<UCHAR *>(msr_bitmap);
-    const auto bitmap_read_high = bitmap_read_low + 1024;
+    UCHAR * bitmap_read_low = reinterpret_cast<UCHAR *>(msr_bitmap);
+    UCHAR * bitmap_read_high = bitmap_read_low + 1024;
     RtlFillMemory(bitmap_read_low, 1024, 0xff);   // read        0 -     1fff
     RtlFillMemory(bitmap_read_high, 1024, 0xff);  // read c0000000 - c0001fff
 
@@ -226,7 +226,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()
     RtlClearBits(&bitmap_read_low_header, 0xe7, 2);
 
     // Checks MSRs that cause #GP from 0 to 0xfff, and ignore all of them
-    for (auto msr = 0ul; msr < 0x1000; ++msr)
+    for (ULONG msr = 0ul; msr < 0x1000; ++msr)
     {
         __try {
             __readmsr(msr);
@@ -249,13 +249,13 @@ _Use_decl_annotations_ static UCHAR * BuildIoBitmaps()
 {
     PAGED_CODE();
 
-    const auto io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE * 2, TAG));// Allocate two IO bitmaps as one contiguous 4K+4K page
+    UCHAR * io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE * 2, TAG));// Allocate two IO bitmaps as one contiguous 4K+4K page
     if (!io_bitmaps) {
         return nullptr;
     }
 
-    const auto io_bitmap_a = io_bitmaps;              // for    0x0 - 0x7fff
-    const auto io_bitmap_b = io_bitmaps + PAGE_SIZE;  // for 0x8000 - 0xffff
+    UCHAR * io_bitmap_a = io_bitmaps;              // for    0x0 - 0x7fff
+    UCHAR * io_bitmap_b = io_bitmaps + PAGE_SIZE;  // for 0x8000 - 0xffff
     RtlFillMemory(io_bitmap_a, PAGE_SIZE, 0);
     RtlFillMemory(io_bitmap_b, PAGE_SIZE, 0);
 
@@ -649,12 +649,12 @@ _Use_decl_annotations_ static void VmpLaunchVm()
 {
     PAGED_CODE();
 
-    auto error_code = UtilVmRead(VmcsField::kVmInstructionError);
+    ULONG_PTR error_code = UtilVmRead(VmcsField::kVmInstructionError);
     if (error_code) {
         HYPERPLATFORM_LOG_WARN("VM_INSTRUCTION_ERROR = %Iu", error_code);
     }
 
-    auto vmx_status = static_cast<VmxStatus>(__vmx_vmlaunch());
+    VmxStatus vmx_status = static_cast<VmxStatus>(__vmx_vmlaunch());
 
     // Here should not executed with successful vmlaunch. Instead, the context jumps to an address specified by GUEST_RIP.
     if (vmx_status == VmxStatus::kErrorWithStatus) {

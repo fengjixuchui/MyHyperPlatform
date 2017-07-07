@@ -684,7 +684,7 @@ _Use_decl_annotations_ VmxStatus UtilVmWrite64(VmcsField field, ULONG64 field_va
 }
 
 // Executes the INVEPT instruction and invalidates EPT entry cache
-/*_Use_decl_annotations_*/ VmxStatus UtilInveptGlobal() {
+VmxStatus UtilInveptGlobal() {
   InvEptDescriptor desc = {};
   return static_cast<VmxStatus>(AsmInvept(InvEptType::kGlobalInvalidation, &desc));
 }
@@ -706,7 +706,7 @@ _Use_decl_annotations_ VmxStatus UtilInvvpidSingleContext(USHORT vpid) {
 }
 
 // Executes the INVVPID instruction (type 2)
-/*_Use_decl_annotations_*/ VmxStatus UtilInvvpidAllContext() 
+VmxStatus UtilInvvpidAllContext() 
 {
   InvVpidDescriptor desc = {};
   return static_cast<VmxStatus>(AsmInvvpid(InvVpidType::kAllContextInvalidation, &desc));

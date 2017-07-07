@@ -376,7 +376,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
 
     // Allocate preallocated_entries
     const SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
-    const auto preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
+    EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
     if (!preallocated_entries) {
         EptpDestructTables(ept_pml4, 4);
         ExFreePoolWithTag(ept_poiner, TAG);
@@ -497,7 +497,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
     static const auto kAllocSize = 512 * sizeof(EptCommonEntry);
     static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
-    const auto entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
+    EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
     if (!entry) {
         return nullptr;
     }
@@ -558,7 +558,7 @@ _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
 {
     const EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     const auto fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
-    const auto fault_va = reinterpret_cast<void *>(exit_qualification.fields.valid_guest_linear_address ? UtilVmRead(VmcsField::kGuestLinearAddress) : 0);
+    void * fault_va = reinterpret_cast<void *>(exit_qualification.fields.valid_guest_linear_address ? UtilVmRead(VmcsField::kGuestLinearAddress) : 0);
 
     if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
         KdBreakPoint();
@@ -696,7 +696,7 @@ _Use_decl_annotations_ static void EptpDestructTables(EptCommonEntry *table, ULO
         const auto entry = table[i];
         if (entry.fields.physial_address)
         {
-            const auto sub_table = reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(entry.fields.physial_address));
+            EptCommonEntry * sub_table = reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(entry.fields.physial_address));
 
             switch (table_level)
             {

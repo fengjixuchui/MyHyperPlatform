@@ -866,8 +866,8 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
             if (UtilIsX86Pae()) {
                 UtilLoadPdptes(UtilVmRead(VmcsField::kGuestCr3));
             }
-            const Cr0 cr0_fixed0 = { UtilReadMsr(Msr::kIa32VmxCr0Fixed0) };
-            const Cr0 cr0_fixed1 = { UtilReadMsr(Msr::kIa32VmxCr0Fixed1) };
+            const Cr0 cr0_fixed0 = { __readmsr(0x486) };
+            const Cr0 cr0_fixed1 = { __readmsr(0x487) };
             Cr0 cr0 = { *register_used };
             cr0.all &= cr0_fixed1.all;
             cr0.all |= cr0_fixed0.all;
@@ -896,8 +896,8 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
                 UtilLoadPdptes(UtilVmRead(VmcsField::kGuestCr3));
             }
             UtilInvvpidAllContext();
-            const Cr4 cr4_fixed0 = { UtilReadMsr(Msr::kIa32VmxCr4Fixed0) };
-            const Cr4 cr4_fixed1 = { UtilReadMsr(Msr::kIa32VmxCr4Fixed1) };
+            const Cr4 cr4_fixed0 = { __readmsr(0x488) };
+            const Cr4 cr4_fixed1 = { __readmsr(0x489) };
             Cr4 cr4 = { *register_used };
             cr4.all &= cr4_fixed1.all;
             cr4.all |= cr4_fixed0.all;

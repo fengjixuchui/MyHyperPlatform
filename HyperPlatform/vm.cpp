@@ -229,7 +229,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()
     for (auto msr = 0ul; msr < 0x1000; ++msr)
     {
         __try {
-            UtilReadMsr(static_cast<Msr>(msr));
+            __readmsr(msr);
         } __except (EXCEPTION_EXECUTE_HANDLER) {
             RtlClearBits(&bitmap_read_low_header, msr, 1);
         }
@@ -385,8 +385,8 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
     // Values 1                   *                   bit of CRx is fixed to 1
     // Values 0                   1                   bit of CRx is flexible
     // Values *                   0                   bit of CRx is fixed to 0
-    const Cr0 cr0_fixed0 = { UtilReadMsr(Msr::kIa32VmxCr0Fixed0) };
-    const Cr0 cr0_fixed1 = { UtilReadMsr(Msr::kIa32VmxCr0Fixed1) };
+    const Cr0 cr0_fixed0 = { __readmsr(0x486) };
+    const Cr0 cr0_fixed1 = { __readmsr(0x487) };
     Cr0 cr0 = { __readcr0() };
     Cr0 cr0_original = cr0;
     cr0.all &= cr0_fixed1.all;
@@ -394,8 +394,8 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
     __writecr0(cr0.all);
 
     // See: VMX-FIXED BITS IN CR4
-    const Cr4 cr4_fixed0 = { UtilReadMsr(Msr::kIa32VmxCr4Fixed0) };
-    const Cr4 cr4_fixed1 = { UtilReadMsr(Msr::kIa32VmxCr4Fixed1) };
+    const Cr4 cr4_fixed0 = { __readmsr(0x488) };
+    const Cr4 cr4_fixed1 = { __readmsr(0x489) };
     Cr4 cr4 = { __readcr4() };
     Cr4 cr4_original = cr4;
     cr4.all &= cr4_fixed1.all;
@@ -503,10 +503,8 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     // cr4_shadow.fields.vmxe = false;
 
     // See: PDPTE Registers
-    // If PAE paging would be in use following an execution of MOV to CR0 or MOV
-    // to CR4 (see Section 4.1.1) and the instruction is modifying any of CR0.CD,
-    // CR0.NW, CR0.PG, CR4.PAE, CR4.PGE, CR4.PSE, or CR4.SMEP; then the PDPTEs are
-    // loaded from the address in CR3.
+    // If PAE paging would be in use following an execution of MOV to CR0 or MOV to CR4 (see Section 4.1.1) and the instruction is modifying any of CR0.CD,
+    // CR0.NW, CR0.PG, CR4.PAE, CR4.PGE, CR4.PSE, or CR4.SMEP; then the PDPTEs are loaded from the address in CR3.
     if (UtilIsX86Pae()) {
         cr0_mask.fields.pg = true;
         cr0_mask.fields.cd = true;
@@ -516,12 +514,10 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
         cr4_mask.fields.pse = true;
         cr4_mask.fields.smep = true;
     }
-
-    // clang-format off
-    auto error = VmxStatus::kOk;
-
-    /* 16-Bit Control Field */
-    error |= UtilVmWrite(VmcsField::kVirtualProcessorId, KeGetCurrentProcessorNumberEx(nullptr) + 1);
+    
+    auto error = VmxStatus::kOk;// clang-format off
+    
+    error |= UtilVmWrite(VmcsField::kVirtualProcessorId, KeGetCurrentProcessorNumberEx(nullptr) + 1);/* 16-Bit Control Field */
 
     /* 16-Bit Guest-State Fields */
     error |= UtilVmWrite(VmcsField::kGuestEsSelector, AsmReadES());
@@ -583,10 +579,9 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     error |= UtilVmWrite(VmcsField::kGuestGsArBytes, VmpGetSegmentAccessRight(AsmReadGS()));
     error |= UtilVmWrite(VmcsField::kGuestLdtrArBytes, VmpGetSegmentAccessRight(AsmReadLDTR()));
     error |= UtilVmWrite(VmcsField::kGuestTrArBytes, VmpGetSegmentAccessRight(AsmReadTR()));
-    error |= UtilVmWrite(VmcsField::kGuestSysenterCs, UtilReadMsr(Msr::kIa32SysenterCs));
-
-    /* 32-Bit Host-State Field */
-    error |= UtilVmWrite(VmcsField::kHostIa32SysenterCs, UtilReadMsr(Msr::kIa32SysenterCs));
+    error |= UtilVmWrite(VmcsField::kGuestSysenterCs, __readmsr(0x174));
+    
+    error |= UtilVmWrite(VmcsField::kHostIa32SysenterCs, __readmsr(0x174));/* 32-Bit Host-State Field */
 
     /* Natural-Width Control Fields */
     error |= UtilVmWrite(VmcsField::kCr0GuestHostMask, cr0_mask.all);
@@ -603,8 +598,8 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     error |= UtilVmWrite(VmcsField::kGuestCsBase, 0);
     error |= UtilVmWrite(VmcsField::kGuestSsBase, 0);
     error |= UtilVmWrite(VmcsField::kGuestDsBase, 0);
-    error |= UtilVmWrite(VmcsField::kGuestFsBase, UtilReadMsr(Msr::kIa32FsBase));
-    error |= UtilVmWrite(VmcsField::kGuestGsBase, UtilReadMsr(Msr::kIa32GsBase));
+    error |= UtilVmWrite(VmcsField::kGuestFsBase, __readmsr(0xC0000100));
+    error |= UtilVmWrite(VmcsField::kGuestGsBase, __readmsr(0xC0000101));
 #else
     error |= UtilVmWrite(VmcsField::kGuestEsBase, VmpGetSegmentBase(gdtr.base, AsmReadES()));
     error |= UtilVmWrite(VmcsField::kGuestCsBase, VmpGetSegmentBase(gdtr.base, AsmReadCS()));
@@ -621,16 +616,16 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     error |= UtilVmWrite(VmcsField::kGuestRsp, guest_stack_pointer);
     error |= UtilVmWrite(VmcsField::kGuestRip, guest_instruction_pointer);
     error |= UtilVmWrite(VmcsField::kGuestRflags, __readeflags());
-    error |= UtilVmWrite(VmcsField::kGuestSysenterEsp, UtilReadMsr(Msr::kIa32SysenterEsp));
-    error |= UtilVmWrite(VmcsField::kGuestSysenterEip, UtilReadMsr(Msr::kIa32SysenterEip));
+    error |= UtilVmWrite(VmcsField::kGuestSysenterEsp, __readmsr(0x175));
+    error |= UtilVmWrite(VmcsField::kGuestSysenterEip, __readmsr(0x176));
 
     /* Natural-Width Host-State Fields */
     error |= UtilVmWrite(VmcsField::kHostCr0, __readcr0());
     error |= UtilVmWrite(VmcsField::kHostCr3, __readcr3());
     error |= UtilVmWrite(VmcsField::kHostCr4, __readcr4());
 #if defined(_AMD64_)
-    error |= UtilVmWrite(VmcsField::kHostFsBase, UtilReadMsr(Msr::kIa32FsBase));
-    error |= UtilVmWrite(VmcsField::kHostGsBase, UtilReadMsr(Msr::kIa32GsBase));
+    error |= UtilVmWrite(VmcsField::kHostFsBase, __readmsr(0xC0000100));
+    error |= UtilVmWrite(VmcsField::kHostGsBase, __readmsr(0xC0000101));
 #else
     error |= UtilVmWrite(VmcsField::kHostFsBase, VmpGetSegmentBase(gdtr.base, AsmReadFS()));
     error |= UtilVmWrite(VmcsField::kHostGsBase, VmpGetSegmentBase(gdtr.base, AsmReadGS()));
@@ -638,8 +633,8 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     error |= UtilVmWrite(VmcsField::kHostTrBase, VmpGetSegmentBase(gdtr.base, AsmReadTR()));
     error |= UtilVmWrite(VmcsField::kHostGdtrBase, gdtr.base);
     error |= UtilVmWrite(VmcsField::kHostIdtrBase, idtr.base);
-    error |= UtilVmWrite(VmcsField::kHostIa32SysenterEsp, UtilReadMsr(Msr::kIa32SysenterEsp));
-    error |= UtilVmWrite(VmcsField::kHostIa32SysenterEip, UtilReadMsr(Msr::kIa32SysenterEip));
+    error |= UtilVmWrite(VmcsField::kHostIa32SysenterEsp, __readmsr(0x175));
+    error |= UtilVmWrite(VmcsField::kHostIa32SysenterEip, __readmsr(0x176));
     error |= UtilVmWrite(VmcsField::kHostRsp, vmm_stack_pointer);
     error |= UtilVmWrite(VmcsField::kHostRip, reinterpret_cast<ULONG_PTR>(AsmVmmEntryPoint));
     // clang-format on

@@ -121,14 +121,14 @@ _Use_decl_annotations_ static bool VmpIsVmxAvailable()
 
     // See: BASIC VMX INFORMATION
     // The first processors to support VMX operation use the write-back type.
-    const Ia32VmxBasicMsr vmx_basic_msr = { UtilReadMsr64(Msr::kIa32VmxBasic) };
+    const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     if (static_cast<memory_type>(vmx_basic_msr.fields.memory_type) != memory_type::kWriteBack) {
         HYPERPLATFORM_LOG_ERROR("Write-back cache type is not supported.");
         return false;
     }
 
     // See: ENABLING AND ENTERING VMX OPERATION
-    Ia32FeatureControlMsr vmx_feature_control = { UtilReadMsr64(Msr::kIa32FeatureControl) };
+    Ia32FeatureControlMsr vmx_feature_control = { __readmsr(0x03A) };
     if (!vmx_feature_control.fields.lock) {
         HYPERPLATFORM_LOG_INFO("The lock bit is clear. Attempting to set 1.");
         const auto status = UtilForEachProcessor(VmpSetLockBitCallback, nullptr);
@@ -156,13 +156,13 @@ _Use_decl_annotations_ static NTSTATUS VmpSetLockBitCallback(void *context)
     UNREFERENCED_PARAMETER(context);
     PAGED_CODE();
 
-    Ia32FeatureControlMsr vmx_feature_control = { UtilReadMsr64(Msr::kIa32FeatureControl) };
+    Ia32FeatureControlMsr vmx_feature_control = { __readmsr(0x03A) };
     if (vmx_feature_control.fields.lock) {
         return STATUS_SUCCESS;
     }
     vmx_feature_control.fields.lock = true;
     UtilWriteMsr64(Msr::kIa32FeatureControl, vmx_feature_control.all);
-    vmx_feature_control.all = UtilReadMsr64(Msr::kIa32FeatureControl);
+    vmx_feature_control.all = __readmsr(0x03A);
     if (!vmx_feature_control.fields.lock) {
         HYPERPLATFORM_LOG_ERROR("The lock bit is still clear.");
         return STATUS_DEVICE_CONFIGURATION_ERROR;
@@ -403,7 +403,7 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
     __writecr4(cr4.all);
 
     // Write a VMCS revision identifier
-    const Ia32VmxBasicMsr vmx_basic_msr = { UtilReadMsr64(Msr::kIa32VmxBasic) };
+    const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     processor_data->vmxon_region->revision_identifier = vmx_basic_msr.fields.revision_identifier;
 
     auto vmxon_region_pa = UtilPaFromVa(processor_data->vmxon_region);
@@ -424,7 +424,7 @@ _Use_decl_annotations_ static bool VmpInitializeVmcs(ProcessorData *processor_da
     PAGED_CODE();
 
     // Write a VMCS revision identifier
-    const Ia32VmxBasicMsr vmx_basic_msr = { UtilReadMsr64(Msr::kIa32VmxBasic) };
+    const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     processor_data->vmcs_region->revision_identifier = vmx_basic_msr.fields.revision_identifier;
 
     auto vmcs_region_pa = UtilPaFromVa(processor_data->vmcs_region);
@@ -451,7 +451,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     __sidt(&idtr);
 
     // See: Algorithms for Determining VMX Capabilities
-    const auto use_true_msrs = Ia32VmxBasicMsr{ UtilReadMsr64(Msr::kIa32VmxBasic) }.fields.vmx_capability_hint;
+    const auto use_true_msrs = Ia32VmxBasicMsr{ __readmsr(0x480) }.fields.vmx_capability_hint;
 
     VmxVmEntryControls vm_entryctl_requested = {};
     vm_entryctl_requested.fields.load_debug_controls = true;
@@ -547,7 +547,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
 
     /* 64-Bit Guest-State Fields */
     error |= UtilVmWrite64(VmcsField::kVmcsLinkPointer, MAXULONG64);
-    error |= UtilVmWrite64(VmcsField::kGuestIa32Debugctl, UtilReadMsr64(Msr::kIa32Debugctl));
+    error |= UtilVmWrite64(VmcsField::kGuestIa32Debugctl, __readmsr(0x1D9));
     if (UtilIsX86Pae()) {
         UtilLoadPdptes(__readcr3());
     }
@@ -747,7 +747,7 @@ _Use_decl_annotations_ static ULONG VmpAdjustControlValue(Msr msr, ULONG request
     PAGED_CODE();
 
     LARGE_INTEGER msr_value = {};
-    msr_value.QuadPart = UtilReadMsr64(msr);
+    msr_value.QuadPart = __readmsr((ULONG)msr);
     auto adjusted_value = requested_value;
 
     // bit == 0 in high word ==> must be zero

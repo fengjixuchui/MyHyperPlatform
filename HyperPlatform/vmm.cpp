@@ -440,7 +440,7 @@ _Use_decl_annotations_ static void VmmpHandleMsrAccess(GuestContext *guest_conte
             }
         }
         else {
-            msr_value.QuadPart = UtilReadMsr64(msr);
+            msr_value.QuadPart = __readmsr((ULONG)msr);
         }
         guest_context->gp_regs->ax = msr_value.LowPart;
         guest_context->gp_regs->dx = msr_value.HighPart;

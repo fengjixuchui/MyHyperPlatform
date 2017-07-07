@@ -95,7 +95,7 @@ _Use_decl_annotations_ bool EptIsEptAvailable()
     // - extended page tables can be laid out in write-back memory
     // - INVEPT instruction with all possible types is supported
     // - INVVPID instruction with all possible types is supported
-    Ia32VmxEptVpidCapMsr capability = { UtilReadMsr64(Msr::kIa32VmxEptVpidCap) };
+    Ia32VmxEptVpidCapMsr capability = { __readmsr(0x48C) };
     if (!capability.fields.support_page_walk_length4 ||
         !capability.fields.support_write_back_memory_type ||
         !capability.fields.support_invept ||
@@ -130,10 +130,10 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     MtrrData *mtrr_entries = g_eptp_mtrr_entries;
 
     // Get and store the default memory type
-    Ia32MtrrDefaultTypeMsr default_type = { UtilReadMsr64(Msr::kIa32MtrrDefType) };
+    Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };
     g_eptp_mtrr_default_type = default_type.fields.default_mtemory_type;
     
-    Ia32MtrrCapabilitiesMsr mtrr_capabilities = { UtilReadMsr64(Msr::kIa32MtrrCap) };// Read MTRR capability
+    Ia32MtrrCapabilitiesMsr mtrr_capabilities = { __readmsr(0xFE) };// Read MTRR capability
 
     // Read fixed range MTRRs if supported
     if (mtrr_capabilities.fields.fixed_range_supported && default_type.fields.fixed_mtrrs_enabled)
@@ -153,7 +153,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         //  ...
         //  entry[7]: 0x70000 : 0x80000 - 1
         ULONG64 offset = 0;
-        Ia32MtrrFixedRangeMsr fixed_range = { UtilReadMsr64(Msr::kIa32MtrrFix64k00000) };
+        Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };
         for (auto memory_type : fixed_range.fields.types)
         {
             // Each entry manages 64k (0x10000) length.
@@ -186,7 +186,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         offset = 0;
         for (auto msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
         {
-            fixed_range.all = UtilReadMsr64(static_cast<Msr>(msr));
+            fixed_range.all = __readmsr(msr);
             for (auto memory_type : fixed_range.fields.types)
             {
                 // Each entry manages 16k (0x4000) length.
@@ -216,7 +216,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         offset = 0;
         for (auto msr = static_cast<ULONG>(Msr::kIa32MtrrFix4kC0000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix4kF8000); msr++)
         {
-            fixed_range.all = UtilReadMsr64(static_cast<Msr>(msr));
+            fixed_range.all = __readmsr(msr);
             for (auto memory_type : fixed_range.fields.types)
             {
                 // Each entry manages 4k (0x1000) length.
@@ -240,7 +240,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     {
         // Read MTRR mask and check if it is in use
         const auto phy_mask = static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2;
-        Ia32MtrrPhysMaskMsr mtrr_mask = { UtilReadMsr64(static_cast<Msr>(phy_mask)) };
+        Ia32MtrrPhysMaskMsr mtrr_mask = { __readmsr(phy_mask) };
         if (!mtrr_mask.fields.valid) {
             continue;
         }
@@ -251,7 +251,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
 
         // Read MTRR base and calculate a range this MTRR manages
         const auto phy_base = static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2;
-        Ia32MtrrPhysBaseMsr mtrr_base = { UtilReadMsr64(static_cast<Msr>(phy_base)) };
+        Ia32MtrrPhysBaseMsr mtrr_base = { __readmsr(phy_base) };
         ULONG64 base = mtrr_base.fields.phys_base * PAGE_SIZE;
         ULONG64 end = base + (1ull << length) - 1;
 
@@ -370,7 +370,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     }
 
     // Initialize an EPT entry for APIC_BASE. It is required to allocated it now for some reasons, or else, system hangs.
-    const Ia32ApicBaseMsr apic_msr = { UtilReadMsr64(Msr::kIa32ApicBase) };
+    const Ia32ApicBaseMsr apic_msr = { __readmsr(0x01B) };
     if (!EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr)) {
         EptpDestructTables(ept_pml4, 4);
         ExFreePoolWithTag(ept_poiner, TAG);

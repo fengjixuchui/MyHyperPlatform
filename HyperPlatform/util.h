@@ -194,11 +194,6 @@ VmxStatus UtilVmWrite(_In_ VmcsField field, _In_ ULONG_PTR field_value);
 /// @return A result of the VMWRITE instruction
 VmxStatus UtilVmWrite64(_In_ VmcsField field, _In_ ULONG64 field_value);
 
-/// Reads 64bit-width MSR
-/// @param msr  MSR to read
-/// @return read value
-ULONG64 UtilReadMsr64(_In_ Msr msr);
-
 /// Writes natural-width MSR
 /// @param msr  MSR to write
 /// @param value  A value to write

@@ -684,11 +684,6 @@ _Use_decl_annotations_ VmxStatus UtilVmWrite64(VmcsField field, ULONG64 field_va
 }
 
 
-// Reads 64bit-width MSR
-_Use_decl_annotations_ ULONG64 UtilReadMsr64(Msr msr) {
-  return __readmsr(static_cast<unsigned long>(msr));
-}
-
 // Writes natural-width MSR
 _Use_decl_annotations_ void UtilWriteMsr(Msr msr, ULONG_PTR value) {
   __writemsr(static_cast<unsigned long>(msr), value);

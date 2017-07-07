@@ -7,6 +7,7 @@
 #pragma once
 
 #include <fltKernel.h>
+#include <intrin.h>
 
 extern "C"
 {

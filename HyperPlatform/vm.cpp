@@ -418,7 +418,7 @@ _Use_decl_annotations_ static bool VmpInitializeVmcs(ProcessorData *processor_da
     const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     processor_data->vmcs_region->revision_identifier = vmx_basic_msr.fields.revision_identifier;
 
-    auto vmcs_region_pa = UtilPaFromVa(processor_data->vmcs_region);
+    SIZE_T vmcs_region_pa = UtilPaFromVa(processor_data->vmcs_region);
     if (__vmx_vmclear(&vmcs_region_pa)) {
         return false;
     }
@@ -474,7 +474,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     VmxSecondaryProcessorBasedControls vm_procctl2 = { VmpAdjustControlValue(Msr::kIa32VmxProcBasedCtls2, vm_procctl2_requested.all) };
 
     // NOTE: Comment in any of those as needed
-    const auto exception_bitmap =
+    ULONG_PTR exception_bitmap =
         // 1 << InterruptionVector::kBreakpointException |
         // 1 << InterruptionVector::kGeneralProtectionException |
         // 1 << InterruptionVector::kPageFaultException |
@@ -630,7 +630,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     error |= UtilVmWrite(VmcsField::kHostRip, reinterpret_cast<ULONG_PTR>(AsmVmmEntryPoint));
     // clang-format on
 
-    const auto vmx_status = static_cast<VmxStatus>(error);
+    VmxStatus vmx_status = static_cast<VmxStatus>(error);
     return vmx_status == VmxStatus::kOk;
 }
 
@@ -665,7 +665,7 @@ _Use_decl_annotations_ static ULONG VmpGetSegmentAccessRight(USHORT segment_sele
     VmxRegmentDescriptorAccessRight access_right = {};
     const SegmentSelector ss = { segment_selector };
     if (segment_selector) {
-        auto native_access_right = AsmLoadAccessRightsByte(ss.all);
+        ULONG_PTR native_access_right = AsmLoadAccessRightsByte(ss.all);
         native_access_right >>= 8;
         access_right.all = static_cast<ULONG>(native_access_right);
         access_right.fields.reserved1 = 0;
@@ -690,12 +690,12 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, US
     }
 
     if (ss.fields.ti) {
-        const auto local_segment_descriptor = VmpGetSegmentDescriptor(gdt_base, AsmReadLDTR());
-        const auto ldt_base = VmpGetSegmentBaseByDescriptor(local_segment_descriptor);
-        const auto segment_descriptor = VmpGetSegmentDescriptor(ldt_base, segment_selector);
+        SegmentDescriptor * local_segment_descriptor = VmpGetSegmentDescriptor(gdt_base, AsmReadLDTR());
+        ULONG_PTR ldt_base = VmpGetSegmentBaseByDescriptor(local_segment_descriptor);
+        SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(ldt_base, segment_selector);
         return VmpGetSegmentBaseByDescriptor(segment_descriptor);
     } else {
-        const auto segment_descriptor = VmpGetSegmentDescriptor(gdt_base, segment_selector);
+        SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(gdt_base, segment_selector);
         return VmpGetSegmentBaseByDescriptor(segment_descriptor);
     }
 }
@@ -717,10 +717,10 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBaseByDescriptor(const Segm
     PAGED_CODE();
 
     // Calculate a 32bit base address
-    const auto base_high = segment_descriptor->fields.base_high << (6 * 4);
-    const auto base_middle = segment_descriptor->fields.base_mid << (4 * 4);
-    const auto base_low = segment_descriptor->fields.base_low;
-    ULONG_PTR base = (base_high | base_middle | base_low) & MAXULONG;
+    SIZE_T base_high = segment_descriptor->fields.base_high << (6 * 4);
+    SIZE_T base_middle = segment_descriptor->fields.base_mid << (4 * 4);
+    SIZE_T base_low = segment_descriptor->fields.base_low;
+    SIZE_T base = (base_high | base_middle | base_low) & MAXULONG;
     // Get upper 32bit of the base address if needed
     if (IsX64() && !segment_descriptor->fields.system) {
         auto desc64 = reinterpret_cast<const SegmentDesctiptorX64 *>(segment_descriptor);
@@ -739,7 +739,7 @@ _Use_decl_annotations_ static ULONG VmpAdjustControlValue(Msr msr, ULONG request
 
     LARGE_INTEGER msr_value = {};
     msr_value.QuadPart = __readmsr((ULONG)msr);
-    auto adjusted_value = requested_value;
+    ULONG adjusted_value = requested_value;
 
     // bit == 0 in high word ==> must be zero
     adjusted_value &= msr_value.HighPart;
@@ -756,7 +756,7 @@ _Use_decl_annotations_ void VmTermination()
 
     HYPERPLATFORM_LOG_INFO("Uninstalling VMM.");
 
-    auto status = UtilForEachProcessor(VmpStopVm, nullptr);
+    NTSTATUS status = UtilForEachProcessor(VmpStopVm, nullptr);
     if (NT_SUCCESS(status)) {
         HYPERPLATFORM_LOG_INFO("The VMM has been uninstalled.");
     } else {
@@ -777,7 +777,7 @@ _Use_decl_annotations_ static NTSTATUS VmpStopVm(void *context)
 
     // Stop virtualization and get an address of the management structure
     ProcessorData *processor_data = nullptr;
-    auto status = UtilVmCall(HypercallNumber::kTerminateVmm, &processor_data);
+    NTSTATUS status = UtilVmCall(HypercallNumber::kTerminateVmm, &processor_data);
     if (!NT_SUCCESS(status)) {
         return status;
     }
@@ -871,7 +871,7 @@ _Use_decl_annotations_ NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_n
     KeSetSystemGroupAffinityThread(&affinity, &previous_affinity);
 
     SharedProcessorData *shared_data = nullptr;
-    auto status = UtilVmCall(HypercallNumber::kGetSharedProcessorData, &shared_data);
+    NTSTATUS status = UtilVmCall(HypercallNumber::kGetSharedProcessorData, &shared_data);
 
     KeSetSystemGroupAffinityThread(&affinity, &previous_affinity);
 

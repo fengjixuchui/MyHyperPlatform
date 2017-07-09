@@ -122,7 +122,7 @@ _Use_decl_annotations_ static bool VmpIsVmxAvailable()
     Ia32FeatureControlMsr vmx_feature_control = { __readmsr(0x03A) };
     if (!vmx_feature_control.fields.lock) {
         HYPERPLATFORM_LOG_INFO("The lock bit is clear. Attempting to set 1.");
-        const auto status = UtilForEachProcessor(VmpSetLockBitCallback, nullptr);
+        NTSTATUS status = UtilForEachProcessor(VmpSetLockBitCallback, nullptr);
         if (!NT_SUCCESS(status)) {
             return false;
         }
@@ -334,9 +334,9 @@ _Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer
     // |                  |    v
     // +------------------+  <- vmm_stack_limit            (eg, AED34000)
     // (Low)
-    const auto vmm_stack_region_base = reinterpret_cast<ULONG_PTR>(processor_data->vmm_stack_limit) + KERNEL_STACK_SIZE;
-    const auto vmm_stack_data = vmm_stack_region_base - sizeof(void *);
-    const auto vmm_stack_base = vmm_stack_data - sizeof(void *);
+    ULONG_PTR vmm_stack_region_base = reinterpret_cast<ULONG_PTR>(processor_data->vmm_stack_limit) + KERNEL_STACK_SIZE;
+    ULONG_PTR vmm_stack_data = vmm_stack_region_base - sizeof(void *);
+    ULONG_PTR vmm_stack_base = vmm_stack_data - sizeof(void *);
     *reinterpret_cast<ULONG_PTR *>(vmm_stack_base) = MAXULONG_PTR;
     *reinterpret_cast<ProcessorData **>(vmm_stack_data) = processor_data;
 
@@ -397,7 +397,7 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
     const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     processor_data->vmxon_region->revision_identifier = vmx_basic_msr.fields.revision_identifier;
 
-    auto vmxon_region_pa = UtilPaFromVa(processor_data->vmxon_region);
+    ULONG64 vmxon_region_pa = UtilPaFromVa(processor_data->vmxon_region);
     if (__vmx_on(&vmxon_region_pa)) {
         return false;
     }
@@ -442,7 +442,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     __sidt(&idtr);
 
     // See: Algorithms for Determining VMX Capabilities
-    const auto use_true_msrs = Ia32VmxBasicMsr{ __readmsr(0x480) }.fields.vmx_capability_hint;
+    bool use_true_msrs = Ia32VmxBasicMsr{ __readmsr(0x480) }.fields.vmx_capability_hint;
 
     VmxVmEntryControls vm_entryctl_requested = {};
     vm_entryctl_requested.fields.load_debug_controls = true;
@@ -506,7 +506,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
         cr4_mask.fields.smep = true;
     }
     
-    auto error = VmxStatus::kOk;// clang-format off
+    VmxStatus error = VmxStatus::kOk;// clang-format off
     
     error |= UtilVmWrite(VmcsField::kVirtualProcessorId, KeGetCurrentProcessorNumberEx(nullptr) + 1);/* 16-Bit Control Field */
 
@@ -723,7 +723,7 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBaseByDescriptor(const Segm
     SIZE_T base = (base_high | base_middle | base_low) & MAXULONG;
     // Get upper 32bit of the base address if needed
     if (IsX64() && !segment_descriptor->fields.system) {
-        auto desc64 = reinterpret_cast<const SegmentDesctiptorX64 *>(segment_descriptor);
+        const SegmentDesctiptorX64 * desc64 = reinterpret_cast<const SegmentDesctiptorX64 *>(segment_descriptor);
         ULONG64 base_upper32 = desc64->base_upper32;
         base |= (base_upper32 << 32);
     }

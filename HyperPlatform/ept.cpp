@@ -114,10 +114,10 @@ _Use_decl_annotations_ bool EptIsEptAvailable()
 }
 
 
+_Use_decl_annotations_ ULONG64 EptGetEptPointer(EptData *ept_data)
 // Returns an EPT pointer from ept_data
-_Use_decl_annotations_ ULONG64 EptGetEptPointer(EptData *ept_data) 
 {
-  return ept_data->ept_pointer->all;
+    return ept_data->ept_pointer->all;
 }
 
 
@@ -386,7 +386,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     RtlZeroMemory(preallocated_entries, preallocated_entries_size);
 
     // And fill preallocated_entries with newly created entries
-    for (auto i = 0ul; i < kEptpNumberOfPreallocatedEntries; ++i)
+    for (SIZE_T i = 0ul; i < kEptpNumberOfPreallocatedEntries; ++i)
     {
         EptCommonEntry * ept_entry = EptpAllocateEptEntry(nullptr);
         if (!ept_entry) {
@@ -472,8 +472,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_
 {
     if (ept_data) {
         return EptpAllocateEptEntryFromPreAllocated(ept_data);
-    }
-    else {
+    } else {
         return EptpAllocateEptEntryFromPool();
     }
 }
@@ -621,7 +620,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *
     case 4:// table == PML4
     {
         ULONG64 pxe_index = EptpAddressToPxeIndex(physical_address);
-        const auto ept_pml4_entry = &table[pxe_index];
+        EptCommonEntry * ept_pml4_entry = &table[pxe_index];
         if (!ept_pml4_entry->all) {
             return nullptr;
         }
@@ -673,7 +672,7 @@ _Use_decl_annotations_ void EptTermination(EptData *ept_data)
 _Use_decl_annotations_ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEntry **preallocated_entries, long used_count)
 // Frees all unused pre-allocated EPT entries. Other used entries should be freed with EptpDestructTables().
 {
-    for (auto i = used_count; i < kEptpNumberOfPreallocatedEntries; ++i)
+    for (SIZE_T i = used_count; i < kEptpNumberOfPreallocatedEntries; ++i)
     {
         if (!preallocated_entries[i]) {
             break;
@@ -691,7 +690,7 @@ _Use_decl_annotations_ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEn
 _Use_decl_annotations_ static void EptpDestructTables(EptCommonEntry *table, ULONG table_level)
 // Frees all used EPT entries by walking through whole EPT
 {
-    for (auto i = 0ul; i < 512; ++i)
+    for (int i = 0ul; i < 512; ++i)
     {
         EptCommonEntry entry = table[i];
         if (entry.fields.physial_address)

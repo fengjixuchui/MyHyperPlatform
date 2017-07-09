@@ -7,7 +7,6 @@
 
 #include "driver.h"
 #include "common.h"
-#include "global_object.h"
 #include "hotplug_callback.h"
 #include "log.h"
 #include "power_callback.h"
@@ -52,15 +51,8 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
         return STATUS_CANCELLED;
     }
     
-    status = GlobalObjectInitialization();// Initialize global variables
-    if (!NT_SUCCESS(status)) {
-        LogTermination();
-        return status;
-    }
-    
     status = PerfInitialization();// Initialize perf functions
     if (!NT_SUCCESS(status)) {
-        GlobalObjectTermination();
         LogTermination();
         return status;
     }
@@ -68,7 +60,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
     status = UtilInitialization(driver_object);// Initialize utility functions
     if (!NT_SUCCESS(status)) {
         PerfTermination();
-        GlobalObjectTermination();
         LogTermination();
         return status;
     }
@@ -77,7 +68,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
     if (!NT_SUCCESS(status)) {
         UtilTermination();
         PerfTermination();
-        GlobalObjectTermination();
         LogTermination();
         return status;
     }
@@ -87,7 +77,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
         PowerCallbackTermination();
         UtilTermination();
         PerfTermination();
-        GlobalObjectTermination();
         LogTermination();
         return status;
     }
@@ -98,7 +87,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
         PowerCallbackTermination();
         UtilTermination();
         PerfTermination();
-        GlobalObjectTermination();
         LogTermination();
         return status;
     }
@@ -122,7 +110,6 @@ _Use_decl_annotations_ static void DriverpDriverUnload(PDRIVER_OBJECT driver_obj
     PowerCallbackTermination();
     UtilTermination();
     PerfTermination();
-    GlobalObjectTermination();
     LogTermination();
 }
 

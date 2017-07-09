@@ -48,9 +48,6 @@
     <ClCompile Include="kernel_stl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="global_object.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="hotplug_callback.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -93,9 +90,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="util_page_constants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="global_object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hotplug_callback.h">

@@ -121,7 +121,6 @@
   <ItemGroup>
     <ClCompile Include="driver.cpp" />
     <ClCompile Include="ept.cpp" />
-    <ClCompile Include="global_object.cpp" />
     <ClCompile Include="hotplug_callback.cpp" />
     <ClCompile Include="kernel_stl.cpp" />
     <ClCompile Include="log.cpp" />
@@ -136,7 +135,6 @@
     <ClInclude Include="common.h" />
     <ClInclude Include="driver.h" />
     <ClInclude Include="ept.h" />
-    <ClInclude Include="global_object.h" />
     <ClInclude Include="hotplug_callback.h" />
     <ClInclude Include="ia32_type.h" />
     <ClInclude Include="log.h" />

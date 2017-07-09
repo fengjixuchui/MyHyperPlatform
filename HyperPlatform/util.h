@@ -67,9 +67,7 @@ _IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();
 /// @return A base address of a range \a address belongs to, or nullptr
 void *UtilPcToFileHeader(_In_ void *address);
 
-/// Returns ranges of physical memory on the system
-/// @return Physical memory ranges; never fails
-const PhysicalMemoryDescriptor *UtilGetPhysicalMemoryRanges();
+extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 
 /// Executes \a callback_routine on each processor
 /// @param callback_routine   A function to execute

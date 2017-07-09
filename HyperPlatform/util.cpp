@@ -66,7 +66,7 @@ static HardwarePte *UtilpAddressToPte(_In_ const void *address);
 
 static RtlPcToFileHeaderType *g_utilp_RtlPcToFileHeader;
 static LIST_ENTRY *g_utilp_PsLoadedModuleList;
-static PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
+PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 static MmAllocateContiguousNodeMemoryType *g_MmAllocateContiguousNodeMemory;
 
 static ULONG_PTR g_utilp_pxe_base = 0;
@@ -328,13 +328,6 @@ _Use_decl_annotations_ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemor
 
     ExFreePoolWithTag(pm_ranges, 'hPmM');
     return pm_block;
-}
-
-
-const PhysicalMemoryDescriptor * UtilGetPhysicalMemoryRanges()
-// Returns the physical memory ranges
-{
-    return g_utilp_physical_memory_ranges;
 }
 
 

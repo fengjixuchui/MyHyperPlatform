@@ -347,10 +347,9 @@ _Use_decl_annotations_ EptData *EptInitialization()
     ept_poiner->fields.pml4_address = UtilPfnFromPa(UtilPaFromVa(ept_pml4));
 
     // Initialize all EPT entries for all physical memory pages
-    const PhysicalMemoryDescriptor * pm_ranges = UtilGetPhysicalMemoryRanges();
-    for (PFN_COUNT run_index = 0ul; run_index < pm_ranges->number_of_runs; ++run_index)
+    for (PFN_COUNT run_index = 0ul; run_index < g_utilp_physical_memory_ranges->number_of_runs; ++run_index)
     {
-        const PhysicalMemoryRun * run = &pm_ranges->run[run_index];
+        const PhysicalMemoryRun * run = &g_utilp_physical_memory_ranges->run[run_index];
         const ULONG_PTR base_addr = run->base_page * PAGE_SIZE;
         for (ULONG_PTR page_index = 0ull; page_index < run->page_count; ++page_index)
         {
@@ -586,10 +585,9 @@ _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
 _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 // Returns if the physical_address is device memory (which could not have a corresponding PFN entry)
 {
-    const PhysicalMemoryDescriptor * pm_ranges = UtilGetPhysicalMemoryRanges();
-    for (PFN_COUNT i = 0ul; i < pm_ranges->number_of_runs; ++i)
+    for (PFN_COUNT i = 0ul; i < g_utilp_physical_memory_ranges->number_of_runs; ++i)
     {
-        const PhysicalMemoryRun * current_run = &pm_ranges->run[i];
+        const PhysicalMemoryRun * current_run = &g_utilp_physical_memory_ranges->run[i];
         ULONG64 base_addr = static_cast<ULONG64>(current_run->base_page) * PAGE_SIZE;
         ULONG64 endAddr = base_addr + current_run->page_count * PAGE_SIZE - 1;
         if (UtilIsInBounds(physical_address, base_addr, endAddr)) {

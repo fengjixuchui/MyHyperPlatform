@@ -45,9 +45,6 @@
     <ClCompile Include="vmm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="kernel_stl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="hotplug_callback.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -319,7 +319,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
 {
     PAGED_CODE();
 
-    static const auto kEptPageWalkLevel = 4ul;
+    static const ULONG64 kEptPageWalkLevel = 4ul;
     
     EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
     if (!ept_data) {
@@ -352,7 +352,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     {
         const PhysicalMemoryRun * run = &pm_ranges->run[run_index];
         const ULONG_PTR base_addr = run->base_page * PAGE_SIZE;
-        for (auto page_index = 0ull; page_index < run->page_count; ++page_index)
+        for (ULONG_PTR page_index = 0ull; page_index < run->page_count; ++page_index)
         {
             const ULONG_PTR indexed_addr = base_addr + page_index * PAGE_SIZE;
             const EptCommonEntry * ept_pt_entry = EptpConstructTables(ept_pml4, 4, indexed_addr, nullptr);
@@ -415,10 +415,10 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     {
     case 4:// table == PML4 (512 GB)
     {
-        const auto pxe_index = EptpAddressToPxeIndex(physical_address);
+        ULONG64 pxe_index = EptpAddressToPxeIndex(physical_address);
         const auto ept_pml4_entry = &table[pxe_index];
         if (!ept_pml4_entry->all) {
-            const auto ept_pdpt = EptpAllocateEptEntry(ept_data);
+            EptCommonEntry * ept_pdpt = EptpAllocateEptEntry(ept_data);
             if (!ept_pdpt) {
                 return nullptr;
             }
@@ -428,7 +428,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     }
     case 3:// table == PDPT (1 GB)
     {
-        const auto ppe_index = EptpAddressToPpeIndex(physical_address);
+        ULONG64 ppe_index = EptpAddressToPpeIndex(physical_address);
         const auto ept_pdpt_entry = &table[ppe_index];
         if (!ept_pdpt_entry->all) {
             const auto ept_pdt = EptpAllocateEptEntry(ept_data);
@@ -441,7 +441,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     }
     case 2:// table == PDT (2 MB)
     {
-        const auto pde_index = EptpAddressToPdeIndex(physical_address);
+        ULONG64 pde_index = EptpAddressToPdeIndex(physical_address);
         const auto ept_pdt_entry = &table[pde_index];
         if (!ept_pdt_entry->all) {
             const auto ept_pt = EptpAllocateEptEntry(ept_data);
@@ -454,7 +454,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     }
     case 1:// table == PT (4 KB)
     {
-        const auto pte_index = EptpAddressToPteIndex(physical_address);
+        ULONG64 pte_index = EptpAddressToPteIndex(physical_address);
         const auto ept_pt_entry = &table[pte_index];
         NT_ASSERT(!ept_pt_entry->all);
         EptpInitTableEntry(ept_pt_entry, table_level, physical_address);
@@ -482,7 +482,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_
 _Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)
 // Return a new EPT entry from pre-allocated ones.
 {
-    const auto count = InterlockedIncrement(&ept_data->preallocated_entries_count);
+    LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count);
     if (count > kEptpNumberOfPreallocatedEntries) {
         HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kExhaustedPreallocatedEntries, count, reinterpret_cast<ULONG_PTR>(ept_data), 0);
     }
@@ -494,7 +494,7 @@ _Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAlloca
 _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
 // Return a new EPT entry either by creating new one
 {
-    static const auto kAllocSize = 512 * sizeof(EptCommonEntry);
+    static const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
     static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
     EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
@@ -524,7 +524,7 @@ _Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULO
 _Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
 // Return an address of PXE
 {
-    const auto index = (physical_address >> kEptpPxiShift) & kEptpPtxMask;
+    ULONG64 index = (physical_address >> kEptpPxiShift) & kEptpPtxMask;
     return index;
 }
 
@@ -532,7 +532,7 @@ _Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_add
 _Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
 // Return an address of PPE
 {
-    const auto index = (physical_address >> kEptpPpiShift) & kEptpPtxMask;
+    ULONG64 index = (physical_address >> kEptpPpiShift) & kEptpPtxMask;
     return index;
 }
 
@@ -540,7 +540,7 @@ _Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_add
 _Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
 // Return an address of PDE
 {
-    const auto index = (physical_address >> kEptpPdiShift) & kEptpPtxMask;
+    ULONG64 index = (physical_address >> kEptpPdiShift) & kEptpPtxMask;
     return index;
 }
 
@@ -548,7 +548,7 @@ _Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_add
 _Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
 // Return an address of PTE
 {
-    const auto index = (physical_address >> kEptpPtiShift) & kEptpPtxMask;
+    ULONG64 index = (physical_address >> kEptpPtiShift) & kEptpPtxMask;
     return index;
 }
 
@@ -557,7 +557,7 @@ _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
 // Deal with EPT violation VM-exit.
 {
     const EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
-    const auto fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
+    ULONG64 fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
     void * fault_va = reinterpret_cast<void *>(exit_qualification.fields.valid_guest_linear_address ? UtilVmRead(VmcsField::kGuestLinearAddress) : 0);
 
     if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
@@ -566,7 +566,7 @@ _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
         return;
     }
 
-    const auto ept_entry = EptGetEptPtEntry(ept_data, fault_pa);
+    EptCommonEntry * ept_entry = EptGetEptPtEntry(ept_data, fault_pa);
     if (ept_entry && ept_entry->all) {
         KdBreakPoint();
         HYPERPLATFORM_LOG_ERROR_SAFE("[UNK2] VA = %p, PA = %016llx", fault_va, fault_pa);
@@ -588,7 +588,7 @@ _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 // Returns if the physical_address is device memory (which could not have a corresponding PFN entry)
 {
     const PhysicalMemoryDescriptor * pm_ranges = UtilGetPhysicalMemoryRanges();
-    for (auto i = 0ul; i < pm_ranges->number_of_runs; ++i)
+    for (PFN_COUNT i = 0ul; i < pm_ranges->number_of_runs; ++i)
     {
         const auto current_run = &pm_ranges->run[i];
         ULONG64 base_addr = static_cast<ULONG64>(current_run->base_page) * PAGE_SIZE;
@@ -693,7 +693,7 @@ _Use_decl_annotations_ static void EptpDestructTables(EptCommonEntry *table, ULO
 {
     for (auto i = 0ul; i < 512; ++i)
     {
-        const auto entry = table[i];
+        EptCommonEntry entry = table[i];
         if (entry.fields.physial_address)
         {
             EptCommonEntry * sub_table = reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(entry.fields.physial_address));

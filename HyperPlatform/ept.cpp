@@ -137,12 +137,12 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     // Read fixed range MTRRs if supported
     if (mtrr_capabilities.fields.fixed_range_supported && default_type.fields.fixed_mtrrs_enabled)
     {
-        static const auto k64kBase = 0x0;
-        static const auto k64kManagedSize = 0x10000;
-        static const auto k16kBase = 0x80000;
-        static const auto k16kManagedSize = 0x4000;
-        static const auto k4kBase = 0xC0000;
-        static const auto k4kManagedSize = 0x1000;
+        static const ULONG64 k64kBase = 0x0;
+        static const ULONG64 k64kManagedSize = 0x10000;
+        static const ULONG64 k16kBase = 0x80000;
+        static const ULONG64 k16kManagedSize = 0x4000;
+        static const ULONG64 k4kBase = 0xC0000;
+        static const ULONG64 k4kManagedSize = 0x1000;
 
         // The kIa32MtrrFix64k00000 manages 8 ranges of memory.
         // The first range starts at 0x0, and each range manages a 64k (0x10000) range.
@@ -183,7 +183,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         //  ...
         //  entry[7]: 0xBC000 : 0xC0000 - 1
         offset = 0;
-        for (auto msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
+        for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
         {
             fixed_range.all = __readmsr(msr);
             for (auto memory_type : fixed_range.fields.types)
@@ -213,7 +213,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         // Also, subsequent memory ranges are managed by other MSRs such as kIa32MtrrFix4kC8000, kIa32MtrrFix4kD0000, and kIa32MtrrFix4kF8000.
         // Each MSR manages 8 ranges of memory in the same fashion up to 0x100000.
         offset = 0;
-        for (auto msr = static_cast<ULONG>(Msr::kIa32MtrrFix4kC0000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix4kF8000); msr++)
+        for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix4kC0000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix4kF8000); msr++)
         {
             fixed_range.all = __readmsr(msr);
             for (auto memory_type : fixed_range.fields.types)
@@ -235,10 +235,10 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     }
 
     // Read all variable range MTRRs
-    for (auto i = 0; i < mtrr_capabilities.fields.variable_range_count; i++)
+    for (ULONG i = 0; i < mtrr_capabilities.fields.variable_range_count; i++)
     {
         // Read MTRR mask and check if it is in use
-        const auto phy_mask = static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2;
+        ULONG phy_mask = static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2;
         Ia32MtrrPhysMaskMsr mtrr_mask = { __readmsr(phy_mask) };
         if (!mtrr_mask.fields.valid) {
             continue;
@@ -248,7 +248,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         BitScanForward64(&length, mtrr_mask.fields.phys_mask * PAGE_SIZE);// Get a length this MTRR manages
 
         // Read MTRR base and calculate a range this MTRR manages
-        const auto phy_base = static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2;
+        ULONG phy_base = static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2;
         Ia32MtrrPhysBaseMsr mtrr_base = { __readmsr(phy_base) };
         ULONG64 base = mtrr_base.fields.phys_base * PAGE_SIZE;
         ULONG64 end = base + (1ull << length) - 1;
@@ -416,7 +416,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     case 4:// table == PML4 (512 GB)
     {
         ULONG64 pxe_index = EptpAddressToPxeIndex(physical_address);
-        const auto ept_pml4_entry = &table[pxe_index];
+        EptCommonEntry * ept_pml4_entry = &table[pxe_index];
         if (!ept_pml4_entry->all) {
             EptCommonEntry * ept_pdpt = EptpAllocateEptEntry(ept_data);
             if (!ept_pdpt) {
@@ -429,9 +429,9 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     case 3:// table == PDPT (1 GB)
     {
         ULONG64 ppe_index = EptpAddressToPpeIndex(physical_address);
-        const auto ept_pdpt_entry = &table[ppe_index];
+        EptCommonEntry * ept_pdpt_entry = &table[ppe_index];
         if (!ept_pdpt_entry->all) {
-            const auto ept_pdt = EptpAllocateEptEntry(ept_data);
+            EptCommonEntry * ept_pdt = EptpAllocateEptEntry(ept_data);
             if (!ept_pdt) {
                 return nullptr;
             }
@@ -442,9 +442,9 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     case 2:// table == PDT (2 MB)
     {
         ULONG64 pde_index = EptpAddressToPdeIndex(physical_address);
-        const auto ept_pdt_entry = &table[pde_index];
+        EptCommonEntry * ept_pdt_entry = &table[pde_index];
         if (!ept_pdt_entry->all) {
-            const auto ept_pt = EptpAllocateEptEntry(ept_data);
+            EptCommonEntry * ept_pt = EptpAllocateEptEntry(ept_data);
             if (!ept_pt) {
                 return nullptr;
             }
@@ -455,7 +455,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
     case 1:// table == PT (4 KB)
     {
         ULONG64 pte_index = EptpAddressToPteIndex(physical_address);
-        const auto ept_pt_entry = &table[pte_index];
+        EptCommonEntry * ept_pt_entry = &table[pte_index];
         NT_ASSERT(!ept_pt_entry->all);
         EptpInitTableEntry(ept_pt_entry, table_level, physical_address);
         return ept_pt_entry;

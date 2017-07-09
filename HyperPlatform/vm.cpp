@@ -445,13 +445,13 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     bool use_true_msrs = Ia32VmxBasicMsr{ __readmsr(0x480) }.fields.vmx_capability_hint;
 
     VmxVmEntryControls vm_entryctl_requested = {};
-    vm_entryctl_requested.fields.load_debug_controls = true;
-    vm_entryctl_requested.fields.ia32e_mode_guest = IsX64();
+    vm_entryctl_requested.fields.load_debug_controls = 1;
+    vm_entryctl_requested.fields.ia32e_mode_guest = 1;
     VmxVmEntryControls vm_entryctl = { VmpAdjustControlValue((use_true_msrs) ? Msr::kIa32VmxTrueEntryCtls : Msr::kIa32VmxEntryCtls, vm_entryctl_requested.all) };
 
     VmxVmExitControls vm_exitctl_requested = {};
-    vm_exitctl_requested.fields.host_address_space_size = IsX64();
-    vm_exitctl_requested.fields.acknowledge_interrupt_on_exit = true;
+    vm_exitctl_requested.fields.host_address_space_size = 1;
+    vm_exitctl_requested.fields.acknowledge_interrupt_on_exit = 1;
     VmxVmExitControls vm_exitctl = { VmpAdjustControlValue((use_true_msrs) ? Msr::kIa32VmxTrueExitCtls : Msr::kIa32VmxExitCtls, vm_exitctl_requested.all) };
 
     VmxPinBasedControls vm_pinctl_requested = {};
@@ -492,19 +492,6 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     // For example, when we want to hide CR4.VMXE from the guest, comment in below
     // cr4_mask.fields.vmxe = true;
     // cr4_shadow.fields.vmxe = false;
-
-    // See: PDPTE Registers
-    // If PAE paging would be in use following an execution of MOV to CR0 or MOV to CR4 (see Section 4.1.1) and the instruction is modifying any of CR0.CD,
-    // CR0.NW, CR0.PG, CR4.PAE, CR4.PGE, CR4.PSE, or CR4.SMEP; then the PDPTEs are loaded from the address in CR3.
-    if (UtilIsX86Pae()) {
-        cr0_mask.fields.pg = true;
-        cr0_mask.fields.cd = true;
-        cr0_mask.fields.nw = true;
-        cr4_mask.fields.pae = true;
-        cr4_mask.fields.pge = true;
-        cr4_mask.fields.pse = true;
-        cr4_mask.fields.smep = true;
-    }
     
     VmxStatus error = VmxStatus::kOk;// clang-format off
     
@@ -539,9 +526,6 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     /* 64-Bit Guest-State Fields */
     error |= UtilVmWrite64(VmcsField::kVmcsLinkPointer, MAXULONG64);
     error |= UtilVmWrite64(VmcsField::kGuestIa32Debugctl, __readmsr(0x1D9));
-    if (UtilIsX86Pae()) {
-        UtilLoadPdptes(__readcr3());
-    }
 
     /* 32-Bit Control Fields */
     error |= UtilVmWrite(VmcsField::kPinBasedVmExecControl, vm_pinctl.all);
@@ -584,21 +568,12 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     error |= UtilVmWrite(VmcsField::kGuestCr0, __readcr0());
     error |= UtilVmWrite(VmcsField::kGuestCr3, __readcr3());
     error |= UtilVmWrite(VmcsField::kGuestCr4, __readcr4());
-#if defined(_AMD64_)
     error |= UtilVmWrite(VmcsField::kGuestEsBase, 0);
     error |= UtilVmWrite(VmcsField::kGuestCsBase, 0);
     error |= UtilVmWrite(VmcsField::kGuestSsBase, 0);
     error |= UtilVmWrite(VmcsField::kGuestDsBase, 0);
     error |= UtilVmWrite(VmcsField::kGuestFsBase, __readmsr(0xC0000100));
     error |= UtilVmWrite(VmcsField::kGuestGsBase, __readmsr(0xC0000101));
-#else
-    error |= UtilVmWrite(VmcsField::kGuestEsBase, VmpGetSegmentBase(gdtr.base, AsmReadES()));
-    error |= UtilVmWrite(VmcsField::kGuestCsBase, VmpGetSegmentBase(gdtr.base, AsmReadCS()));
-    error |= UtilVmWrite(VmcsField::kGuestSsBase, VmpGetSegmentBase(gdtr.base, AsmReadSS()));
-    error |= UtilVmWrite(VmcsField::kGuestDsBase, VmpGetSegmentBase(gdtr.base, AsmReadDS()));
-    error |= UtilVmWrite(VmcsField::kGuestFsBase, VmpGetSegmentBase(gdtr.base, AsmReadFS()));
-    error |= UtilVmWrite(VmcsField::kGuestGsBase, VmpGetSegmentBase(gdtr.base, AsmReadGS()));
-#endif
     error |= UtilVmWrite(VmcsField::kGuestLdtrBase, VmpGetSegmentBase(gdtr.base, AsmReadLDTR()));
     error |= UtilVmWrite(VmcsField::kGuestTrBase, VmpGetSegmentBase(gdtr.base, AsmReadTR()));
     error |= UtilVmWrite(VmcsField::kGuestGdtrBase, gdtr.base);
@@ -614,13 +589,8 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     error |= UtilVmWrite(VmcsField::kHostCr0, __readcr0());
     error |= UtilVmWrite(VmcsField::kHostCr3, __readcr3());
     error |= UtilVmWrite(VmcsField::kHostCr4, __readcr4());
-#if defined(_AMD64_)
     error |= UtilVmWrite(VmcsField::kHostFsBase, __readmsr(0xC0000100));
     error |= UtilVmWrite(VmcsField::kHostGsBase, __readmsr(0xC0000101));
-#else
-    error |= UtilVmWrite(VmcsField::kHostFsBase, VmpGetSegmentBase(gdtr.base, AsmReadFS()));
-    error |= UtilVmWrite(VmcsField::kHostGsBase, VmpGetSegmentBase(gdtr.base, AsmReadGS()));
-#endif
     error |= UtilVmWrite(VmcsField::kHostTrBase, VmpGetSegmentBase(gdtr.base, AsmReadTR()));
     error |= UtilVmWrite(VmcsField::kHostGdtrBase, gdtr.base);
     error |= UtilVmWrite(VmcsField::kHostIdtrBase, idtr.base);
@@ -722,7 +692,7 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBaseByDescriptor(const Segm
     SIZE_T base_low = segment_descriptor->fields.base_low;
     SIZE_T base = (base_high | base_middle | base_low) & MAXULONG;
     // Get upper 32bit of the base address if needed
-    if (IsX64() && !segment_descriptor->fields.system) {
+    if (!segment_descriptor->fields.system) {
         const SegmentDesctiptorX64 * desc64 = reinterpret_cast<const SegmentDesctiptorX64 *>(segment_descriptor);
         ULONG64 base_upper32 = desc64->base_upper32;
         base |= (base_upper32 << 32);

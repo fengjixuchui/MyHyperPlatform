@@ -77,23 +77,14 @@ struct GpRegistersX86 {
   ULONG_PTR ax;
 };
 
-/// Represents a stack layout after PUSHAx
-#if defined(_AMD64_)
-using GpRegisters = GpRegistersX64;
-#else
-using GpRegisters = GpRegistersX86;
-#endif
+using GpRegisters = GpRegistersX64;/// Represents a stack layout after PUSHAx
 
 /// Represents a stack layout after a sequence of PUSHFx, PUSHAx
 struct AllRegisters {
   GpRegisters gp;
   FlagRegister flags;
 };
-#if defined(_AMD64_)
 static_assert(sizeof(AllRegisters) == 0x88, "Size check");
-#else
-static_assert(sizeof(AllRegisters) == 0x24, "Size check");
-#endif
 
 /// See: CONTROL REGISTERS
 union Cr0 {
@@ -154,13 +145,8 @@ struct Idtr {
 
 /// @copydoc Idtr
 using Gdtr = Idtr;
-#if defined(_AMD64_)
 static_assert(sizeof(Idtr) == 10, "Size check");
 static_assert(sizeof(Gdtr) == 10, "Size check");
-#else
-static_assert(sizeof(Idtr) == 6, "Size check");
-static_assert(sizeof(Gdtr) == 6, "Size check");
-#endif
 #include <poppack.h>
 
 /// IDT entry (nt!_KIDTENTRY)
@@ -381,13 +367,7 @@ struct HardwarePteARM {/// nt!_HARDWARE_PTE on ARM Windows
 static_assert(sizeof(HardwarePteARM) == 4, "Size check");
 
 /// nt!_HARDWARE_PTE on the current platform
-#if defined(_X86_)
-using HardwarePte = HardwarePteX86;
-#elif defined(_AMD64_)
 using HardwarePte = HardwarePteX64;
-#elif defined(_ARM_)
-using HardwarePte = HardwarePteARM;
-#endif
 
 /// See: Use of CR3 with PAE Paging
 union PaeCr3 {

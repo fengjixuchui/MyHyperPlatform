@@ -39,11 +39,7 @@ struct GuestContext {
   bool vm_continue;
 };
 
-#if defined(_AMD64_)
 static_assert(sizeof(GuestContext) == 40, "Size check");
-#else
-static_assert(sizeof(GuestContext) == 20, "Size check");
-#endif
 
 // Context at the moment of vmexit
 struct VmExitHistory {
@@ -102,7 +98,7 @@ _Use_decl_annotations_ bool __stdcall VmmVmExitHandler(VmmInitialStack *stack)
 {
     // Save guest's context and raise IRQL as quick as possible
     KIRQL guest_irql = KeGetCurrentIrql();
-    ULONG64 guest_cr8 = IsX64() ? __readcr8() : 0;
+    ULONG64 guest_cr8 = __readcr8();
     if (guest_irql < DISPATCH_LEVEL) {
         KeRaiseIrqlToDpcLevel();
     }
@@ -122,9 +118,7 @@ _Use_decl_annotations_ bool __stdcall VmmVmExitHandler(VmmInitialStack *stack)
         KeLowerIrql(guest_context.irql);
     }
 
-    if (IsX64()) {// Apply possibly updated CR8 by the handler
-        __writecr8(guest_context.cr8);
-    }
+     __writecr8(guest_context.cr8);
 
     return guest_context.vm_continue;
 }
@@ -711,13 +705,13 @@ _Use_decl_annotations_ static void VmmpHandleDrAccess(GuestContext *guest_contex
 _Use_decl_annotations_ static void VmmpHandleIoPort(GuestContext *guest_context)
 {
     const IoInstQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
-    const auto is_in = exit_qualification.fields.direction == 1;  // to memory?
-    const auto is_string = exit_qualification.fields.string_instruction == 1;
-    const auto is_rep = exit_qualification.fields.rep_prefixed == 1;
-    const auto port = static_cast<USHORT>(exit_qualification.fields.port_number);
-    const auto string_address = reinterpret_cast<void *>((is_in) ? guest_context->gp_regs->di : guest_context->gp_regs->si);
-    const auto count = static_cast<unsigned long>((is_rep) ? guest_context->gp_regs->cx : 1);
-    const auto address = (is_string) ? string_address : &guest_context->gp_regs->ax;
+    bool is_in = exit_qualification.fields.direction == 1;  // to memory?
+    bool is_string = exit_qualification.fields.string_instruction == 1;
+    bool is_rep = exit_qualification.fields.rep_prefixed == 1;
+    USHORT port = static_cast<USHORT>(exit_qualification.fields.port_number);
+    void * string_address = reinterpret_cast<void *>((is_in) ? guest_context->gp_regs->di : guest_context->gp_regs->si);
+    unsigned long count = static_cast<unsigned long>((is_rep) ? guest_context->gp_regs->cx : 1);
+    void * address = (is_string) ? string_address : &guest_context->gp_regs->ax;
     SIZE_T size_of_access = 0;
     const char *suffix = "";
 
@@ -861,9 +855,6 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         case 0:// CR0 <- Reg
         {
             HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
-            if (UtilIsX86Pae()) {
-                UtilLoadPdptes(UtilVmRead(VmcsField::kGuestCr3));
-            }
             const Cr0 cr0_fixed0 = { __readmsr(0x486) };
             const Cr0 cr0_fixed1 = { __readmsr(0x487) };
             Cr0 cr0 = { *register_used };
@@ -876,9 +867,6 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         case 3:// CR3 <- Reg
         {
             HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
-            if (UtilIsX86Pae()) {
-                UtilLoadPdptes(*register_used);
-            }
             UtilInvvpidSingleContextExceptGlobal(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1));
             UtilVmWrite(VmcsField::kGuestCr3, *register_used);
             break;
@@ -886,9 +874,6 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         case 4:// CR4 <- Reg
         {
             HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
-            if (UtilIsX86Pae()) {
-                UtilLoadPdptes(UtilVmRead(VmcsField::kGuestCr3));
-            }
             UtilInvvpidAllContext();
             const Cr4 cr4_fixed0 = { __readmsr(0x488) };
             const Cr4 cr4_fixed1 = { __readmsr(0x489) };
@@ -1063,7 +1048,6 @@ _Use_decl_annotations_ static ULONG_PTR *VmmpSelectRegister(ULONG index, GuestCo
     case 7:
         register_used = &guest_context->gp_regs->di;
         break;
-#if defined(_AMD64_)
     case 8:
         register_used = &guest_context->gp_regs->r8;
         break;
@@ -1088,7 +1072,6 @@ _Use_decl_annotations_ static ULONG_PTR *VmmpSelectRegister(ULONG index, GuestCo
     case 15:
         register_used = &guest_context->gp_regs->r15;
         break;
-#endif
     default:
         KdBreakPoint();
         break;

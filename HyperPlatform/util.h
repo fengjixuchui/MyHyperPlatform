@@ -14,11 +14,7 @@ struct PhysicalMemoryRun {
   ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)
   ULONG_PTR page_count;  //!< A number of pages
 };
-#if defined(_AMD64_)
 static_assert(sizeof(PhysicalMemoryRun) == 0x10, "Size check");
-#else
-static_assert(sizeof(PhysicalMemoryRun) == 0x8, "Size check");
-#endif
 
 /// Represents a physical memory ranges of the system
 struct PhysicalMemoryDescriptor {
@@ -26,11 +22,7 @@ struct PhysicalMemoryDescriptor {
   PFN_NUMBER number_of_pages;  //!< A physical memory size in pages
   PhysicalMemoryRun run[1];    //!< ranges of addresses
 };
-#if defined(_AMD64_)
 static_assert(sizeof(PhysicalMemoryDescriptor) == 0x20, "Size check");
-#else
-static_assert(sizeof(PhysicalMemoryDescriptor) == 0x10, "Size check");
-#endif
 
 /// Indicates a result of VMX-instructions
 ///
@@ -97,10 +89,6 @@ void *UtilMemMem(_In_ const void *search_base, _In_ SIZE_T search_size, _In_ con
 /// @param proc_name  A name of a symbol to locate an address
 /// @return An address of the symbol or nullptr
 void * GetSystemProcAddress(_In_ const wchar_t *proc_name);
-
-/// Checks if the system is a PAE-enabled x86 system
-/// @return true if the system is a PAE-enabled x86 system
-bool UtilIsX86Pae();
 
 /// Checks is the address is present on physical memory
 /// @param address  A virtual address to test

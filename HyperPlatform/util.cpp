@@ -139,32 +139,21 @@ _Use_decl_annotations_ static NTSTATUS UtilpInitializePageTableVariables()
 
     // Win 10 build 14316 is the first version implements randomized page tables
     // Use fixed values if a systems is either: x86, older than Windows 7, or older than build 14316.
-    if (!IsX64() || os_version.dwMajorVersion < 10 || os_version.dwBuildNumber < 14316)
+    if (os_version.dwMajorVersion < 10 || os_version.dwBuildNumber < 14316)
     {
-        if (IsX64()) {
-            g_utilp_pxe_base = kUtilpPxeBase;
-            g_utilp_ppe_base = kUtilpPpeBase;
-            g_utilp_pxi_shift = kUtilpPxiShift;
-            g_utilp_ppi_shift = kUtilpPpiShift;
-            g_utilp_pxi_mask = kUtilpPxiMask;
-            g_utilp_ppi_mask = kUtilpPpiMask;
-        }
+        g_utilp_pxe_base = kUtilpPxeBase;
+        g_utilp_ppe_base = kUtilpPpeBase;
+        g_utilp_pxi_shift = kUtilpPxiShift;
+        g_utilp_ppi_shift = kUtilpPpiShift;
+        g_utilp_pxi_mask = kUtilpPxiMask;
+        g_utilp_ppi_mask = kUtilpPpiMask;
 
-        if (UtilIsX86Pae()) {
-            g_utilp_pde_base = kUtilpPdeBasePae;
-            g_utilp_pte_base = kUtilpPteBasePae;
-            g_utilp_pdi_shift = kUtilpPdiShiftPae;
-            g_utilp_pti_shift = kUtilpPtiShiftPae;
-            g_utilp_pdi_mask = kUtilpPdiMaskPae;
-            g_utilp_pti_mask = kUtilpPtiMaskPae;
-        } else {
-            g_utilp_pde_base = kUtilpPdeBase;
-            g_utilp_pte_base = kUtilpPteBase;
-            g_utilp_pdi_shift = kUtilpPdiShift;
-            g_utilp_pti_shift = kUtilpPtiShift;
-            g_utilp_pdi_mask = kUtilpPdiMask;
-            g_utilp_pti_mask = kUtilpPtiMask;
-        }
+        g_utilp_pde_base = kUtilpPdeBase;
+        g_utilp_pte_base = kUtilpPteBase;
+        g_utilp_pdi_shift = kUtilpPdiShift;
+        g_utilp_pti_shift = kUtilpPtiShift;
+        g_utilp_pdi_mask = kUtilpPdiMask;
+        g_utilp_pti_mask = kUtilpPtiMask;
 
         return status;
     }
@@ -422,13 +411,6 @@ _Use_decl_annotations_ void *GetSystemProcAddress(const wchar_t *proc_name)
 }
 
 
-bool UtilIsX86Pae() 
-// Returns true when a system is on the x86 PAE mode
-{
-    return (!IsX64() && Cr4{ __readcr4() }.fields.pae);
-}
-
-
 _Use_decl_annotations_ bool UtilIsAccessibleAddress(void *address)
 // Return true if the given address is accessible.
 {
@@ -436,12 +418,10 @@ _Use_decl_annotations_ bool UtilIsAccessibleAddress(void *address)
         return false;
     }
 
-    if (IsX64()) {
-        HardwarePte * pxe = UtilpAddressToPxe(address);
-        HardwarePte * ppe = UtilpAddressToPpe(address);
-        if (!pxe->valid || !ppe->valid) {
-            return false;
-        }
+    HardwarePte * pxe = UtilpAddressToPxe(address);
+    HardwarePte * ppe = UtilpAddressToPpe(address);
+    if (!pxe->valid || !ppe->valid) {
+        return false;
     }
 
     HardwarePte * pde = UtilpAddressToPde(address);
@@ -463,10 +443,6 @@ _Use_decl_annotations_ bool UtilIsAccessibleAddress(void *address)
 _Use_decl_annotations_ static bool UtilpIsCanonicalFormAddress(void *address)
 // Checks whether the address is the canonical address
 {
-    if (!IsX64()) {
-        return true;
-    }
-
     return !UtilIsInBounds(0x0000800000000000ull, 0xffff7fffffffffffull, reinterpret_cast<ULONG64>(address));
 }
 
@@ -625,19 +601,7 @@ _Use_decl_annotations_ ULONG_PTR UtilVmRead(VmcsField field)
 _Use_decl_annotations_ ULONG64 UtilVmRead64(VmcsField field)
 // Reads 64bit-width VMCS
 {
-#if defined(_AMD64_)
     return UtilVmRead(field);
-#else
-    // Only 64bit fields should be given on x86 because it access field + 1 too.
-    // Also, the field must be even number.
-    NT_ASSERT(UtilIsInBounds(field, VmcsField::kIoBitmapA, VmcsField::kHostIa32PerfGlobalCtrlHigh));
-    NT_ASSERT((static_cast<ULONG>(field) % 2) == 0);
-
-    ULARGE_INTEGER value64 = {};
-    value64.LowPart = UtilVmRead(field);
-    value64.HighPart = UtilVmRead(static_cast<VmcsField>(static_cast<ULONG>(field) + 1));
-    return value64.QuadPart;
-#endif
 }
 
 
@@ -651,22 +615,7 @@ _Use_decl_annotations_ VmxStatus UtilVmWrite(VmcsField field, ULONG_PTR field_va
 _Use_decl_annotations_ VmxStatus UtilVmWrite64(VmcsField field, ULONG64 field_value)
 // Writes 64bit-width VMCS
 {
-#if defined(_AMD64_)
     return UtilVmWrite(field, field_value);
-#else
-    // Only 64bit fields should be given on x86 because it access field + 1 too.
-    // Also, the field must be even number.
-    NT_ASSERT(UtilIsInBounds(field, VmcsField::kIoBitmapA, VmcsField::kHostIa32PerfGlobalCtrlHigh));
-    NT_ASSERT((static_cast<ULONG>(field) % 2) == 0);
-
-    ULARGE_INTEGER value64 = {};
-    value64.QuadPart = field_value;
-    VmxStatus vmx_status = UtilVmWrite(field, value64.LowPart);
-    if (vmx_status != VmxStatus::kOk) {
-        return vmx_status;
-    }
-    return UtilVmWrite(static_cast<VmcsField>(static_cast<ULONG>(field) + 1), value64.HighPart);
-#endif
 }
 
 

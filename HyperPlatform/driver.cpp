@@ -129,10 +129,6 @@ _Use_decl_annotations_ bool DriverpIsSuppoetedOS()
         return false;
     }
     
-    if (!IsX64() && reinterpret_cast<ULONG_PTR>(MmSystemRangeStart) != 0x80000000) {// 4-gigabyte tuning (4GT) should not be enabled
-        return false;
-    }
-
     return true;
 }
 

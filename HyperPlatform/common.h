@@ -78,16 +78,6 @@ enum class HyperPlatformBugCheck : ULONG {
   kCritialPoolAllocationFailure,   //!< Critical pool allocation failed
 };
 
-/// Checks if a system is x64
-/// @return true if a system is x64
-constexpr bool IsX64() {
-#if defined(_AMD64_)
-  return true;
-#else
-  return false;
-#endif
-}
-
 /// Checks if the project is compiled as Release
 /// @return true if the project is compiled as Release
 constexpr bool IsReleaseBuild() {

@@ -57,8 +57,6 @@
 //
 // a = Sign extension, b = PML4, c = PDPT, d = PD, e = PT, f = Offset
 
-#if defined(_AMD64_)
-
 // Base addresses of page structures. Use !pte to obtain them.
 static auto kUtilpPxeBase = 0xfffff6fb7dbed000ull;
 static auto kUtilpPpeBase = 0xfffff6fb7da00000ull;
@@ -73,28 +71,6 @@ static const auto kUtilpPxiMask = 0x1ffull;// Use  9 bits; 0b0000_0000_0000_0000
 static const auto kUtilpPpiMask = 0x3ffffull;// Use 18 bits; 0b0000_0000_0000_0000_0011_1111_1111_1111_1111
 static const auto kUtilpPdiMask = 0x7ffffffull;// Use 27 bits; 0b0000_0000_0111_1111_1111_1111_1111_1111_1111
 static const auto kUtilpPtiMask = 0xfffffffffull;// Use 36 bits; 0b1111_1111_1111_1111_1111_1111_1111_1111_1111
-
-#elif defined(_X86_)
-
-// Base addresses of page structures. Use !pte to obtain them.
-static auto kUtilpPdeBase = 0xc0300000;
-static auto kUtilpPteBase = 0xc0000000;
-
-static const auto kUtilpPdiShift = 22;// Get the highest 10 bits
-static const auto kUtilpPtiShift = 12;// Get the highest 20 bits
-static const auto kUtilpPdiMask = 0x3ff;// Use 10 bits; 0b0000_0000_0000_0000_0000_0000_0011_1111_1111
-static const auto kUtilpPtiMask = 0xfffff;// Use 20 bits; 0b0000_0000_0000_0000_1111_1111_1111_1111_1111
-
-// unused but defined to compile without ifdef
-
-static auto kUtilpPxeBase = 0;
-static auto kUtilpPpeBase = 0;
-static const auto kUtilpPxiShift = 0;
-static const auto kUtilpPpiShift = 0;
-static const auto kUtilpPxiMask = 0;
-static const auto kUtilpPpiMask = 0;
-
-#endif
 
 // Base addresses of page structures. Use !pte to obtain them.
 static const auto kUtilpPdeBasePae = 0xc0600000;

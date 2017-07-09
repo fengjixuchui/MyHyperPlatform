@@ -119,7 +119,7 @@ class PerfCollector
       initial_output_routine_(output_context_);
     }
 
-    for (auto i = 0ul; i < kMaxNumberOfDataEntries; i++) 
+    for (ULONG i = 0ul; i < kMaxNumberOfDataEntries; i++)
     {
       if (data_[i].key == nullptr) {
         break;
@@ -138,7 +138,7 @@ class PerfCollector
   {
     ScopedLock lock(lock_enter_routine_, lock_leave_routine_, lock_context_);
 
-    const auto data_index = GetPerfDataIndex(location_name);
+    ULONG data_index = GetPerfDataIndex(location_name);
     if (data_index == kInvalidDataIndex) {
       return false;
     }
@@ -206,7 +206,7 @@ class PerfCollector
       return false;
     }
 
-    for (auto i = 0ul; i < kMaxNumberOfDataEntries; i++) 
+    for (ULONG i = 0ul; i < kMaxNumberOfDataEntries; i++)
     {
       if (data_[i].key == key) {
         return i;
@@ -253,11 +253,11 @@ class PerfCounter
   /// Measures an elapsed time and stores it to PerfCounter::collector_.
   ~PerfCounter()
   {
-    if (collector_)
-    {
-      const auto elapsed_time = query_time_routine_() - before_time_;
-      collector_->AddData(location_name_, elapsed_time);
-    }
+      if (collector_)
+      {
+          ULONG64 elapsed_time = query_time_routine_() - before_time_;
+          collector_->AddData(location_name_, elapsed_time);
+      }
   }
 
  private:

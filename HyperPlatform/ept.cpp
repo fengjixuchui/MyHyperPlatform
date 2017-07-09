@@ -589,7 +589,7 @@ _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
     const PhysicalMemoryDescriptor * pm_ranges = UtilGetPhysicalMemoryRanges();
     for (PFN_COUNT i = 0ul; i < pm_ranges->number_of_runs; ++i)
     {
-        const auto current_run = &pm_ranges->run[i];
+        const PhysicalMemoryRun * current_run = &pm_ranges->run[i];
         ULONG64 base_addr = static_cast<ULONG64>(current_run->base_page) * PAGE_SIZE;
         ULONG64 endAddr = base_addr + current_run->page_count * PAGE_SIZE - 1;
         if (UtilIsInBounds(physical_address, base_addr, endAddr)) {
@@ -629,7 +629,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *
     case 3:// table == PDPT
     {
         ULONG64 ppe_index = EptpAddressToPpeIndex(physical_address);
-        const auto ept_pdpt_entry = &table[ppe_index];
+        EptCommonEntry * ept_pdpt_entry = &table[ppe_index];
         if (!ept_pdpt_entry->all) {
             return nullptr;
         }
@@ -638,7 +638,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *
     case 2:// table == PDT
     {
         ULONG64 pde_index = EptpAddressToPdeIndex(physical_address);
-        const auto ept_pdt_entry = &table[pde_index];
+        EptCommonEntry * ept_pdt_entry = &table[pde_index];
         if (!ept_pdt_entry->all) {
             return nullptr;
         }
@@ -647,7 +647,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *
     case 1:// table == PT
     {
         ULONG64 pte_index = EptpAddressToPteIndex(physical_address);
-        const auto ept_pt_entry = &table[pte_index];
+        EptCommonEntry * ept_pt_entry = &table[pte_index];
         return ept_pt_entry;
     }
     default:

@@ -1,24 +1,23 @@
 // Copyright (c) 2015-2017, Satoshi Tanda. All rights reserved.
-// Use of this source code is governed by a MIT-style license that can be
-// found in the LICENSE file.
+// Use of this source code is governed by a MIT-style license that can be found in the LICENSE file.
 
 /// @file
 /// Implements global object functions.
 
 #include "global_object.h"
 
-// .CRT section is required to invoke ctors and dtors. This pragma embeds a .CRT
-// section into the .rdata section. Or else, a LNK warning would be raised.
+// .CRT section is required to invoke ctors and dtors.
+// This pragma embeds a .CRT section into the .rdata section. Or else, a LNK warning would be raised.
 #pragma comment(linker, "/merge:.CRT=.rdata")
 
-// Create two sections that are used by MSVC to place an array of ctors at a
-// compile time. It is important to be ordered in alphabetical order.
+// Create two sections that are used by MSVC to place an array of ctors at a compile time.
+// It is important to be ordered in alphabetical order.
 #pragma section(".CRT$XCA", read)
 #pragma section(".CRT$XCZ", read)
 
-extern "C" {
-/// A pool tag for this module
-static const ULONG TAG = 'jbOG';
+extern "C"
+{
+static const ULONG TAG = 'jbOG';/// A pool tag for this module
 
 using Destructor = void(__cdecl *)();
 
@@ -41,48 +40,49 @@ __declspec(allocate(".CRT$XCZ")) static Destructor g_gop_ctors_end[1] = {};
 static SINGLE_LIST_ENTRY g_gop_dtors_list_head = {};
 
 
-_Use_decl_annotations_ NTSTATUS GlobalObjectInitialization() 
+_Use_decl_annotations_ NTSTATUS GlobalObjectInitialization()
 // Calls all constructors and register all destructor
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  // Call all constructors
-  for (auto ctor = g_gop_ctors_begin + 1; ctor < g_gop_ctors_end; ++ctor) 
-  {
-    (*ctor)();
-  }
+    // Call all constructors
+    for (auto ctor = g_gop_ctors_begin + 1; ctor < g_gop_ctors_end; ++ctor)
+    {
+        (*ctor)();
+    }
 
-  return STATUS_SUCCESS;
+    return STATUS_SUCCESS;
 }
 
 
 // Calls all registered destructors
-_Use_decl_annotations_ void GlobalObjectTermination() 
+_Use_decl_annotations_ void GlobalObjectTermination()
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  auto entry = PopEntryList(&g_gop_dtors_list_head);
-  while (entry) {
-    const auto element = CONTAINING_RECORD(entry, DestructorEntry, list_entry);
-    element->dtor();
-    ExFreePoolWithTag(element, TAG);
-    entry = PopEntryList(&g_gop_dtors_list_head);
-  }
+    auto entry = PopEntryList(&g_gop_dtors_list_head);
+    while (entry)
+    {
+        const auto element = CONTAINING_RECORD(entry, DestructorEntry, list_entry);
+        element->dtor();
+        ExFreePoolWithTag(element, TAG);
+        entry = PopEntryList(&g_gop_dtors_list_head);
+    }
 }
 
 
 // Registers destructor; this is called through a call to constructor
-_IRQL_requires_max_(PASSIVE_LEVEL) int __cdecl atexit(_In_ Destructor dtor) 
+_IRQL_requires_max_(PASSIVE_LEVEL) int __cdecl atexit(_In_ Destructor dtor)
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  const auto element = reinterpret_cast<DestructorEntry *>(ExAllocatePoolWithTag(PagedPool, sizeof(DestructorEntry), TAG));
-  if (!element) {
-    return 1;
-  }
-  element->dtor = dtor;
-  PushEntryList(&g_gop_dtors_list_head, &element->list_entry);
-  return 0;
+    const auto element = reinterpret_cast<DestructorEntry *>(ExAllocatePoolWithTag(PagedPool, sizeof(DestructorEntry), TAG));
+    if (!element) {
+        return 1;
+    }
+    element->dtor = dtor;
+    PushEntryList(&g_gop_dtors_list_head, &element->list_entry);
+    return 0;
 }
 
 }  // extern "C"

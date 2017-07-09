@@ -188,11 +188,11 @@ _Use_decl_annotations_ static NTSTATUS UtilpInitializePageTableVariables()
 
     found += sizeof(kPatternWin10x64);
 
-    const auto pte_base = *reinterpret_cast<ULONG_PTR *>(found);
-    const auto index = (pte_base >> kUtilpPxiShift) & kUtilpPxiMask;
-    const auto pde_base = pte_base | (index << kUtilpPpiShift);
-    const auto ppe_base = pde_base | (index << kUtilpPdiShift);
-    const auto pxe_base = ppe_base | (index << kUtilpPtiShift);
+    ULONG_PTR pte_base = *reinterpret_cast<ULONG_PTR *>(found);
+    ULONG_PTR index = (pte_base >> kUtilpPxiShift) & kUtilpPxiMask;
+    ULONG_PTR pde_base = pte_base | (index << kUtilpPpiShift);
+    ULONG_PTR ppe_base = pde_base | (index << kUtilpPdiShift);
+    ULONG_PTR pxe_base = ppe_base | (index << kUtilpPtiShift);
 
     g_utilp_pxe_base = static_cast<ULONG_PTR>(pxe_base);
     g_utilp_ppe_base = static_cast<ULONG_PTR>(ppe_base);
@@ -493,9 +493,9 @@ _Use_decl_annotations_ static bool UtilpIsCanonicalFormAddress(void *address)
 _Use_decl_annotations_ static HardwarePte *UtilpAddressToPxe(const void *address)
 // Return an address of PXE
 {
-    const auto addr = reinterpret_cast<ULONG_PTR>(address);
-    const auto pxe_index = (addr >> g_utilp_pxi_shift) & g_utilp_pxi_mask;
-    const auto offset = pxe_index * sizeof(HardwarePte);
+    ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
+    ULONG_PTR pxe_index = (addr >> g_utilp_pxi_shift) & g_utilp_pxi_mask;
+    ULONG_PTR offset = pxe_index * sizeof(HardwarePte);
     return reinterpret_cast<HardwarePte *>(g_utilp_pxe_base + offset);
 }
 
@@ -503,9 +503,9 @@ _Use_decl_annotations_ static HardwarePte *UtilpAddressToPxe(const void *address
 _Use_decl_annotations_ static HardwarePte *UtilpAddressToPpe(const void *address)
 // Return an address of PPE
 {
-    const auto addr = reinterpret_cast<ULONG_PTR>(address);
-    const auto ppe_index = (addr >> g_utilp_ppi_shift) & g_utilp_ppi_mask;
-    const auto offset = ppe_index * sizeof(HardwarePte);
+    ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
+    ULONG_PTR ppe_index = (addr >> g_utilp_ppi_shift) & g_utilp_ppi_mask;
+    ULONG_PTR offset = ppe_index * sizeof(HardwarePte);
     return reinterpret_cast<HardwarePte *>(g_utilp_ppe_base + offset);
 }
 
@@ -513,9 +513,9 @@ _Use_decl_annotations_ static HardwarePte *UtilpAddressToPpe(const void *address
 _Use_decl_annotations_ static HardwarePte *UtilpAddressToPde(const void *address)
 // Return an address of PDE
 {
-    const auto addr = reinterpret_cast<ULONG_PTR>(address);
-    const auto pde_index = (addr >> g_utilp_pdi_shift) & g_utilp_pdi_mask;
-    const auto offset = pde_index * sizeof(HardwarePte);
+    ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
+    ULONG_PTR pde_index = (addr >> g_utilp_pdi_shift) & g_utilp_pdi_mask;
+    ULONG_PTR offset = pde_index * sizeof(HardwarePte);
     return reinterpret_cast<HardwarePte *>(g_utilp_pde_base + offset);
 }
 
@@ -524,8 +524,8 @@ _Use_decl_annotations_ static HardwarePte *UtilpAddressToPde(const void *address
 _Use_decl_annotations_ static HardwarePte *UtilpAddressToPte(const void *address)
 {
     ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
-    const auto pte_index = (addr >> g_utilp_pti_shift) & g_utilp_pti_mask;
-    const auto offset = pte_index * sizeof(HardwarePte);
+    ULONG_PTR pte_index = (addr >> g_utilp_pti_shift) & g_utilp_pti_mask;
+    ULONG_PTR offset = pte_index * sizeof(HardwarePte);
     return reinterpret_cast<HardwarePte *>(g_utilp_pte_base + offset);
 }
 

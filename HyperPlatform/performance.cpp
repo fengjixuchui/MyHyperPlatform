@@ -49,7 +49,7 @@ _Use_decl_annotations_ void PerfTermination()
 }
 
 
-/*_Use_decl_annotations_*/ ULONG64 PerfGetTime()
+ULONG64 PerfGetTime()
 {
     LARGE_INTEGER counter = KeQueryPerformanceCounter(nullptr);
     return static_cast<ULONG64>(counter.QuadPart);

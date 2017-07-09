@@ -9,7 +9,8 @@
 #include "log.h"
 #include "vm.h"
 
-extern "C" {
+extern "C"
+{
 static CALLBACK_FUNCTION PowerCallbackpCallbackRoutine;
 
 #if defined(ALLOC_PRAGMA)
@@ -30,7 +31,7 @@ _Use_decl_annotations_ NTSTATUS PowerCallbackInitialization()
     UNICODE_STRING name = RTL_CONSTANT_STRING(L"\\Callback\\PowerState");
     OBJECT_ATTRIBUTES oa = RTL_CONSTANT_OBJECT_ATTRIBUTES(&name, OBJ_CASE_INSENSITIVE);
 
-    auto status = ExCreateCallback(&g_pcp_callback_object, &oa, FALSE, TRUE);
+    NTSTATUS status = ExCreateCallback(&g_pcp_callback_object, &oa, FALSE, TRUE);
     if (!NT_SUCCESS(status)) {
         return status;
     }

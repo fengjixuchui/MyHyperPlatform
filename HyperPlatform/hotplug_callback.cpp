@@ -9,7 +9,8 @@
 #include "log.h"
 #include "vm.h"
 
-extern "C" {
+extern "C"
+{
 static PROCESSOR_CALLBACK_FUNCTION HotplugCallbackpCallbackRoutine;
 
 #if defined(ALLOC_PRAGMA)

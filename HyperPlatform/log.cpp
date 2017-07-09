@@ -8,10 +8,10 @@
 #define NTSTRSAFE_NO_CB_FUNCTIONS
 #include <ntstrsafe.h>
 
-// See common.h for details
-#pragma prefast(disable : 30030)
+#pragma prefast(disable : 30030)// See common.h for details
 
-extern "C" {
+extern "C"
+{
 // A size for log buffer in NonPagedPoolNx. Two buffers are allocated with this size.
 // Exceeded logs are ignored silently. Make it bigger if a buffered log size often reach this size.
 static const auto kLogpBufferSizeInPages = 16ul;
@@ -61,7 +61,6 @@ static KSTART_ROUTINE LogpBufferFlushThreadRoutine;
 _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS LogpSleep(_In_ LONG millisecond);
 static void LogpSetPrintedBit(_In_z_ char *message, _In_ bool on);
 static bool LogpIsPrinted(_In_z_ char *message);
-static void LogpDbgBreak();
 
 #if defined(ALLOC_PRAGMA)
 #pragma alloc_text(INIT, LogInitialization)
@@ -101,8 +100,8 @@ _Use_decl_annotations_ NTSTATUS LogInitialization(ULONG flag, const wchar_t *log
 }
 
 
-// Initialize a log file related code such as a flushing thread.
 _Use_decl_annotations_ static NTSTATUS LogpInitializeBufferInfo(const wchar_t *log_file_path, LogBufferInfo *info)
+// Initialize a log file related code such as a flushing thread.
 {
     PAGED_CODE();
     NT_ASSERT(log_file_path);
@@ -120,9 +119,8 @@ _Use_decl_annotations_ static NTSTATUS LogpInitializeBufferInfo(const wchar_t *l
         return status;
     }
     info->resource_initialized = true;
-
-    // Allocate two log buffers on NonPagedPoolNx.
-    info->log_buffer1 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG));
+    
+    info->log_buffer1 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG));// Allocate two log buffers on NonPagedPoolNx.
     if (!info->log_buffer1) {
         LogpFinalizeBufferInfo(info);
         return STATUS_INSUFFICIENT_RESOURCES;
@@ -247,7 +245,7 @@ _Use_decl_annotations_ void LogIrpShutdownHandler()
     g_logp_debug_flag = kLogPutLevelDisable;
 
     // Wait until the log buffer is emptied.
-    auto &info = g_logp_log_buffer_info;
+    LogBufferInfo &info = g_logp_log_buffer_info;
     while (info.log_buffer_head[0])
     {
         LogpSleep(kLogpLogFlushIntervalMsec);
@@ -255,231 +253,227 @@ _Use_decl_annotations_ void LogIrpShutdownHandler()
 }
 
 
+_Use_decl_annotations_ void LogTermination()
 // Terminates the log functions.
-_Use_decl_annotations_ void LogTermination() 
 {
-  PAGED_CODE();
+    PAGED_CODE();
 
-  HYPERPLATFORM_LOG_DEBUG("Finalizing... (Max log usage = %Iu/%lu bytes)", g_logp_log_buffer_info.log_max_usage, kLogpBufferSize);
-  HYPERPLATFORM_LOG_INFO("Bye!");
-  g_logp_debug_flag = kLogPutLevelDisable;
-  LogpFinalizeBufferInfo(&g_logp_log_buffer_info);
+    HYPERPLATFORM_LOG_DEBUG("Finalizing... (Max log usage = %Iu/%lu bytes)", g_logp_log_buffer_info.log_max_usage, kLogpBufferSize);
+    HYPERPLATFORM_LOG_INFO("Bye!");
+    g_logp_debug_flag = kLogPutLevelDisable;
+    LogpFinalizeBufferInfo(&g_logp_log_buffer_info);
 }
 
 
+_Use_decl_annotations_ static void LogpFinalizeBufferInfo(LogBufferInfo *info)
 // Terminates a log file related code.
-_Use_decl_annotations_ static void LogpFinalizeBufferInfo(LogBufferInfo *info) 
 {
-  PAGED_CODE();
-  NT_ASSERT(info);
+    PAGED_CODE();
+    NT_ASSERT(info);
 
-  // Closing the log buffer flush thread.
-  if (info->buffer_flush_thread_handle) {
-    info->buffer_flush_thread_should_be_alive = false;
-    auto status = ZwWaitForSingleObject(info->buffer_flush_thread_handle, FALSE, nullptr);
-    if (!NT_SUCCESS(status)) {
-      LogpDbgBreak();
+    // Closing the log buffer flush thread.
+    if (info->buffer_flush_thread_handle) {
+        info->buffer_flush_thread_should_be_alive = false;
+        NTSTATUS status = ZwWaitForSingleObject(info->buffer_flush_thread_handle, FALSE, nullptr);
+        if (!NT_SUCCESS(status)) {
+            __debugbreak();
+        }
+        ZwClose(info->buffer_flush_thread_handle);
+        info->buffer_flush_thread_handle = nullptr;
     }
-    ZwClose(info->buffer_flush_thread_handle);
-    info->buffer_flush_thread_handle = nullptr;
-  }
 
-  // Cleaning up other things.
-  if (info->log_file_handle) {
-    ZwClose(info->log_file_handle);
-    info->log_file_handle = nullptr;
-  }
-  if (info->log_buffer2) {
-    ExFreePoolWithTag(info->log_buffer2, TAG);
-    info->log_buffer2 = nullptr;
-  }
-  if (info->log_buffer1) {
-    ExFreePoolWithTag(info->log_buffer1, TAG);
-    info->log_buffer1 = nullptr;
-  }
+    // Cleaning up other things.
+    if (info->log_file_handle) {
+        ZwClose(info->log_file_handle);
+        info->log_file_handle = nullptr;
+    }
+    if (info->log_buffer2) {
+        ExFreePoolWithTag(info->log_buffer2, TAG);
+        info->log_buffer2 = nullptr;
+    }
+    if (info->log_buffer1) {
+        ExFreePoolWithTag(info->log_buffer1, TAG);
+        info->log_buffer1 = nullptr;
+    }
 
-  if (info->resource_initialized) {
-    ExDeleteResourceLite(&info->resource);
-    info->resource_initialized = false;
-  }
+    if (info->resource_initialized) {
+        ExDeleteResourceLite(&info->resource);
+        info->resource_initialized = false;
+    }
 }
 
 
-_Use_decl_annotations_ NTSTATUS LogpPrint(ULONG level, const char *function_name, const char *format, ...) 
+_Use_decl_annotations_ NTSTATUS LogpPrint(ULONG level, const char *function_name, const char *format, ...)
 // Actual implementation of logging API.
 {
-  auto status = STATUS_SUCCESS;
+    NTSTATUS status = STATUS_SUCCESS;
 
-  if (!LogpIsLogNeeded(level)) {
+    if (!LogpIsLogNeeded(level)) {
+        return status;
+    }
+
+    va_list args;
+    va_start(args, format);
+    char log_message[412];
+    status = RtlStringCchVPrintfA(log_message, RTL_NUMBER_OF(log_message), format, args);
+    va_end(args);
+    if (!NT_SUCCESS(status)) {
+        __debugbreak();
+        return status;
+    }
+    if (log_message[0] == '\0') {
+        __debugbreak();
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    ULONG pure_level = level & 0xf0;
+    ULONG attribute = level & 0x0f;
+
+    // A single entry of log should not exceed 512 bytes. See
+    // Reading and Filtering Debugging Messages in MSDN for details.
+    char message[512];
+    static_assert(RTL_NUMBER_OF(message) <= 512, "One log message should not exceed 512 bytes.");
+    status = LogpMakePrefix(pure_level, function_name, log_message, message, RTL_NUMBER_OF(message));
+    if (!NT_SUCCESS(status)) {
+        __debugbreak();
+        return status;
+    }
+
+    status = LogpPut(message, attribute);
+    if (!NT_SUCCESS(status)) {
+        __debugbreak();
+    }
+
     return status;
-  }
-
-  va_list args;
-  va_start(args, format);
-  char log_message[412];
-  status = RtlStringCchVPrintfA(log_message, RTL_NUMBER_OF(log_message), format, args);
-  va_end(args);
-  if (!NT_SUCCESS(status)) {
-    LogpDbgBreak();
-    return status;
-  }
-  if (log_message[0] == '\0') {
-    LogpDbgBreak();
-    return STATUS_INVALID_PARAMETER;
-  }
-
-  const auto pure_level = level & 0xf0;
-  const auto attribute = level & 0x0f;
-
-  // A single entry of log should not exceed 512 bytes. See
-  // Reading and Filtering Debugging Messages in MSDN for details.
-  char message[512];
-  static_assert(RTL_NUMBER_OF(message) <= 512, "One log message should not exceed 512 bytes.");
-  status = LogpMakePrefix(pure_level, function_name, log_message, message, RTL_NUMBER_OF(message));
-  if (!NT_SUCCESS(status)) {
-    LogpDbgBreak();
-    return status;
-  }
-
-  status = LogpPut(message, attribute);
-  if (!NT_SUCCESS(status)) {
-    LogpDbgBreak();
-  }
-
-  return status;
 }
 
 
+_Use_decl_annotations_ static NTSTATUS LogpMakePrefix(ULONG level, const char *function_name, const char *log_message, char *log_buffer, SIZE_T log_buffer_length)
 // Concatenates meta information such as the current time and a process ID to user given log message.
-_Use_decl_annotations_ static NTSTATUS LogpMakePrefix(ULONG level, const char *function_name, const char *log_message, char *log_buffer, SIZE_T log_buffer_length) 
 {
-  char const *level_string = nullptr;
-  switch (level) {
+    char const *level_string = nullptr;
+    switch (level)
+    {
     case kLogpLevelDebug:
-      level_string = "DBG\t";
-      break;
+        level_string = "DBG\t";
+        break;
     case kLogpLevelInfo:
-      level_string = "INF\t";
-      break;
+        level_string = "INF\t";
+        break;
     case kLogpLevelWarn:
-      level_string = "WRN\t";
-      break;
+        level_string = "WRN\t";
+        break;
     case kLogpLevelError:
-      level_string = "ERR\t";
-      break;
+        level_string = "ERR\t";
+        break;
     default:
-      return STATUS_INVALID_PARAMETER;
-  }
-
-  auto status = STATUS_SUCCESS;
-
-  char time_buffer[20] = {};
-  if ((g_logp_debug_flag & kLogOptDisableTime) == 0) {
-    // Want the current time.
-    TIME_FIELDS time_fields;
-    LARGE_INTEGER system_time, local_time;
-    KeQuerySystemTime(&system_time);
-    ExSystemTimeToLocalTime(&system_time, &local_time);
-    RtlTimeToTimeFields(&local_time, &time_fields);
-
-    status = RtlStringCchPrintfA(time_buffer, RTL_NUMBER_OF(time_buffer), "%02u:%02u:%02u.%03u\t", time_fields.Hour, time_fields.Minute, time_fields.Second, time_fields.Milliseconds);
-    if (!NT_SUCCESS(status)) {
-      return status;
+        return STATUS_INVALID_PARAMETER;
     }
-  }
 
-  // Want the function name
-  char function_name_buffer[50] = {};
-  if ((g_logp_debug_flag & kLogOptDisableFunctionName) == 0) {
-    const auto base_function_name = LogpFindBaseFunctionName(function_name);
-    status = RtlStringCchPrintfA(function_name_buffer, RTL_NUMBER_OF(function_name_buffer), "%-40s\t", base_function_name);
-    if (!NT_SUCCESS(status)) {
-      return status;
+    NTSTATUS status = STATUS_SUCCESS;
+
+    char time_buffer[20] = {};
+    if ((g_logp_debug_flag & kLogOptDisableTime) == 0) {
+        TIME_FIELDS time_fields;
+        LARGE_INTEGER system_time, local_time;
+        KeQuerySystemTime(&system_time);// Want the current time.
+        ExSystemTimeToLocalTime(&system_time, &local_time);
+        RtlTimeToTimeFields(&local_time, &time_fields);
+
+        status = RtlStringCchPrintfA(time_buffer, RTL_NUMBER_OF(time_buffer), "%02u:%02u:%02u.%03u\t", time_fields.Hour, time_fields.Minute, time_fields.Second, time_fields.Milliseconds);
+        if (!NT_SUCCESS(status)) {
+            return status;
+        }
     }
-  }
-
-  // Want the processor number
-  char processro_number[10] = {};
-  if ((g_logp_debug_flag & kLogOptDisableProcessorNumber) == 0) {
-    status = RtlStringCchPrintfA(processro_number, RTL_NUMBER_OF(processro_number), "#%lu\t", KeGetCurrentProcessorNumberEx(nullptr));
-    if (!NT_SUCCESS(status)) {
-      return status;
+    
+    char function_name_buffer[50] = {};// Want the function name
+    if ((g_logp_debug_flag & kLogOptDisableFunctionName) == 0) {
+        const char * base_function_name = LogpFindBaseFunctionName(function_name);
+        status = RtlStringCchPrintfA(function_name_buffer, RTL_NUMBER_OF(function_name_buffer), "%-40s\t", base_function_name);
+        if (!NT_SUCCESS(status)) {
+            return status;
+        }
     }
-  }
+    
+    char processro_number[10] = {};// Want the processor number
+    if ((g_logp_debug_flag & kLogOptDisableProcessorNumber) == 0) {
+        status = RtlStringCchPrintfA(processro_number, RTL_NUMBER_OF(processro_number), "#%lu\t", KeGetCurrentProcessorNumberEx(nullptr));
+        if (!NT_SUCCESS(status)) {
+            return status;
+        }
+    }
 
-  // It uses PsGetProcessId(PsGetCurrentProcess()) instead of PsGetCurrentThreadProcessId() because the later sometimes returns unwanted value, for example:
-  //  PID == 4 but its image name != ntoskrnl.exe
-  // The author is guessing that it is related to attaching processes but not quite sure. The former way works as expected.
-  status = RtlStringCchPrintfA(log_buffer, log_buffer_length, "%s%s%s%5Iu\t%5Iu\t%-15s\t%s%s\r\n",
-      time_buffer, 
-      level_string, 
-      processro_number,
-      reinterpret_cast<ULONG_PTR>(PsGetProcessId(PsGetCurrentProcess())),
-      reinterpret_cast<ULONG_PTR>(PsGetCurrentThreadId()),
-      PsGetProcessImageFileName(PsGetCurrentProcess()), 
-      function_name_buffer,
-      log_message);
-
-  return status;
+    // It uses PsGetProcessId(PsGetCurrentProcess()) instead of PsGetCurrentThreadProcessId() because the later sometimes returns unwanted value, for example:
+    //  PID == 4 but its image name != ntoskrnl.exe
+    // The author is guessing that it is related to attaching processes but not quite sure. The former way works as expected.
+    status = RtlStringCchPrintfA(log_buffer, log_buffer_length, "%s%s%s%5Iu\t%5Iu\t%-15s\t%s%s\r\n",
+        time_buffer,
+        level_string,
+        processro_number,
+        reinterpret_cast<ULONG_PTR>(PsGetProcessId(PsGetCurrentProcess())),
+        reinterpret_cast<ULONG_PTR>(PsGetCurrentThreadId()),
+        PsGetProcessImageFileName(PsGetCurrentProcess()),
+        function_name_buffer,
+        log_message);
+    return status;
 }
 
 
+_Use_decl_annotations_ static const char *LogpFindBaseFunctionName(const char *function_name)
 // Returns the function's base name, for example,
 // NamespaceName::ClassName::MethodName will be returned as MethodName.
-_Use_decl_annotations_ static const char *LogpFindBaseFunctionName(const char *function_name) 
 {
-  if (!function_name) {
-    return nullptr;
-  }
-
-  auto ptr = function_name;
-  auto name = function_name;
-  while (*(ptr++)) {
-    if (*ptr == ':') {
-      name = ptr + 1;
+    if (!function_name) {
+        return nullptr;
     }
-  }
 
-  return name;
+    const char * ptr = function_name;
+    const char * name = function_name;
+
+    while (*(ptr++))
+    {
+        if (*ptr == ':') {
+            name = ptr + 1;
+        }
+    }
+
+    return name;
 }
 
 
+_Use_decl_annotations_ static NTSTATUS LogpPut(char *message, ULONG attribute)
 // Logs the entry according to attribute and the thread condition.
-_Use_decl_annotations_ static NTSTATUS LogpPut(char *message, ULONG attribute) 
 {
-  auto status = STATUS_SUCCESS;
+    NTSTATUS status = STATUS_SUCCESS;
 
-  auto do_DbgPrint = ((attribute & kLogpLevelOptSafe) == 0 && KeGetCurrentIrql() < CLOCK_LEVEL);
+    bool do_DbgPrint = ((attribute & kLogpLevelOptSafe) == 0 && KeGetCurrentIrql() < CLOCK_LEVEL);
 
-  // Log the entry to a file or buffer.
-  auto &info = g_logp_log_buffer_info;
-  if (LogpIsLogFileEnabled(info)) {
-    // Can it log it to a file now?
-    if (((attribute & kLogpLevelOptSafe) == 0) && KeGetCurrentIrql() == PASSIVE_LEVEL && LogpIsLogFileActivated(info)) {
+    // Log the entry to a file or buffer.
+    LogBufferInfo &info = g_logp_log_buffer_info;
+    if (LogpIsLogFileEnabled(info)) {// Can it log it to a file now?
+        if (((attribute & kLogpLevelOptSafe) == 0) && KeGetCurrentIrql() == PASSIVE_LEVEL && LogpIsLogFileActivated(info)) {
 #pragma warning(push)
 #pragma warning(disable : 28123)
-      if (!KeAreAllApcsDisabled()) {
-        // Yes, it can. Do it.
-        LogpFlushLogBuffer(&info);
-        status = LogpWriteMessageToFile(message, info);
-      }
+            if (!KeAreAllApcsDisabled()) {// Yes, it can. Do it.
+                LogpFlushLogBuffer(&info);
+                status = LogpWriteMessageToFile(message, info);
+            }
 #pragma warning(pop)
-    } else {
-      // No, it cannot. Set the printed bit if needed, and then buffer it.
-      if (do_DbgPrint) {
-        LogpSetPrintedBit(message, true);
-      }
-      status = LogpBufferMessage(message, &info);
-      LogpSetPrintedBit(message, false);
+        }
+        else {// No, it cannot. Set the printed bit if needed, and then buffer it.
+            if (do_DbgPrint) {
+                LogpSetPrintedBit(message, true);
+            }
+            status = LogpBufferMessage(message, &info);
+            LogpSetPrintedBit(message, false);
+        }
     }
-  }
+    
+    if (do_DbgPrint) {// Can it safely be printed?
+        LogpDoDbgPrint(message);
+    }
 
-  // Can it safely be printed?
-  if (do_DbgPrint) {
-    LogpDoDbgPrint(message);
-  }
-
-  return status;
+    return status;
 }
 
 
@@ -487,168 +481,170 @@ _Use_decl_annotations_ static NTSTATUS LogpFlushLogBuffer(LogBufferInfo *info)
 // Switches the current log buffer, saves the contents of old buffer to the log file, and prints them out as necessary.
 // This function does not flush the log file, so code should call LogpWriteMessageToFile() or ZwFlushBuffersFile() later.
 {
-  NT_ASSERT(info);
-  NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
+    NT_ASSERT(info);
+    NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
 
-  auto status = STATUS_SUCCESS;
+    NTSTATUS status = STATUS_SUCCESS;
 
-  // Enter a critical section and acquire a reader lock for info in order to write a log file safely.
-  ExEnterCriticalRegionAndAcquireResourceExclusive(&info->resource);
+    // Enter a critical section and acquire a reader lock for info in order to write a log file safely.
+    ExEnterCriticalRegionAndAcquireResourceExclusive(&info->resource);
 
-  // Acquire a spin lock for info.log_buffer(s) in order to switch its head safely.
-  KLOCK_QUEUE_HANDLE lock_handle = {};
-  KeAcquireInStackQueuedSpinLock(&info->spin_lock, &lock_handle);
-  const auto old_log_buffer = const_cast<char *>(info->log_buffer_head);
-  if (old_log_buffer[0]) {
-    info->log_buffer_head = (old_log_buffer == info->log_buffer1) ? info->log_buffer2 : info->log_buffer1;
-    info->log_buffer_head[0] = '\0';
-    info->log_buffer_tail = info->log_buffer_head;
-  }
-  KeReleaseInStackQueuedSpinLock(&lock_handle);
-
-  // Write all log entries in old log buffer.
-  IO_STATUS_BLOCK io_status = {};
-  for (auto current_log_entry = old_log_buffer; current_log_entry[0]; /**/) 
-  {
-    // Check the printed bit and clear it
-    const auto printed_out = LogpIsPrinted(current_log_entry);
-    LogpSetPrintedBit(current_log_entry, false);
-
-    const auto current_log_entry_length = strlen(current_log_entry);
-    status = ZwWriteFile(info->log_file_handle, nullptr, nullptr, nullptr, &io_status, current_log_entry, static_cast<ULONG>(current_log_entry_length), nullptr, nullptr);
-    if (!NT_SUCCESS(status)) {
-      // It could happen when you did not register IRP_SHUTDOWN and call LogIrpShutdownHandler() and the system tried to log to a file after a file system was unmounted.
-      LogpDbgBreak();
-    }
-
-    // Print it out if requested and the message is not already printed out
-    if (!printed_out) {
-      LogpDoDbgPrint(current_log_entry);
-    }
-
-    current_log_entry += current_log_entry_length + 1;
-  }
-  old_log_buffer[0] = '\0';
-
-  ExReleaseResourceAndLeaveCriticalRegion(&info->resource);
-  return status;
-}
-
-
-// Logs the current log entry to and flush the log file.
-_Use_decl_annotations_ static NTSTATUS LogpWriteMessageToFile(const char *message, const LogBufferInfo &info) 
-{
-  NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
-
-  IO_STATUS_BLOCK io_status = {};
-  auto status = ZwWriteFile(info.log_file_handle, nullptr, nullptr, nullptr, &io_status, const_cast<char *>(message), static_cast<ULONG>(strlen(message)), nullptr, nullptr);
-  if (!NT_SUCCESS(status)) {
-    // It could happen when you did not register IRP_SHUTDOWN and call LogIrpShutdownHandler() and the system tried to log to a file after a file system was unmounted.
-    LogpDbgBreak();
-  }
-  status = ZwFlushBuffersFile(info.log_file_handle, &io_status);
-  return status;
-}
-
-
-// Buffer the log entry to the log buffer.
-_Use_decl_annotations_ static NTSTATUS LogpBufferMessage(const char *message, LogBufferInfo *info) 
-{
-  NT_ASSERT(info);
-
-  // Acquire a spin lock to add the log safely.
-  KLOCK_QUEUE_HANDLE lock_handle = {};
-  const auto old_irql = KeGetCurrentIrql();
-  if (old_irql < DISPATCH_LEVEL) {
+    // Acquire a spin lock for info.log_buffer(s) in order to switch its head safely.
+    KLOCK_QUEUE_HANDLE lock_handle = {};
     KeAcquireInStackQueuedSpinLock(&info->spin_lock, &lock_handle);
-  } else {
-    KeAcquireInStackQueuedSpinLockAtDpcLevel(&info->spin_lock, &lock_handle);
-  }
-  NT_ASSERT(KeGetCurrentIrql() >= DISPATCH_LEVEL);
-
-  // Copy the current log to the buffer.
-  SIZE_T used_buffer_size = info->log_buffer_tail - info->log_buffer_head;
-  auto status = RtlStringCchCopyA(const_cast<char *>(info->log_buffer_tail), kLogpBufferUsableSize - used_buffer_size, message);
-
-  // Update info.log_max_usage if necessary.
-  if (NT_SUCCESS(status)) {
-    const auto message_length = strlen(message) + 1;
-    info->log_buffer_tail += message_length;
-    used_buffer_size += message_length;
-    if (used_buffer_size > info->log_max_usage) {
-      info->log_max_usage = used_buffer_size;  // Update
+    char * old_log_buffer = const_cast<char *>(info->log_buffer_head);
+    if (old_log_buffer[0]) {
+        info->log_buffer_head = (old_log_buffer == info->log_buffer1) ? info->log_buffer2 : info->log_buffer1;
+        info->log_buffer_head[0] = '\0';
+        info->log_buffer_tail = info->log_buffer_head;
     }
-  } else {
-    info->log_max_usage = kLogpBufferSize;  // Indicates overflow
-  }
-  *info->log_buffer_tail = '\0';
-
-  if (old_irql < DISPATCH_LEVEL) {
     KeReleaseInStackQueuedSpinLock(&lock_handle);
-  } else {
-    KeReleaseInStackQueuedSpinLockFromDpcLevel(&lock_handle);
-  }
 
-  return status;
+    // Write all log entries in old log buffer.
+    IO_STATUS_BLOCK io_status = {};
+    for (char * current_log_entry = old_log_buffer; current_log_entry[0]; )
+    {
+        // Check the printed bit and clear it
+        bool printed_out = LogpIsPrinted(current_log_entry);
+        LogpSetPrintedBit(current_log_entry, false);
+
+        size_t current_log_entry_length = strlen(current_log_entry);
+        status = ZwWriteFile(info->log_file_handle, nullptr, nullptr, nullptr, &io_status, current_log_entry, static_cast<ULONG>(current_log_entry_length), nullptr, nullptr);
+        if (!NT_SUCCESS(status)) {
+            // It could happen when you did not register IRP_SHUTDOWN and call LogIrpShutdownHandler() and the system tried to log to a file after a file system was unmounted.
+            __debugbreak();
+        }
+        
+        if (!printed_out) {// Print it out if requested and the message is not already printed out
+            LogpDoDbgPrint(current_log_entry);
+        }
+
+        current_log_entry += current_log_entry_length + 1;
+    }
+    old_log_buffer[0] = '\0';
+
+    ExReleaseResourceAndLeaveCriticalRegion(&info->resource);
+    return status;
 }
 
 
+_Use_decl_annotations_ static NTSTATUS LogpWriteMessageToFile(const char *message, const LogBufferInfo &info)
+// Logs the current log entry to and flush the log file.
+{
+    NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
+
+    IO_STATUS_BLOCK io_status = {};
+    NTSTATUS status = ZwWriteFile(info.log_file_handle, nullptr, nullptr, nullptr, &io_status, const_cast<char *>(message), static_cast<ULONG>(strlen(message)), nullptr, nullptr);
+    if (!NT_SUCCESS(status)) {
+        // It could happen when you did not register IRP_SHUTDOWN and call LogIrpShutdownHandler() and the system tried to log to a file after a file system was unmounted.
+        __debugbreak();
+    }
+    status = ZwFlushBuffersFile(info.log_file_handle, &io_status);
+    return status;
+}
+
+
+_Use_decl_annotations_ static NTSTATUS LogpBufferMessage(const char *message, LogBufferInfo *info) 
+// Buffer the log entry to the log buffer.
+{
+    NT_ASSERT(info);
+
+    // Acquire a spin lock to add the log safely.
+    KLOCK_QUEUE_HANDLE lock_handle = {};
+    KIRQL old_irql = KeGetCurrentIrql();
+    if (old_irql < DISPATCH_LEVEL) {
+        KeAcquireInStackQueuedSpinLock(&info->spin_lock, &lock_handle);
+    }
+    else {
+        KeAcquireInStackQueuedSpinLockAtDpcLevel(&info->spin_lock, &lock_handle);
+    }
+    NT_ASSERT(KeGetCurrentIrql() >= DISPATCH_LEVEL);
+
+    // Copy the current log to the buffer.
+    SIZE_T used_buffer_size = info->log_buffer_tail - info->log_buffer_head;
+    NTSTATUS status = RtlStringCchCopyA(const_cast<char *>(info->log_buffer_tail), kLogpBufferUsableSize - used_buffer_size, message);
+
+    // Update info.log_max_usage if necessary.
+    if (NT_SUCCESS(status)) {
+        SIZE_T message_length = strlen(message) + 1;
+        info->log_buffer_tail += message_length;
+        used_buffer_size += message_length;
+        if (used_buffer_size > info->log_max_usage) {
+            info->log_max_usage = used_buffer_size;  // Update
+        }
+    }
+    else {
+        info->log_max_usage = kLogpBufferSize;  // Indicates overflow
+    }
+    *info->log_buffer_tail = '\0';
+
+    if (old_irql < DISPATCH_LEVEL) {
+        KeReleaseInStackQueuedSpinLock(&lock_handle);
+    }
+    else {
+        KeReleaseInStackQueuedSpinLockFromDpcLevel(&lock_handle);
+    }
+
+    return status;
+}
+
+
+_Use_decl_annotations_ static void LogpDoDbgPrint(char *message)
 // Calls DbgPrintEx() while converting \r\n to \n\0
-_Use_decl_annotations_ static void LogpDoDbgPrint(char *message) 
 {
-  if (!LogpIsDbgPrintNeeded()) {
-    return;
-  }
-  const auto location_of_cr = strlen(message) - 2;
-  message[location_of_cr] = '\n';
-  message[location_of_cr + 1] = '\0';
-  DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_ERROR_LEVEL, "%s", message);
+    if (!LogpIsDbgPrintNeeded()) {
+        return;
+    }
+    SIZE_T location_of_cr = strlen(message) - 2;
+    message[location_of_cr] = '\n';
+    message[location_of_cr + 1] = '\0';
+    DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_ERROR_LEVEL, "%s", message);
 }
 
 
-// Returns true when a log file is enabled.
 _Use_decl_annotations_ static bool LogpIsLogFileEnabled(const LogBufferInfo &info) 
+// Returns true when a log file is enabled.
 {
-  if (info.log_buffer1) {
-    NT_ASSERT(info.log_buffer2);
-    NT_ASSERT(info.log_buffer_head);
-    NT_ASSERT(info.log_buffer_tail);
-    return true;
-  }
+    if (info.log_buffer1) {
+        NT_ASSERT(info.log_buffer2);
+        NT_ASSERT(info.log_buffer_head);
+        NT_ASSERT(info.log_buffer_tail);
+        return true;
+    }
 
-  NT_ASSERT(!info.log_buffer2);
-  NT_ASSERT(!info.log_buffer_head);
-  NT_ASSERT(!info.log_buffer_tail);
-  return false;
+    NT_ASSERT(!info.log_buffer2);
+    NT_ASSERT(!info.log_buffer_head);
+    NT_ASSERT(!info.log_buffer_tail);
+    return false;
 }
 
 
+_Use_decl_annotations_ static bool LogpIsLogFileActivated(const LogBufferInfo &info)
 // Returns true when a log file is opened.
-_Use_decl_annotations_ static bool LogpIsLogFileActivated(const LogBufferInfo &info) 
 {
-  if (info.buffer_flush_thread_should_be_alive) {
-    NT_ASSERT(info.buffer_flush_thread_handle);
-    NT_ASSERT(info.log_file_handle);
-    return true;
-  }
+    if (info.buffer_flush_thread_should_be_alive) {
+        NT_ASSERT(info.buffer_flush_thread_handle);
+        NT_ASSERT(info.log_file_handle);
+        return true;
+    }
 
-  NT_ASSERT(!info.buffer_flush_thread_handle);
-  NT_ASSERT(!info.log_file_handle);
-  return false;
+    NT_ASSERT(!info.buffer_flush_thread_handle);
+    NT_ASSERT(!info.log_file_handle);
+    return false;
 }
 
 
+_Use_decl_annotations_ static bool LogpIsLogNeeded(ULONG level)
 // Returns true when logging is necessary according to the log's severity and a set log level.
-_Use_decl_annotations_ static bool LogpIsLogNeeded(ULONG level) 
 {
-  return !!(g_logp_debug_flag & level);
+    return !!(g_logp_debug_flag & level);
 }
 
 
+static bool LogpIsDbgPrintNeeded()
 // Returns true when DbgPrint is requested
-/*_Use_decl_annotations_*/ static bool LogpIsDbgPrintNeeded() 
 {
-  return (g_logp_debug_flag & kLogOptDisableDbgPrint) == 0;
+    return (g_logp_debug_flag & kLogOptDisableDbgPrint) == 0;
 }
 
 
@@ -688,76 +684,22 @@ _Use_decl_annotations_ static NTSTATUS LogpSleep(LONG millisecond)
 }
 
 
+_Use_decl_annotations_ static void LogpSetPrintedBit(char *message, bool on)
 // Marks the message as it is already printed out, or clears the printed bit and restores it to the original
-_Use_decl_annotations_ static void LogpSetPrintedBit(char *message, bool on) 
 {
-  if (on) {
-    message[0] |= 0x80;
-  } else {
-    message[0] &= 0x7f;
-  }
+    if (on) {
+        message[0] |= 0x80;
+    }
+    else {
+        message[0] &= 0x7f;
+    }
 }
 
 
+_Use_decl_annotations_ static bool LogpIsPrinted(char *message)
 // Tests if the printed bit is on
-_Use_decl_annotations_ static bool LogpIsPrinted(char *message) 
 {
-  return (message[0] & 0x80) != 0;
-}
-
-
-// Sets a break point that works only when a debugger is present
-/*_Use_decl_annotations_*/ static void LogpDbgBreak() 
-{
-  if (!KD_DEBUGGER_NOT_PRESENT) {
-    __debugbreak();
-  }
-}
-
-
-// Provides an implementation of _vsnprintf as it fails to link when a include directory setting is modified for using STL
-_Success_(return >= 0) _Check_return_opt_ int __cdecl __stdio_common_vsprintf(
-    _In_ unsigned __int64 _Options,
-    _Out_writes_opt_z_(_BufferCount) char *_Buffer, _In_ size_t _BufferCount,
-    _In_z_ _Printf_format_string_params_(2) char const *_Format,
-    _In_opt_ _locale_t _Locale, va_list _ArgList) 
-{
-  UNREFERENCED_PARAMETER(_Options);
-  UNREFERENCED_PARAMETER(_Locale);
-
-  // Calls _vsnprintf exported by ntoskrnl
-  using _vsnprintf_type = int __cdecl(char *, size_t, const char *, va_list);
-  static _vsnprintf_type *local__vsnprintf = nullptr;
-  if (!local__vsnprintf) {
-    UNICODE_STRING proc_name_U = {};
-    RtlInitUnicodeString(&proc_name_U, L"_vsnprintf");
-    local__vsnprintf = reinterpret_cast<_vsnprintf_type *>(MmGetSystemRoutineAddress(&proc_name_U));
-  }
-
-  return local__vsnprintf(_Buffer, _BufferCount, _Format, _ArgList);
-}
-
-
-// Provides an implementation of _vsnwprintf as it fails to link when a include directory setting is modified for using STL
-_Success_(return >= 0) _Check_return_opt_ int __cdecl __stdio_common_vswprintf(
-    _In_ unsigned __int64 _Options,
-    _Out_writes_opt_z_(_BufferCount) wchar_t *_Buffer, _In_ size_t _BufferCount,
-    _In_z_ _Printf_format_string_params_(2) wchar_t const *_Format,
-    _In_opt_ _locale_t _Locale, va_list _ArgList) 
-{
-  UNREFERENCED_PARAMETER(_Options);
-  UNREFERENCED_PARAMETER(_Locale);
-
-  // Calls _vsnwprintf exported by ntoskrnl
-  using _vsnwprintf_type = int __cdecl(wchar_t *, size_t, const wchar_t *, va_list);
-  static _vsnwprintf_type *local__vsnwprintf = nullptr;
-  if (!local__vsnwprintf) {
-    UNICODE_STRING proc_name_U = {};
-    RtlInitUnicodeString(&proc_name_U, L"_vsnwprintf");
-    local__vsnwprintf = reinterpret_cast<_vsnwprintf_type *>(MmGetSystemRoutineAddress(&proc_name_U));
-  }
-
-  return local__vsnwprintf(_Buffer, _BufferCount, _Format, _ArgList);
+    return (message[0] & 0x80) != 0;
 }
 
 }  // extern "C"

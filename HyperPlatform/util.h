@@ -86,11 +86,6 @@ _IRQL_requires_max_(APC_LEVEL) NTSTATUS UtilForEachProcessor(_In_ NTSTATUS (*cal
 /// ExFreePoolWithTag(dpc, TAG).
 _IRQL_requires_max_(DISPATCH_LEVEL) NTSTATUS UtilForEachProcessorDpc(_In_ PKDEFERRED_ROUTINE deferred_routine, _In_opt_ void *context);
 
-/// Suspends the execution of the current thread
-/// @param millisecond  Time to suspend in milliseconds
-/// @return STATUS_SUCCESS on success
-_IRQL_requires_max_(APC_LEVEL) NTSTATUS UtilSleep(_In_ LONG millisecond);
-
 /// Searches a byte pattern from a given address range
 /// @param search_base  An address to start search
 /// @param search_size  A length to search in bytes

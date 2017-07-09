@@ -10,18 +10,18 @@
 #include "common.h"
 #include "log.h"
 
-extern "C" {
-// Use RtlPcToFileHeader if available. Using the API causes a broken font bug
-// on the 64 bit Windows 10 and should be avoided. This flag exist for only further investigation.
+extern "C"
+{
+// Use RtlPcToFileHeader if available.
+// Using the API causes a broken font bug on the 64 bit Windows 10 and should be avoided. This flag exist for only further investigation.
 static const auto kUtilpUseRtlPcToFileHeader = false;
 
 NTKERNELAPI PVOID NTAPI RtlPcToFileHeader(_In_ PVOID PcValue, _Out_ PVOID *BaseOfImage);
 
 using RtlPcToFileHeaderType = decltype(RtlPcToFileHeader);
 
-_Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) NTKERNELAPI
-    _When_(return != NULL, _Post_writable_byte_size_(NumberOfBytes)) PVOID
-    MmAllocateContiguousNodeMemory(
+_Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) NTKERNELAPI _When_(return != NULL, _Post_writable_byte_size_(NumberOfBytes))
+PVOID MmAllocateContiguousNodeMemory(
         _In_ SIZE_T NumberOfBytes,
         _In_ PHYSICAL_ADDRESS LowestAcceptableAddress,
         _In_ PHYSICAL_ADDRESS HighestAcceptableAddress,
@@ -61,7 +61,6 @@ static HardwarePte *UtilpAddressToPte(_In_ const void *address);
 #pragma alloc_text(INIT, UtilpInitializePhysicalMemoryRanges)
 #pragma alloc_text(INIT, UtilpBuildPhysicalMemoryRanges)
 #pragma alloc_text(PAGE, UtilForEachProcessor)
-#pragma alloc_text(PAGE, UtilSleep)
 #pragma alloc_text(PAGE, GetSystemProcAddress)
 #endif
 
@@ -295,7 +294,7 @@ _Use_decl_annotations_ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemor
 
     PFN_COUNT number_of_runs = 0;
     PFN_NUMBER number_of_pages = 0;
-    for (/**/; /**/; ++number_of_runs)
+    for (; ; ++number_of_runs)
     {
         PPHYSICAL_MEMORY_RANGE range = &pm_ranges[number_of_runs];
         if (!range->BaseAddress.QuadPart && !range->NumberOfBytes.QuadPart) {
@@ -371,8 +370,8 @@ _Use_decl_annotations_ NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine
 }
 
 
-// Queues a given DPC routine on all processors. Returns STATUS_SUCCESS when DPC is queued for all processors.
 _Use_decl_annotations_ NTSTATUS UtilForEachProcessorDpc(PKDEFERRED_ROUTINE deferred_routine, void *context)
+// Queues a given DPC routine on all processors. Returns STATUS_SUCCESS when DPC is queued for all processors.
 {
     ULONG number_of_processors = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
     for (ULONG processor_index = 0; processor_index < number_of_processors; processor_index++)
@@ -398,17 +397,6 @@ _Use_decl_annotations_ NTSTATUS UtilForEachProcessorDpc(PKDEFERRED_ROUTINE defer
     }
 
     return STATUS_SUCCESS;
-}
-
-
-_Use_decl_annotations_ NTSTATUS UtilSleep(LONG Millisecond)
-// Sleep the current thread's execution for Millisecond milliseconds.
-{
-    PAGED_CODE();
-
-    LARGE_INTEGER interval = {};
-    interval.QuadPart = -(10000 * Millisecond);  // msec
-    return KeDelayExecutionThread(KernelMode, FALSE, &interval);
 }
 
 

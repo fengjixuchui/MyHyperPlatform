@@ -11,7 +11,8 @@
 #include "util.h"
 #include "performance.h"
 
-extern "C" {
+extern "C"
+{
 // Followings are how 64bits of a physical address is used to locate EPT entries:
 //
 // EPT Page map level 4 selector           9 bits
@@ -127,15 +128,13 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     PAGED_CODE();
 
     int index = 0;
-    MtrrData *mtrr_entries = g_eptp_mtrr_entries;
     
     Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };
     g_eptp_mtrr_default_type = default_type.fields.default_mtemory_type;// Get and store the default memory type
     
     Ia32MtrrCapabilitiesMsr mtrr_capabilities = { __readmsr(0xFE) };// Read MTRR capability
-
-    // Read fixed range MTRRs if supported
-    if (mtrr_capabilities.fields.fixed_range_supported && default_type.fields.fixed_mtrrs_enabled)
+    
+    if (mtrr_capabilities.fields.fixed_range_supported && default_type.fields.fixed_mtrrs_enabled)// Read fixed range MTRRs if supported
     {
         static const ULONG64 k64kBase = 0x0;
         static const ULONG64 k64kManagedSize = 0x10000;
@@ -160,11 +159,11 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
             offset += k64kManagedSize;
 
             // Saves the MTRR
-            mtrr_entries[index].enabled = true;
-            mtrr_entries[index].fixedMtrr = true;
-            mtrr_entries[index].type = memory_type;
-            mtrr_entries[index].range_base = base;
-            mtrr_entries[index].range_end = base + k64kManagedSize - 1;
+            g_eptp_mtrr_entries[index].enabled = true;
+            g_eptp_mtrr_entries[index].fixedMtrr = true;
+            g_eptp_mtrr_entries[index].type = memory_type;
+            g_eptp_mtrr_entries[index].range_base = base;
+            g_eptp_mtrr_entries[index].range_end = base + k64kManagedSize - 1;
             index++;
         }
         NT_ASSERT(k64kBase + offset == k16kBase);
@@ -193,11 +192,11 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
                 offset += k16kManagedSize;
 
                 // Saves the MTRR
-                mtrr_entries[index].enabled = true;
-                mtrr_entries[index].fixedMtrr = true;
-                mtrr_entries[index].type = memory_type;
-                mtrr_entries[index].range_base = base;
-                mtrr_entries[index].range_end = base + k16kManagedSize - 1;
+                g_eptp_mtrr_entries[index].enabled = true;
+                g_eptp_mtrr_entries[index].fixedMtrr = true;
+                g_eptp_mtrr_entries[index].type = memory_type;
+                g_eptp_mtrr_entries[index].range_base = base;
+                g_eptp_mtrr_entries[index].range_end = base + k16kManagedSize - 1;
                 index++;
             }
         }
@@ -223,19 +222,18 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
                 offset += k4kManagedSize;
 
                 // Saves the MTRR
-                mtrr_entries[index].enabled = true;
-                mtrr_entries[index].fixedMtrr = true;
-                mtrr_entries[index].type = memory_type;
-                mtrr_entries[index].range_base = base;
-                mtrr_entries[index].range_end = base + k4kManagedSize - 1;
+                g_eptp_mtrr_entries[index].enabled = true;
+                g_eptp_mtrr_entries[index].fixedMtrr = true;
+                g_eptp_mtrr_entries[index].type = memory_type;
+                g_eptp_mtrr_entries[index].range_base = base;
+                g_eptp_mtrr_entries[index].range_end = base + k4kManagedSize - 1;
                 index++;
             }
         }
         NT_ASSERT(k4kBase + offset == 0x100000);
     }
-
-    // Read all variable range MTRRs
-    for (ULONG i = 0; i < mtrr_capabilities.fields.variable_range_count; i++)
+    
+    for (ULONG i = 0; i < mtrr_capabilities.fields.variable_range_count; i++)// Read all variable range MTRRs
     {
         // Read MTRR mask and check if it is in use
         ULONG phy_mask = static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2;
@@ -254,11 +252,11 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         ULONG64 end = base + (1ull << length) - 1;
 
         // Save it
-        mtrr_entries[index].enabled = true;
-        mtrr_entries[index].fixedMtrr = false;
-        mtrr_entries[index].type = mtrr_base.fields.type;
-        mtrr_entries[index].range_base = base;
-        mtrr_entries[index].range_end = end;
+        g_eptp_mtrr_entries[index].enabled = true;
+        g_eptp_mtrr_entries[index].fixedMtrr = false;
+        g_eptp_mtrr_entries[index].type = mtrr_base.fields.type;
+        g_eptp_mtrr_entries[index].range_base = base;
+        g_eptp_mtrr_entries[index].range_end = end;
         index++;
     }
 }
@@ -268,9 +266,8 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
 // Returns a memory type based on MTRRs
 {
     UCHAR result_type = MAXUCHAR;// Indicate that MTRR is not defined (as a default)
-
-    // Looks for MTRR that includes the specified physical_address
-    for (const auto mtrr_entry : g_eptp_mtrr_entries)
+    
+    for (const auto mtrr_entry : g_eptp_mtrr_entries)// Looks for MTRR that includes the specified physical_address
     {
         if (!mtrr_entry.enabled) {
             break;// Reached out the end of stored MTRRs
@@ -279,17 +276,14 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
         if (!UtilIsInBounds(physical_address, mtrr_entry.range_base, mtrr_entry.range_end)) {
             continue;// This MTRR does not describe a memory type of the physical_address
         }
-
-        // See: MTRR Precedences
-        if (mtrr_entry.fixedMtrr) {
+        
+        if (mtrr_entry.fixedMtrr) {// See: MTRR Precedences
             result_type = mtrr_entry.type;// If a fixed MTRR describes a memory type, it is priority
             break;
         }
 
-        if (mtrr_entry.type == static_cast<UCHAR>(memory_type::kUncacheable)) {
-            // If a memory type is UC, it is priority.
-            // Do not continue to search as UC has the highest priority
-            result_type = mtrr_entry.type;
+        if (mtrr_entry.type == static_cast<UCHAR>(memory_type::kUncacheable)) {// If a memory type is UC, it is priority.
+            result_type = mtrr_entry.type;// Do not continue to search as UC has the highest priority
             break;
         }
 
@@ -500,7 +494,6 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
         return nullptr;
     }
     RtlZeroMemory(entry, kAllocSize);
-
     return entry;
 }
 
@@ -522,32 +515,28 @@ _Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULO
 _Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
 // Return an address of PXE
 {
-    ULONG64 index = (physical_address >> kEptpPxiShift) & kEptpPtxMask;
-    return index;
+    return (physical_address >> kEptpPxiShift) & kEptpPtxMask;
 }
 
 
 _Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
 // Return an address of PPE
 {
-    ULONG64 index = (physical_address >> kEptpPpiShift) & kEptpPtxMask;
-    return index;
+    return (physical_address >> kEptpPpiShift) & kEptpPtxMask;
 }
 
 
 _Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
 // Return an address of PDE
 {
-    ULONG64 index = (physical_address >> kEptpPdiShift) & kEptpPtxMask;
-    return index;
+    return (physical_address >> kEptpPdiShift) & kEptpPtxMask;
 }
 
 
 _Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
 // Return an address of PTE
 {
-    ULONG64 index = (physical_address >> kEptpPtiShift) & kEptpPtxMask;
-    return index;
+    return (physical_address >> kEptpPtiShift) & kEptpPtxMask;
 }
 
 

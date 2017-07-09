@@ -741,10 +741,8 @@ _Use_decl_annotations_ static ULONG VmpAdjustControlValue(Msr msr, ULONG request
     msr_value.QuadPart = __readmsr((ULONG)msr);
     ULONG adjusted_value = requested_value;
 
-    // bit == 0 in high word ==> must be zero
-    adjusted_value &= msr_value.HighPart;
-    // bit == 1 in low word  ==> must be one
-    adjusted_value |= msr_value.LowPart;
+    adjusted_value &= msr_value.HighPart;// bit == 0 in high word ==> must be zero
+    adjusted_value |= msr_value.LowPart;// bit == 1 in low word  ==> must be one
     return adjusted_value;
 }
 
@@ -774,18 +772,16 @@ _Use_decl_annotations_ static NTSTATUS VmpStopVm(void *context)
     PAGED_CODE();
 
     HYPERPLATFORM_LOG_INFO("Terminating VMX for the processor %d.", KeGetCurrentProcessorNumberEx(nullptr));
-
-    // Stop virtualization and get an address of the management structure
+    
     ProcessorData *processor_data = nullptr;
-    NTSTATUS status = UtilVmCall(HypercallNumber::kTerminateVmm, &processor_data);
+    NTSTATUS status = UtilVmCall(HypercallNumber::kTerminateVmm, &processor_data);// Stop virtualization and get an address of the management structure
     if (!NT_SUCCESS(status)) {
         return status;
     }
 
-    // Clear CR4.VMXE, as there is no reason to leave the bit after vmxoff
     Cr4 cr4 = { __readcr4() };
     cr4.fields.vmxe = false;
-    __writecr4(cr4.all);
+    __writecr4(cr4.all);// Clear CR4.VMXE, as there is no reason to leave the bit after vmxoff
 
     VmpFreeProcessorData(processor_data);
     return STATUS_SUCCESS;

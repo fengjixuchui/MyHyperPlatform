@@ -6,12 +6,10 @@
 
 /// @mainpage
 /// @section whats About
-/// These pages serve as a programmer's reference manual for HyperPlatform and
-/// were automatically generated from the source using Doxygen.
+/// These pages serve as a programmer's reference manual for HyperPlatform and were automatically generated from the source using Doxygen.
 ///
-/// For compilation and installation of HyperPlatform, see the HyperPlatform
-/// project page. For more general information about development using
-/// HyperPlatform, see User's Documents in the project page.
+/// For compilation and installation of HyperPlatform, see the HyperPlatform project page.
+/// For more general information about development using HyperPlatform, see User's Documents in the project page.
 /// @li https://github.com/tandasat/HyperPlatform
 ///
 /// Some of good places to start are the files page that provides a brief description of each files,
@@ -25,11 +23,9 @@
 /// @li
 /// http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html
 ///
-/// @copyright Use of this source code is governed by a MIT-style license that
-///            can be found in the LICENSE file.
+/// @copyright Use of this source code is governed by a MIT-style license that can be found in the LICENSE file.
 
-#ifndef HYPERPLATFORM_COMMON_H_
-#define HYPERPLATFORM_COMMON_H_
+#pragma once
 
 #include <fltKernel.h>
 
@@ -101,5 +97,3 @@ constexpr bool IsReleaseBuild() {
   return true;
 #endif
 }
-
-#endif  // HYPERPLATFORM_COMMON_H_

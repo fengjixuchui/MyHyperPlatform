@@ -65,8 +65,7 @@
 /// accessible if the section is already destroyed. In other words, do not use it in any functions in the INIT section.
 #define HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME(collector, query_time_routine) \
   const PerfCounter HYPERPLATFORM_PERFCOUNTER_P_JOIN(perf_obj_, __COUNTER__)( \
-      (collector), (query_time_routine),                                      \
-      __FUNCTION__ "(" HYPERPLATFORM_PERFCOUNTER_P_TO_STRING(__LINE__) ")")
+      (collector), (query_time_routine), __FUNCTION__ "(" HYPERPLATFORM_PERFCOUNTER_P_TO_STRING(__LINE__) ")")
 
 
 /// Responsible for collecting and saving data supplied by PerfCounter.
@@ -83,16 +82,12 @@ class PerfCollector
 
   /// Constructor; call this only once before any other code in this module runs
   /// @param output_routine   A function pointer for printing out results
-  /// @param initial_output_routine A function pointer for printing a header
-  ///        line of results
-  /// @param final_output_routine   A function pointer for printing a footer
-  ///        line of results
+  /// @param initial_output_routine A function pointer for printing a header line of results
+  /// @param final_output_routine   A function pointer for printing a footer line of results
   /// @param lock_enter_routine   A function pointer for acquiring a lock
   /// @param lock_leave_routine   A function pointer for releasing a lock
-  /// @param lock_context   An arbitrary parameter for \a lock_enter_routine and
-  ///        \a lock_leave_routine
-  /// @param output_context   An arbitrary parameter for \a output_routine,
-  ///        \a initial_output_routine and \a final_output_routine.
+  /// @param lock_context   An arbitrary parameter for \a lock_enter_routine and \a lock_leave_routine
+  /// @param output_context   An arbitrary parameter for \a output_routine, \a initial_output_routine and \a final_output_routine.
   void Initialize(
       _In_ OutputRoutine* output_routine,
       _In_opt_ InitialOutputRoutine* initial_output_routine = NoOutputRoutine,
@@ -160,7 +155,8 @@ class PerfCollector
   };
 
   /// Scoped lock
-  class ScopedLock {
+  class ScopedLock
+  {
    public:
     /// Acquires a lock using \a lock_routine.
     /// @param lock_routine  A function pointer for acquiring a lock
@@ -174,7 +170,10 @@ class PerfCollector
     }
 
     /// Releases a lock using ScopedLock::leave_routine_.
-    ~ScopedLock() { leave_routine_(lock_context_); }
+    ~ScopedLock()
+    {
+        leave_routine_(lock_context_);
+    }
 
    private:
     LockRoutine* lock_routine_;

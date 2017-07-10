@@ -177,8 +177,7 @@ VmxStatus UtilInvvpidSingleContextExceptGlobal(_In_ USHORT vpid);
 /// @param min  A minimum acceptable value
 /// @param max  A maximum acceptable value
 /// @return true if \a value is in between \a min and \a max
-template <typename T>
-constexpr bool UtilIsInBounds(_In_ const T &value, _In_ const T &min, _In_ const T &max) 
+template <typename T> constexpr bool UtilIsInBounds(_In_ const T &value, _In_ const T &min, _In_ const T &max) 
 {
   return (min <= value) && (value <= max);
 }

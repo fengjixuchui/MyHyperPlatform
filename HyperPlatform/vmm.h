@@ -22,5 +22,3 @@ struct ProcessorData {/// Represents VMM related data associated with each proce
   struct VmControlStructure* vmcs_region;   //!< VA of a VMCS region
   struct EptData* ept_data;                 //!< A pointer to EPT related data
 };
-
-

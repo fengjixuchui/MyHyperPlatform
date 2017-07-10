@@ -77,13 +77,3 @@ enum class HyperPlatformBugCheck : ULONG {
   kEptMisconfigVmExit,             //!< EPT misconfiguration VM-exit occurred
   kCritialPoolAllocationFailure,   //!< Critical pool allocation failed
 };
-
-/// Checks if the project is compiled as Release
-/// @return true if the project is compiled as Release
-constexpr bool IsReleaseBuild() {
-#if defined(DBG)
-  return false;
-#else
-  return true;
-#endif
-}

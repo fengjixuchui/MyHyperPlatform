@@ -18,12 +18,10 @@ extern "C"
 {
 DRIVER_INITIALIZE DriverEntry;
 static DRIVER_UNLOAD DriverpDriverUnload;
-_IRQL_requires_max_(PASSIVE_LEVEL) bool DriverpIsSuppoetedOS();
 
 #if defined(ALLOC_PRAGMA)
 #pragma alloc_text(INIT, DriverEntry)
 #pragma alloc_text(PAGE, DriverpDriverUnload)
-#pragma alloc_text(INIT, DriverpIsSuppoetedOS)
 #endif
 
 
@@ -37,18 +35,13 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
     driver_object->DriverUnload = DriverpDriverUnload;
     
     bool need_reinitialization = false;
-    static const wchar_t kLogFilePath[] = L"\\SystemRoot\\HyperPlatform.log";
-    static const ULONG kLogLevel = (IsReleaseBuild()) ? kLogPutLevelInfo | kLogOptDisableFunctionName : kLogPutLevelDebug | kLogOptDisableFunctionName;
-    NTSTATUS status = LogInitialization(kLogLevel, kLogFilePath);// Initialize log functions
+
+    static const ULONG kLogLevel = kLogPutLevelDebug | kLogOptDisableFunctionName;//kLogPutLevelInfo
+    NTSTATUS status = LogInitialization(kLogLevel, L"\\SystemRoot\\vt.log");// Initialize log functions
     if (status == STATUS_REINITIALIZATION_NEEDED) {
         need_reinitialization = true;
     } else if (!NT_SUCCESS(status)) {
         return status;
-    }
-    
-    if (!DriverpIsSuppoetedOS()) {// Test if the system is supported
-        LogTermination();
-        return STATUS_CANCELLED;
     }
     
     status = PerfInitialization();// Initialize perf functions
@@ -95,7 +88,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
         LogRegisterReinitialization(driver_object);
     }
 
-    HYPERPLATFORM_LOG_INFO("The VMM has been installed.");
     return status;
 }
 
@@ -111,25 +103,6 @@ _Use_decl_annotations_ static void DriverpDriverUnload(PDRIVER_OBJECT driver_obj
     UtilTermination();
     PerfTermination();
     LogTermination();
-}
-
-
-_Use_decl_annotations_ bool DriverpIsSuppoetedOS()
-// Test if the system is one of supported OS versions
-{
-    PAGED_CODE();
-
-    RTL_OSVERSIONINFOW os_version = {};
-    NTSTATUS status = RtlGetVersion(&os_version);
-    if (!NT_SUCCESS(status)) {
-        return false;
-    }
-
-    if (os_version.dwMajorVersion != 6 && os_version.dwMajorVersion != 10) {
-        return false;
-    }
-    
-    return true;
 }
 
 }  // extern "C"

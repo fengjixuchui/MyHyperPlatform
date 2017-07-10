@@ -68,7 +68,6 @@ static bool LogpIsPrinted(_In_z_ char *message);
 #pragma alloc_text(PAGE, LogpInitializeLogFile)
 #pragma alloc_text(INIT, LogRegisterReinitialization)
 #pragma alloc_text(PAGE, LogpReinitializationRoutine)
-#pragma alloc_text(PAGE, LogIrpShutdownHandler)
 #pragma alloc_text(PAGE, LogTermination)
 #pragma alloc_text(PAGE, LogpFinalizeBufferInfo)
 #pragma alloc_text(PAGE, LogpBufferFlushThreadRoutine)
@@ -231,24 +230,6 @@ _Use_decl_annotations_ VOID static LogpReinitializationRoutine(_DRIVER_OBJECT *d
     NT_ASSERT(NT_SUCCESS(status));
     if (NT_SUCCESS(status)) {
         HYPERPLATFORM_LOG_INFO("The log file has been activated.");
-    }
-}
-
-
-_Use_decl_annotations_ void LogIrpShutdownHandler() 
-// Terminates the log functions without releasing resources.
-{
-    PAGED_CODE();
-
-    HYPERPLATFORM_LOG_DEBUG("Flushing... (Max log usage = %Iu/%lu bytes)", g_logp_log_buffer_info.log_max_usage, kLogpBufferSize);
-    HYPERPLATFORM_LOG_INFO("Bye!");
-    g_logp_debug_flag = kLogPutLevelDisable;
-
-    // Wait until the log buffer is emptied.
-    LogBufferInfo &info = g_logp_log_buffer_info;
-    while (info.log_buffer_head[0])
-    {
-        LogpSleep(kLogpLogFlushIntervalMsec);
     }
 }
 
@@ -510,10 +491,7 @@ _Use_decl_annotations_ static NTSTATUS LogpFlushLogBuffer(LogBufferInfo *info)
 
         size_t current_log_entry_length = strlen(current_log_entry);
         status = ZwWriteFile(info->log_file_handle, nullptr, nullptr, nullptr, &io_status, current_log_entry, static_cast<ULONG>(current_log_entry_length), nullptr, nullptr);
-        if (!NT_SUCCESS(status)) {
-            // It could happen when you did not register IRP_SHUTDOWN and call LogIrpShutdownHandler() and the system tried to log to a file after a file system was unmounted.
-            __debugbreak();
-        }
+        ASSERT (NT_SUCCESS(status));
         
         if (!printed_out) {// Print it out if requested and the message is not already printed out
             LogpDoDbgPrint(current_log_entry);
@@ -535,10 +513,7 @@ _Use_decl_annotations_ static NTSTATUS LogpWriteMessageToFile(const char *messag
 
     IO_STATUS_BLOCK io_status = {};
     NTSTATUS status = ZwWriteFile(info.log_file_handle, nullptr, nullptr, nullptr, &io_status, const_cast<char *>(message), static_cast<ULONG>(strlen(message)), nullptr, nullptr);
-    if (!NT_SUCCESS(status)) {
-        // It could happen when you did not register IRP_SHUTDOWN and call LogIrpShutdownHandler() and the system tried to log to a file after a file system was unmounted.
-        __debugbreak();
-    }
+    ASSERT (NT_SUCCESS(status));
     status = ZwFlushBuffersFile(info.log_file_handle, &io_status);
     return status;
 }

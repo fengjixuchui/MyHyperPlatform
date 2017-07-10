@@ -36,8 +36,7 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
     
     bool need_reinitialization = false;
 
-    static const ULONG kLogLevel = kLogPutLevelDebug | kLogOptDisableFunctionName;//kLogPutLevelInfo
-    NTSTATUS status = LogInitialization(kLogLevel, L"\\SystemRoot\\vt.log");// Initialize log functions
+    NTSTATUS status = LogInitialization(kLogPutLevelDebug | kLogOptDisableFunctionName, L"\\SystemRoot\\vt.log");// Initialize log functions
     if (status == STATUS_REINITIALIZATION_NEEDED) {
         need_reinitialization = true;
     } else if (!NT_SUCCESS(status)) {

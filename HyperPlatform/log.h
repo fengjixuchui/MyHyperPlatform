@@ -22,18 +22,11 @@ extern "C"
 ///      working properly.
 ///  @li ERROR: info about issues may stop the program working properly.
 ///
-/// A message should not exceed 512 bytes after all string construction is
-/// done; otherwise this macro fails to log and returns non STATUS_SUCCESS.
+/// A message should not exceed 512 bytes after all string construction is done; otherwise this macro fails to log and returns non STATUS_SUCCESS.
 #define HYPERPLATFORM_LOG_DEBUG(format, ...)   LogpPrint(kLogpLevelDebug, __FUNCTION__, (format), __VA_ARGS__)
-
-/// @see HYPERPLATFORM_LOG_DEBUG
-#define HYPERPLATFORM_LOG_INFO(format, ...)   LogpPrint(kLogpLevelInfo, __FUNCTION__, (format), __VA_ARGS__)
-
-/// @see HYPERPLATFORM_LOG_DEBUG
-#define HYPERPLATFORM_LOG_WARN(format, ...)   LogpPrint(kLogpLevelWarn, __FUNCTION__, (format), __VA_ARGS__)
-
-/// @see HYPERPLATFORM_LOG_DEBUG
-#define HYPERPLATFORM_LOG_ERROR(format, ...)   LogpPrint(kLogpLevelError, __FUNCTION__, (format), __VA_ARGS__)
+#define HYPERPLATFORM_LOG_INFO(format, ...)   LogpPrint(kLogpLevelInfo, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG
+#define HYPERPLATFORM_LOG_WARN(format, ...)   LogpPrint(kLogpLevelWarn, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG
+#define HYPERPLATFORM_LOG_ERROR(format, ...)   LogpPrint(kLogpLevelError, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG
 
 /// Buffers a message as respective severity
 /// @param format   A format string
@@ -42,20 +35,12 @@ extern "C"
 /// Buffers the log to buffer and neither calls DbgPrint() nor writes to a file.
 /// It is strongly recommended to use it when a status of a system is not expectable in order to avoid system instability.
 /// @see HYPERPLATFORM_LOG_DEBUG
-#define HYPERPLATFORM_LOG_DEBUG_SAFE(format, ...)                          LogpPrint(kLogpLevelDebug | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)
+#define HYPERPLATFORM_LOG_DEBUG_SAFE(format, ...) LogpPrint(kLogpLevelDebug | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)
+#define HYPERPLATFORM_LOG_INFO_SAFE(format, ...)  LogpPrint(kLogpLevelInfo | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
+#define HYPERPLATFORM_LOG_WARN_SAFE(format, ...)  LogpPrint(kLogpLevelWarn | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
+#define HYPERPLATFORM_LOG_ERROR_SAFE(format, ...) LogpPrint(kLogpLevelError | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
 
-/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
-#define HYPERPLATFORM_LOG_INFO_SAFE(format, ...)                          LogpPrint(kLogpLevelInfo | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)
-
-/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
-#define HYPERPLATFORM_LOG_WARN_SAFE(format, ...)                          LogpPrint(kLogpLevelWarn | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)
-
-/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
-#define HYPERPLATFORM_LOG_ERROR_SAFE(format, ...)                          LogpPrint(kLogpLevelError | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)
-
-
-/// Save this log to buffer and not try to write to a log file.
-static const auto kLogpLevelOptSafe = 0x1ul;
+static const auto kLogpLevelOptSafe = 0x1ul;/// Save this log to buffer and not try to write to a log file.
 
 static const auto kLogpLevelDebug = 0x10ul;  //!< Bit mask for DEBUG level logs
 static const auto kLogpLevelInfo = 0x20ul;   //!< Bit mask for INFO level logs
@@ -91,7 +76,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS LogInitialization(_In_ ULONG flag, _
 /// STATUS_REINITIALIZATION_NEEDED. If this function is called, DriverEntry() must return STATUS_SUCCESS.
 _IRQL_requires_max_(PASSIVE_LEVEL) void LogRegisterReinitialization(_In_ PDRIVER_OBJECT driver_object);
 
-_IRQL_requires_max_(PASSIVE_LEVEL) void LogIrpShutdownHandler();/// Terminates the log system. Should be called from an IRP_MJ_SHUTDOWN handler.
 _IRQL_requires_max_(PASSIVE_LEVEL) void LogTermination();/// Terminates the log system. Should be called from a DriverUnload routine.
 
 /// Logs a message; use HYPERPLATFORM_LOG_*() macros instead.

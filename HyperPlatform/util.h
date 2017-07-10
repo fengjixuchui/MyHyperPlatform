@@ -54,11 +54,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS UtilInitialization(_In_ PDRIVER_OBJE
 /// Frees all resources allocated for the sake of the Util functions
 _IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();
 
-/// Returns a module base address of \a address
-/// @param address An address to get a base address
-/// @return A base address of a range \a address belongs to, or nullptr
-void *UtilPcToFileHeader(_In_ void *address);
-
 extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 
 /// Executes \a callback_routine on each processor
@@ -66,15 +61,6 @@ extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 /// @param context  An arbitrary parameter for \a callback_routine
 /// @return STATUS_SUCCESS when \a returned STATUS_SUCCESS on all processors
 _IRQL_requires_max_(APC_LEVEL) NTSTATUS UtilForEachProcessor(_In_ NTSTATUS (*callback_routine)(void *), _In_opt_ void *context);
-
-/// Queues \a deferred_routine on all processors
-/// @param deferred_routine   A DPC routine to be queued
-/// @param context  An arbitrary parameter for \a deferred_routine
-/// @return STATUS_SUCCESS when DPC was queued to all processors
-///
-/// \a deferred_routine must free the pointer to a DPC structure like this:
-/// ExFreePoolWithTag(dpc, TAG).
-_IRQL_requires_max_(DISPATCH_LEVEL) NTSTATUS UtilForEachProcessorDpc(_In_ PKDEFERRED_ROUTINE deferred_routine, _In_opt_ void *context);
 
 /// Searches a byte pattern from a given address range
 /// @param search_base  An address to start search
@@ -146,9 +132,7 @@ NTSTATUS UtilVmCall(_In_ HypercallNumber hypercall_number, _In_opt_ void *contex
 /// Debug prints registers
 /// @param all_regs   Registers to print out
 /// @param stack_pointer  A stack pointer before calling this function
-void UtilDumpGpRegisters(_In_ const AllRegisters *all_regs, _In_ ULONG_PTR stack_pointer);
-
-/// Reads natural-width VMCS
+void UtilDumpGpRegisters(_In_ const AllRegisters *all_regs, _In_ ULONG_PTR stack_pointer);/// Reads natural-width VMCS
 /// @param field  VMCS-field to read
 /// @return read value
 ULONG_PTR UtilVmRead(_In_ VmcsField field);
@@ -178,10 +162,6 @@ VmxStatus UtilInveptGlobal();
 /// @return A result of the INVVPID instruction
 VmxStatus UtilInvvpidIndividualAddress(_In_ USHORT vpid, _In_ void *address);
 
-/// Executes the INVVPID instruction (type 1)
-/// @return A result of the INVVPID instruction
-VmxStatus UtilInvvpidSingleContext(_In_ USHORT vpid);
-
 /// Executes the INVVPID instruction (type 2)
 /// @return A result of the INVVPID instruction
 VmxStatus UtilInvvpidAllContext();
@@ -190,16 +170,6 @@ VmxStatus UtilInvvpidAllContext();
 /// @return A result of the INVVPID instruction
 VmxStatus UtilInvvpidSingleContextExceptGlobal(_In_ USHORT vpid);
 
-/// Loads the PDPTE registers from CR3 to VMCS
-/// @param cr3_value  CR3 value to retrieve PDPTEs
-void UtilLoadPdptes(_In_ ULONG_PTR cr3_value);
-
-/// Does RtlCopyMemory safely even if destination is a read only region
-/// @param destination  A destination address
-/// @param source  A source address
-/// @param length  A size to copy in bytes
-/// @return STATUS_SUCCESS if successful
-_IRQL_requires_max_(DISPATCH_LEVEL) NTSTATUS UtilForceCopyMemory(_In_ void *destination, _In_ const void *source, _In_ SIZE_T length);
 }  // extern "C"
 
 /// Tests if \a value is in between \a min and \a max

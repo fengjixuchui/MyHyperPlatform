@@ -243,14 +243,6 @@ _Use_decl_annotations_ static PVOID NTAPI UtilpUnsafePcToFileHeader(PVOID pc_val
 }
 
 
-_Use_decl_annotations_ void *UtilPcToFileHeader(void *pc_value) 
-// A wrapper of RtlPcToFileHeader
-{
-    void *base = nullptr;
-    return g_utilp_RtlPcToFileHeader(pc_value, &base);
-}
-
-
 _Use_decl_annotations_ static NTSTATUS UtilpInitializePhysicalMemoryRanges()
 // Initializes the physical memory ranges
 {
@@ -341,36 +333,6 @@ _Use_decl_annotations_ NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine
         if (!NT_SUCCESS(status)) {
             return status;
         }
-    }
-
-    return STATUS_SUCCESS;
-}
-
-
-_Use_decl_annotations_ NTSTATUS UtilForEachProcessorDpc(PKDEFERRED_ROUTINE deferred_routine, void *context)
-// Queues a given DPC routine on all processors. Returns STATUS_SUCCESS when DPC is queued for all processors.
-{
-    ULONG number_of_processors = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
-    for (ULONG processor_index = 0; processor_index < number_of_processors; processor_index++)
-    {
-        PROCESSOR_NUMBER processor_number = {};
-        NTSTATUS status = KeGetProcessorNumberFromIndex(processor_index, &processor_number);
-        if (!NT_SUCCESS(status)) {
-            return status;
-        }
-
-        PRKDPC dpc = reinterpret_cast<PRKDPC>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(KDPC), TAG));
-        if (!dpc) {
-            return STATUS_MEMORY_NOT_ALLOCATED;
-        }
-        KeInitializeDpc(dpc, deferred_routine, context);
-        KeSetImportanceDpc(dpc, HighImportance);
-        status = KeSetTargetProcessorDpcEx(dpc, &processor_number);
-        if (!NT_SUCCESS(status)) {
-            ExFreePoolWithTag(dpc, TAG);
-            return status;
-        }
-        KeInsertQueueDpc(dpc, nullptr, nullptr);
     }
 
     return STATUS_SUCCESS;
@@ -471,8 +433,8 @@ _Use_decl_annotations_ void UtilFreeContiguousMemory(void *base_address)
 }
 
 
-// Executes VMCALL
 _Use_decl_annotations_ NTSTATUS UtilVmCall(HypercallNumber hypercall_number, void *context)
+// Executes VMCALL
 {
     __try {
         VmxStatus vmx_status = static_cast<VmxStatus>(AsmVmxCall(static_cast<ULONG>(hypercall_number), context));
@@ -545,21 +507,14 @@ VmxStatus UtilInveptGlobal()
     return static_cast<VmxStatus>(AsmInvept(InvEptType::kGlobalInvalidation, &desc));
 }
 
-// Executes the INVVPID instruction (type 0)
+
 _Use_decl_annotations_ VmxStatus UtilInvvpidIndividualAddress(USHORT vpid, void *address)
+// Executes the INVVPID instruction (type 0)
 {
     InvVpidDescriptor desc = {};
     desc.vpid = vpid;
     desc.linear_address = reinterpret_cast<ULONG64>(address);
     return static_cast<VmxStatus>(AsmInvvpid(InvVpidType::kIndividualAddressInvalidation, &desc));
-}
-
-// Executes the INVVPID instruction (type 1)
-_Use_decl_annotations_ VmxStatus UtilInvvpidSingleContext(USHORT vpid)
-{
-    InvVpidDescriptor desc = {};
-    desc.vpid = vpid;
-    return static_cast<VmxStatus>(AsmInvvpid(InvVpidType::kSingleContextInvalidation, &desc));
 }
 
 
@@ -577,65 +532,6 @@ _Use_decl_annotations_ VmxStatus UtilInvvpidSingleContextExceptGlobal(USHORT vpi
     InvVpidDescriptor desc = {};
     desc.vpid = vpid;
     return static_cast<VmxStatus>(AsmInvvpid(InvVpidType::kSingleContextInvalidationExceptGlobal, &desc));
-}
-
-
-_Use_decl_annotations_ void UtilLoadPdptes(ULONG_PTR cr3_value)
-// Loads the PDPTE registers from CR3 to VMCS
-{
-    SIZE_T current_cr3 = __readcr3();
-
-    __writecr3(cr3_value);// Have to load cr3 to make UtilPfnFromVa() work properly.
-
-    // Gets PDPTEs form CR3
-    PdptrRegister pd_pointers[4] = {};
-    for (int i = 0ul; i < 4; ++i)
-    {
-        SIZE_T pd_addr = g_utilp_pde_base + i * PAGE_SIZE;
-        pd_pointers[i].fields.present = true;
-        pd_pointers[i].fields.page_directory_pa = UtilPfnFromVa(reinterpret_cast<void *>(pd_addr));
-    }
-
-    __writecr3(current_cr3);
-    UtilVmWrite64(VmcsField::kGuestPdptr0, pd_pointers[0].all);
-    UtilVmWrite64(VmcsField::kGuestPdptr1, pd_pointers[1].all);
-    UtilVmWrite64(VmcsField::kGuestPdptr2, pd_pointers[2].all);
-    UtilVmWrite64(VmcsField::kGuestPdptr3, pd_pointers[3].all);
-}
-
-
-_Use_decl_annotations_ NTSTATUS UtilForceCopyMemory(void *destination, const void *source, SIZE_T length)
-// Does RtlCopyMemory safely even if destination is a read only region
-{
-    PMDL mdl = IoAllocateMdl(destination, static_cast<ULONG>(length), FALSE, FALSE, nullptr);
-    if (!mdl) {
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
-    MmBuildMdlForNonPagedPool(mdl);
-
-#pragma warning(push)
-#pragma warning(disable : 28145)
-    // Following MmMapLockedPagesSpecifyCache() call causes bug check in case you are using Driver Verifier. The reason is explained as followings:
-    //
-    // A driver must not try to create more than one system-address-space mapping for an MDL. 
-    // Additionally, because an MDL that is built by the MmBuildMdlForNonPagedPool routine is already mapped to the system
-    // address space, a driver must not try to map this MDL into the system address space again by using the MmMapLockedPagesSpecifyCache routine.
-    // -- MSDN
-    //
-    // This flag modification hacks Driver Verifier's check and prevent leading bug check.
-    mdl->MdlFlags &= ~MDL_SOURCE_IS_NONPAGED_POOL;
-    mdl->MdlFlags |= MDL_PAGES_LOCKED;
-#pragma warning(pop)
-
-    PVOID writable_dest = MmMapLockedPagesSpecifyCache(mdl, KernelMode, MmCached, nullptr, FALSE, NormalPagePriority | MdlMappingNoExecute);
-    if (!writable_dest) {
-        IoFreeMdl(mdl);
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
-    RtlCopyMemory(writable_dest, source, length);
-    MmUnmapLockedPages(writable_dest, mdl);
-    IoFreeMdl(mdl);
-    return STATUS_SUCCESS;
 }
 
 }  // extern "C"

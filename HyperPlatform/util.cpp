@@ -12,10 +12,6 @@
 
 extern "C"
 {
-// Use RtlPcToFileHeader if available.
-// Using the API causes a broken font bug on the 64 bit Windows 10 and should be avoided. This flag exist for only further investigation.
-static const auto kUtilpUseRtlPcToFileHeader = false;
-
 NTKERNELAPI PVOID NTAPI RtlPcToFileHeader(_In_ PVOID PcValue, _Out_ PVOID *BaseOfImage);
 
 using RtlPcToFileHeaderType = decltype(RtlPcToFileHeader);
@@ -42,60 +38,30 @@ struct LdrDataTableEntry {
   // ...
 };
 
-_IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS UtilpInitializePageTableVariables();
-_IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS UtilpInitializeRtlPcToFileHeader(_In_ PDRIVER_OBJECT driver_object);
-_Success_(return != nullptr) static PVOID NTAPI UtilpUnsafePcToFileHeader(_In_ PVOID pc_value, _Out_ PVOID *base_of_image);
 _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS UtilpInitializePhysicalMemoryRanges();
 _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPhysicalMemoryRanges();
 
 #if defined(ALLOC_PRAGMA)
 #pragma alloc_text(INIT, UtilInitialization)
 #pragma alloc_text(PAGE, UtilTermination)
-#pragma alloc_text(INIT, UtilpInitializePageTableVariables)
-#pragma alloc_text(INIT, UtilpInitializeRtlPcToFileHeader)
 #pragma alloc_text(INIT, UtilpInitializePhysicalMemoryRanges)
 #pragma alloc_text(INIT, UtilpBuildPhysicalMemoryRanges)
 #pragma alloc_text(PAGE, UtilForEachProcessor)
 #pragma alloc_text(PAGE, GetSystemProcAddress)
 #endif
 
-static RtlPcToFileHeaderType *g_utilp_RtlPcToFileHeader;
-static LIST_ENTRY *g_utilp_PsLoadedModuleList;
 PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 static MmAllocateContiguousNodeMemoryType *g_MmAllocateContiguousNodeMemory;
-
-static ULONG_PTR g_utilp_pxe_base = 0;
-static ULONG_PTR g_utilp_ppe_base = 0;
-static ULONG_PTR g_utilp_pde_base = 0;
-static ULONG_PTR g_utilp_pte_base = 0;
-
-static ULONG_PTR g_utilp_pxi_shift = 0;
-static ULONG_PTR g_utilp_ppi_shift = 0;
-static ULONG_PTR g_utilp_pdi_shift = 0;
-static ULONG_PTR g_utilp_pti_shift = 0;
-
-static ULONG_PTR g_utilp_pxi_mask = 0;
-static ULONG_PTR g_utilp_ppi_mask = 0;
-static ULONG_PTR g_utilp_pdi_mask = 0;
-static ULONG_PTR g_utilp_pti_mask = 0;
 
 
 _Use_decl_annotations_ NTSTATUS UtilInitialization(PDRIVER_OBJECT driver_object)
 // Initializes utility functions
 {
+    UNREFERENCED_PARAMETER(driver_object);
+
     PAGED_CODE();
 
-    NTSTATUS status = UtilpInitializePageTableVariables();
-    if (!NT_SUCCESS(status)) {
-        return status;
-    }
-
-    status = UtilpInitializeRtlPcToFileHeader(driver_object);
-    if (!NT_SUCCESS(status)) {
-        return status;
-    }
-
-    status = UtilpInitializePhysicalMemoryRanges();
+    NTSTATUS status = UtilpInitializePhysicalMemoryRanges();
     if (!NT_SUCCESS(status)) {
         return status;
     }
@@ -115,131 +81,6 @@ _Use_decl_annotations_ void UtilTermination()
     if (g_utilp_physical_memory_ranges) {
         ExFreePoolWithTag(g_utilp_physical_memory_ranges, TAG);
     }
-}
-
-
-_Use_decl_annotations_ static NTSTATUS UtilpInitializePageTableVariables()
-// Initializes g_utilp_p*e_base, g_utilp_p*i_shift and g_utilp_p*i_mask.
-{
-    PAGED_CODE();
-
-#include "util_page_constants.h"  // Include platform dependent constants
-
-    // Check OS version to know if page table base addresses need to be relocated
-    RTL_OSVERSIONINFOW os_version = { sizeof(os_version) };
-    NTSTATUS status = RtlGetVersion(&os_version);
-    if (!NT_SUCCESS(status)) {
-        return status;
-    }
-
-    // Win 10 build 14316 is the first version implements randomized page tables
-    // Use fixed values if a systems is either: x86, older than Windows 7, or older than build 14316.
-    if (os_version.dwMajorVersion < 10 || os_version.dwBuildNumber < 14316)
-    {
-        g_utilp_pxe_base = kUtilpPxeBase;
-        g_utilp_ppe_base = kUtilpPpeBase;
-        g_utilp_pxi_shift = kUtilpPxiShift;
-        g_utilp_ppi_shift = kUtilpPpiShift;
-        g_utilp_pxi_mask = kUtilpPxiMask;
-        g_utilp_ppi_mask = kUtilpPpiMask;
-
-        g_utilp_pde_base = kUtilpPdeBase;
-        g_utilp_pte_base = kUtilpPteBase;
-        g_utilp_pdi_shift = kUtilpPdiShift;
-        g_utilp_pti_shift = kUtilpPtiShift;
-        g_utilp_pdi_mask = kUtilpPdiMask;
-        g_utilp_pti_mask = kUtilpPtiMask;
-
-        return status;
-    }
-
-    // Get PTE_BASE from MmGetVirtualForPhysical
-    const auto p_MmGetVirtualForPhysical = GetSystemProcAddress(L"MmGetVirtualForPhysical");
-    if (!p_MmGetVirtualForPhysical) {
-        return STATUS_PROCEDURE_NOT_FOUND;
-    }
-
-    static const UCHAR kPatternWin10x64[] = {
-        0x48, 0x8b, 0x04, 0xd0,  // mov     rax, [rax+rdx*8]
-        0x48, 0xc1, 0xe0, 0x19,  // shl     rax, 19h
-        0x48, 0xba,              // mov     rdx, ????????`????????  ; PTE_BASE
-    };
-    ULONG_PTR found = reinterpret_cast<ULONG_PTR>(UtilMemMem(p_MmGetVirtualForPhysical, 0x30, kPatternWin10x64, sizeof(kPatternWin10x64)));
-    if (!found) {
-        return STATUS_PROCEDURE_NOT_FOUND;
-    }
-
-    found += sizeof(kPatternWin10x64);
-
-    ULONG_PTR pte_base = *reinterpret_cast<ULONG_PTR *>(found);
-    ULONG_PTR index = (pte_base >> kUtilpPxiShift) & kUtilpPxiMask;
-    ULONG_PTR pde_base = pte_base | (index << kUtilpPpiShift);
-    ULONG_PTR ppe_base = pde_base | (index << kUtilpPdiShift);
-    ULONG_PTR pxe_base = ppe_base | (index << kUtilpPtiShift);
-
-    g_utilp_pxe_base = static_cast<ULONG_PTR>(pxe_base);
-    g_utilp_ppe_base = static_cast<ULONG_PTR>(ppe_base);
-    g_utilp_pde_base = static_cast<ULONG_PTR>(pde_base);
-    g_utilp_pte_base = static_cast<ULONG_PTR>(pte_base);
-
-    g_utilp_pxi_shift = kUtilpPxiShift;
-    g_utilp_ppi_shift = kUtilpPpiShift;
-    g_utilp_pdi_shift = kUtilpPdiShift;
-    g_utilp_pti_shift = kUtilpPtiShift;
-
-    g_utilp_pxi_mask = kUtilpPxiMask;
-    g_utilp_ppi_mask = kUtilpPpiMask;
-    g_utilp_pdi_mask = kUtilpPdiMask;
-    g_utilp_pti_mask = kUtilpPtiMask;
-
-    return status;
-}
-
-
-_Use_decl_annotations_ static NTSTATUS UtilpInitializeRtlPcToFileHeader(PDRIVER_OBJECT driver_object)
-// Locates RtlPcToFileHeader
-{
-    PAGED_CODE();
-
-    if (kUtilpUseRtlPcToFileHeader) {
-        const auto p_RtlPcToFileHeader = GetSystemProcAddress(L"RtlPcToFileHeader");
-        if (p_RtlPcToFileHeader) {
-            g_utilp_RtlPcToFileHeader = reinterpret_cast<RtlPcToFileHeaderType *>(p_RtlPcToFileHeader);
-            return STATUS_SUCCESS;
-        }
-    }
-
-#pragma warning(push)
-#pragma warning(disable : 28175)
-    LdrDataTableEntry * module = reinterpret_cast<LdrDataTableEntry *>(driver_object->DriverSection);
-#pragma warning(pop)
-
-    g_utilp_PsLoadedModuleList = module->in_load_order_links.Flink;
-    g_utilp_RtlPcToFileHeader = UtilpUnsafePcToFileHeader;
-    return STATUS_SUCCESS;
-}
-
-
-_Use_decl_annotations_ static PVOID NTAPI UtilpUnsafePcToFileHeader(PVOID pc_value, PVOID *base_of_image) 
-// A fake RtlPcToFileHeader without acquiring PsLoadedModuleSpinLock.
-// Thus, it is unsafe and should be updated if we can locate PsLoadedModuleSpinLock.
-{
-    if (pc_value < MmSystemRangeStart) {
-        return nullptr;
-    }
-
-    LIST_ENTRY * head = g_utilp_PsLoadedModuleList;
-    for (PLIST_ENTRY current = head->Flink; current != head; current = current->Flink)
-    {
-        LdrDataTableEntry * module = CONTAINING_RECORD(current, LdrDataTableEntry, in_load_order_links);
-        void * driver_end = reinterpret_cast<void *>(reinterpret_cast<ULONG_PTR>(module->dll_base) + module->size_of_image);
-        if (UtilIsInBounds(pc_value, module->dll_base, driver_end)) {
-            *base_of_image = module->dll_base;
-            return module->dll_base;
-        }
-    }
-
-    return nullptr;
 }
 
 
@@ -422,7 +263,7 @@ _Use_decl_annotations_ void * AllocateContiguousMemory(SIZE_T number_of_bytes)
     // Allocate NX physical memory
     PHYSICAL_ADDRESS lowest_acceptable_address = {};
     PHYSICAL_ADDRESS boundary_address_multiple = {};
-    return g_MmAllocateContiguousNodeMemory(number_of_bytes, lowest_acceptable_address, highest_acceptable_address, boundary_address_multiple, PAGE_READWRITE, MM_ANY_NODE_OK);
+    return MmAllocateContiguousNodeMemory(number_of_bytes, lowest_acceptable_address, highest_acceptable_address, boundary_address_multiple, PAGE_READWRITE, MM_ANY_NODE_OK);//×¢Òâ°æ±¾¡£
 }
 
 

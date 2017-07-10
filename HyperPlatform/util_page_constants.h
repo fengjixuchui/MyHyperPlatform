@@ -57,12 +57,6 @@
 //
 // a = Sign extension, b = PML4, c = PDPT, d = PD, e = PT, f = Offset
 
-// Base addresses of page structures. Use !pte to obtain them.
-static auto kUtilpPxeBase = 0xfffff6fb7dbed000ull;
-static auto kUtilpPpeBase = 0xfffff6fb7da00000ull;
-static auto kUtilpPdeBase = 0xfffff6fb40000000ull;
-static auto kUtilpPteBase = 0xfffff68000000000ull;
-
 static const auto kUtilpPxiShift = 39ull;// Get the highest 25 bits
 static const auto kUtilpPpiShift = 30ull;// Get the highest 34 bits
 static const auto kUtilpPdiShift = 21ull;// Get the highest 43 bits

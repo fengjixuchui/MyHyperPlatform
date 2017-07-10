@@ -8,7 +8,9 @@
 
 #include "ia32_type.h"
 
-extern "C" {
+extern "C"
+{
+
 /// Represents ranges of addresses
 struct PhysicalMemoryRun {
   ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)
@@ -25,7 +27,6 @@ struct PhysicalMemoryDescriptor {
 static_assert(sizeof(PhysicalMemoryDescriptor) == 0x20, "Size check");
 
 /// Indicates a result of VMX-instructions
-///
 /// This convention was taken from the VMX-intrinsic functions by Microsoft.
 enum class VmxStatus : unsigned __int8 {
   kOk = 0,                  //!< Operation succeeded
@@ -34,8 +35,9 @@ enum class VmxStatus : unsigned __int8 {
 };
 
 /// Provides |= operator for VmxStatus
-constexpr VmxStatus operator|=(_In_ VmxStatus lhs, _In_ VmxStatus rhs) {
-  return static_cast<VmxStatus>(static_cast<unsigned __int8>(lhs) | static_cast<unsigned __int8>(rhs));
+constexpr VmxStatus operator|=(_In_ VmxStatus lhs, _In_ VmxStatus rhs)
+{
+    return static_cast<VmxStatus>(static_cast<unsigned __int8>(lhs) | static_cast<unsigned __int8>(rhs));
 }
 
 /// Available command numbers for VMCALL
@@ -46,13 +48,9 @@ enum class HypercallNumber : unsigned __int32 {
 };
 
 
-/// Makes the Util functions ready for use
-/// @param driver_object   The current driver's driver object
-/// @return STATUS_SUCCESS on success
-_IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS UtilInitialization(_In_ PDRIVER_OBJECT driver_object);
+NTSTATUS UtilpInitializePhysicalMemoryRanges();
 
-/// Frees all resources allocated for the sake of the Util functions
-_IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();
+_IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();/// Frees all resources allocated for the sake of the Util functions
 
 extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 
@@ -67,8 +65,7 @@ _IRQL_requires_max_(APC_LEVEL) NTSTATUS UtilForEachProcessor(_In_ NTSTATUS (*cal
 /// @param search_size  A length to search in bytes
 /// @param pattern  A byte pattern to search
 /// @param pattern_size   A size of \a pattern
-/// @return An address of the first occurrence of the patten if found, or
-/// nullptr
+/// @return An address of the first occurrence of the patten if found, or nullptr
 void *UtilMemMem(_In_ const void *search_base, _In_ SIZE_T search_size, _In_ const void *pattern, _In_ SIZE_T pattern_size);
 
 /// Get an address of an exported symbol by the kernel or HAL
@@ -79,7 +76,6 @@ void * GetSystemProcAddress(_In_ const wchar_t *proc_name);
 /// VA -> PA
 /// @param va   A virtual address to get its physical address
 /// @return A physical address of \a va, or nullptr
-///
 /// @warning
 /// It cannot be used for a virtual address managed by a prototype PTE.
 ULONG64 UtilPaFromVa(_In_ void *va);
@@ -87,7 +83,6 @@ ULONG64 UtilPaFromVa(_In_ void *va);
 /// VA -> PFN
 /// @param va   A virtual address to get its physical address
 /// @return A page frame number of \a va, or 0
-///
 /// @warning
 /// It cannot be used for a virtual address managed by a prototype PTE.
 PFN_NUMBER UtilPfnFromVa(_In_ void *va);
@@ -115,7 +110,6 @@ void *UtilVaFromPfn(_In_ PFN_NUMBER pfn);
 /// Allocates continuous physical memory
 /// @param number_of_bytes  A size to allocate
 /// @return A base address of an allocated memory or nullptr
-///
 /// A returned value must be freed with UtilFreeContiguousMemory().
 _Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) void *AllocateContiguousMemory(_In_ SIZE_T number_of_bytes);
 

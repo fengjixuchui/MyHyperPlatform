@@ -38,11 +38,10 @@ struct LdrDataTableEntry {
   // ...
 };
 
-_IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS UtilpInitializePhysicalMemoryRanges();
+NTSTATUS UtilpInitializePhysicalMemoryRanges();
 _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPhysicalMemoryRanges();
 
 #if defined(ALLOC_PRAGMA)
-#pragma alloc_text(INIT, UtilInitialization)
 #pragma alloc_text(PAGE, UtilTermination)
 #pragma alloc_text(INIT, UtilpInitializePhysicalMemoryRanges)
 #pragma alloc_text(INIT, UtilpBuildPhysicalMemoryRanges)
@@ -51,26 +50,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPh
 #endif
 
 PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
-static MmAllocateContiguousNodeMemoryType *g_MmAllocateContiguousNodeMemory;
-
-
-_Use_decl_annotations_ NTSTATUS UtilInitialization(PDRIVER_OBJECT driver_object)
-// Initializes utility functions
-{
-    UNREFERENCED_PARAMETER(driver_object);
-
-    PAGED_CODE();
-
-    NTSTATUS status = UtilpInitializePhysicalMemoryRanges();
-    if (!NT_SUCCESS(status)) {
-        return status;
-    }
-
-    g_MmAllocateContiguousNodeMemory = reinterpret_cast<MmAllocateContiguousNodeMemoryType *>(GetSystemProcAddress(L"MmAllocateContiguousNodeMemory"));
-    ASSERT(g_MmAllocateContiguousNodeMemory);//win8“‘«∞”√MmAllocateContiguousMemory
-
-    return status;
-}
 
 
 _Use_decl_annotations_ void UtilTermination() 
@@ -84,7 +63,7 @@ _Use_decl_annotations_ void UtilTermination()
 }
 
 
-_Use_decl_annotations_ static NTSTATUS UtilpInitializePhysicalMemoryRanges()
+NTSTATUS UtilpInitializePhysicalMemoryRanges()
 // Initializes the physical memory ranges
 {
     PAGED_CODE();

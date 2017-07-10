@@ -16,10 +16,8 @@
 /// the DriverEntry() function where is an entry point of HyperPlatform, and the VmmVmExitHandler() function, a high-level entry point of VM-exit handlers.
 ///
 /// @subsection links External Document
-/// This document often refers to the Intel 64 and IA-32 Architectures Software
-/// Developer Manuals (Intel SDM). Any descriptions like
-/// "See: CONTROL REGISTERS" implies that details are explained in a page or a
-/// table titled as "CONTROL REGISTERS" in the Intel SDM.
+/// This document often refers to the Intel 64 and IA-32 Architectures Software Developer Manuals (Intel SDM). Any descriptions like
+/// "See: CONTROL REGISTERS" implies that details are explained in a page or a table titled as "CONTROL REGISTERS" in the Intel SDM.
 /// @li
 /// http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html
 ///

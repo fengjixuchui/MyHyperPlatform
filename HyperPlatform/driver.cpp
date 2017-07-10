@@ -49,7 +49,7 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
         return status;
     }
     
-    status = UtilInitialization(driver_object);// Initialize utility functions
+    status = UtilpInitializePhysicalMemoryRanges();
     if (!NT_SUCCESS(status)) {
         PerfTermination();
         LogTermination();

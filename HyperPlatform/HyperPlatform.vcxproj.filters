@@ -83,9 +83,6 @@
     <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="util_page_constants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="hotplug_callback.h">
       <Filter>Header Files</Filter>
     </ClInclude>

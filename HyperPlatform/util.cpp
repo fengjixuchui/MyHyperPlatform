@@ -47,11 +47,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS UtilpInitializeRtlPcToFileHea
 _Success_(return != nullptr) static PVOID NTAPI UtilpUnsafePcToFileHeader(_In_ PVOID pc_value, _Out_ PVOID *base_of_image);
 _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS UtilpInitializePhysicalMemoryRanges();
 _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPhysicalMemoryRanges();
-static bool UtilpIsCanonicalFormAddress(_In_ void *address);
-static HardwarePte *UtilpAddressToPxe(_In_ const void *address);
-static HardwarePte *UtilpAddressToPpe(_In_ const void *address);
-static HardwarePte *UtilpAddressToPde(_In_ const void *address);
-static HardwarePte *UtilpAddressToPte(_In_ const void *address);
 
 #if defined(ALLOC_PRAGMA)
 #pragma alloc_text(INIT, UtilInitialization)
@@ -408,82 +403,6 @@ _Use_decl_annotations_ void *GetSystemProcAddress(const wchar_t *proc_name)
     UNICODE_STRING proc_name_U = {};
     RtlInitUnicodeString(&proc_name_U, proc_name);
     return MmGetSystemRoutineAddress(&proc_name_U);
-}
-
-
-_Use_decl_annotations_ bool UtilIsAccessibleAddress(void *address)
-// Return true if the given address is accessible.
-{
-    if (!UtilpIsCanonicalFormAddress(address)) {
-        return false;
-    }
-
-    HardwarePte * pxe = UtilpAddressToPxe(address);
-    HardwarePte * ppe = UtilpAddressToPpe(address);
-    if (!pxe->valid || !ppe->valid) {
-        return false;
-    }
-
-    HardwarePte * pde = UtilpAddressToPde(address);
-    HardwarePte * pte = UtilpAddressToPte(address);
-    if (!pde->valid) {
-        return false;
-    }
-    if (pde->large_page) {
-        return true;  // A large page is always memory resident
-    }
-    if (!pte || !pte->valid) {
-        return false;
-    }
-
-    return true;
-}
-
-
-_Use_decl_annotations_ static bool UtilpIsCanonicalFormAddress(void *address)
-// Checks whether the address is the canonical address
-{
-    return !UtilIsInBounds(0x0000800000000000ull, 0xffff7fffffffffffull, reinterpret_cast<ULONG64>(address));
-}
-
-
-_Use_decl_annotations_ static HardwarePte *UtilpAddressToPxe(const void *address)
-// Return an address of PXE
-{
-    ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
-    ULONG_PTR pxe_index = (addr >> g_utilp_pxi_shift) & g_utilp_pxi_mask;
-    ULONG_PTR offset = pxe_index * sizeof(HardwarePte);
-    return reinterpret_cast<HardwarePte *>(g_utilp_pxe_base + offset);
-}
-
-
-_Use_decl_annotations_ static HardwarePte *UtilpAddressToPpe(const void *address)
-// Return an address of PPE
-{
-    ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
-    ULONG_PTR ppe_index = (addr >> g_utilp_ppi_shift) & g_utilp_ppi_mask;
-    ULONG_PTR offset = ppe_index * sizeof(HardwarePte);
-    return reinterpret_cast<HardwarePte *>(g_utilp_ppe_base + offset);
-}
-
-
-_Use_decl_annotations_ static HardwarePte *UtilpAddressToPde(const void *address)
-// Return an address of PDE
-{
-    ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
-    ULONG_PTR pde_index = (addr >> g_utilp_pdi_shift) & g_utilp_pdi_mask;
-    ULONG_PTR offset = pde_index * sizeof(HardwarePte);
-    return reinterpret_cast<HardwarePte *>(g_utilp_pde_base + offset);
-}
-
-
-// Return an address of PTE
-_Use_decl_annotations_ static HardwarePte *UtilpAddressToPte(const void *address)
-{
-    ULONG_PTR addr = reinterpret_cast<ULONG_PTR>(address);
-    ULONG_PTR pte_index = (addr >> g_utilp_pti_shift) & g_utilp_pti_mask;
-    ULONG_PTR offset = pte_index * sizeof(HardwarePte);
-    return reinterpret_cast<HardwarePte *>(g_utilp_pte_base + offset);
 }
 
 

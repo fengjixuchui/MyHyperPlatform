@@ -90,11 +90,6 @@ void *UtilMemMem(_In_ const void *search_base, _In_ SIZE_T search_size, _In_ con
 /// @return An address of the symbol or nullptr
 void * GetSystemProcAddress(_In_ const wchar_t *proc_name);
 
-/// Checks is the address is present on physical memory
-/// @param address  A virtual address to test
-/// @return true if the \a address is present on physical memory
-bool UtilIsAccessibleAddress(_In_ void *address);
-
 /// VA -> PA
 /// @param va   A virtual address to get its physical address
 /// @return A physical address of \a va, or nullptr

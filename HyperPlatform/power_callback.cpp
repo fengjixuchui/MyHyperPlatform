@@ -67,23 +67,18 @@ _Use_decl_annotations_ static void PowerCallbackpCallbackRoutine(PVOID callback_
     UNREFERENCED_PARAMETER(callback_context);
     PAGED_CODE();
 
-    HYPERPLATFORM_LOG_DEBUG("PowerCallback %p:%p", argument1, argument2);
-
     if (argument1 != reinterpret_cast<void*>(PO_CB_SYSTEM_STATE_LOCK)) {
         return;
     }
 
-    KdBreakPoint();
-
     if (argument2) {// the computer has just reentered S0.
-        HYPERPLATFORM_LOG_INFO("Resuming the system...");
+        LOG_INFO("Resuming the system...");
         auto status = VmInitialization();
         if (!NT_SUCCESS(status)) {
-            HYPERPLATFORM_LOG_ERROR("Failed to re-virtualize processors. Please unload the driver.");
+            LOG_ERROR("Failed to re-virtualize processors. Please unload the driver.");
         }
-    }
-    else {// the computer is about to exit system power state S0
-        HYPERPLATFORM_LOG_INFO("Suspending the system...");
+    } else {// the computer is about to exit system power state S0
+        LOG_INFO("Suspending the system...");
         VmTermination();
     }
 }

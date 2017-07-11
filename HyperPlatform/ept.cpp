@@ -542,18 +542,15 @@ _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
 {
     const EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     ULONG64 fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
-    void * fault_va = reinterpret_cast<void *>(exit_qualification.fields.valid_guest_linear_address ? UtilVmRead(VmcsField::kGuestLinearAddress) : 0);
 
     if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
         KdBreakPoint();
-        HYPERPLATFORM_LOG_ERROR_SAFE("[UNK1] VA = %p, PA = %016llx", fault_va, fault_pa);
         return;
     }
 
     EptCommonEntry * ept_entry = EptGetEptPtEntry(ept_data, fault_pa);
     if (ept_entry && ept_entry->all) {
         KdBreakPoint();
-        HYPERPLATFORM_LOG_ERROR_SAFE("[UNK2] VA = %p, PA = %016llx", fault_va, fault_pa);
         return;
     }
 
@@ -641,8 +638,6 @@ _Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *
 _Use_decl_annotations_ void EptTermination(EptData *ept_data)
 // Frees all EPT stuff
 {
-    HYPERPLATFORM_LOG_DEBUG("Used pre-allocated entries  = %2d / %2d", ept_data->preallocated_entries_count, kEptpNumberOfPreallocatedEntries);
-
     EptpFreeUnusedPreAllocatedEntries(ept_data->preallocated_entries, ept_data->preallocated_entries_count);
     EptpDestructTables(ept_data->ept_pml4, 4);
     ExFreePoolWithTag(ept_data->ept_pointer, TAG);

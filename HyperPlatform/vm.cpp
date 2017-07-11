@@ -105,7 +105,7 @@ _Use_decl_annotations_ static bool VmpIsVmxAvailable()
     __cpuid(cpu_info, 1);
     const CpuFeaturesEcx cpu_features = { static_cast<ULONG_PTR>(cpu_info[2]) };
     if (!cpu_features.fields.vmx) {
-        HYPERPLATFORM_LOG_ERROR("VMX features are not supported.");
+        LOG_ERROR("VMX features are not supported.");
         return false;
     }
 
@@ -113,26 +113,26 @@ _Use_decl_annotations_ static bool VmpIsVmxAvailable()
     // The first processors to support VMX operation use the write-back type.
     const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     if (static_cast<memory_type>(vmx_basic_msr.fields.memory_type) != memory_type::kWriteBack) {
-        HYPERPLATFORM_LOG_ERROR("Write-back cache type is not supported.");
+        LOG_ERROR("Write-back cache type is not supported.");
         return false;
     }
 
     // See: ENABLING AND ENTERING VMX OPERATION
     Ia32FeatureControlMsr vmx_feature_control = { __readmsr(0x03A) };
     if (!vmx_feature_control.fields.lock) {
-        HYPERPLATFORM_LOG_INFO("The lock bit is clear. Attempting to set 1.");
+        LOG_INFO("The lock bit is clear. Attempting to set 1.");
         NTSTATUS status = UtilForEachProcessor(VmpSetLockBitCallback, nullptr);
         if (!NT_SUCCESS(status)) {
             return false;
         }
     }
     if (!vmx_feature_control.fields.enable_vmxon) {
-        HYPERPLATFORM_LOG_ERROR("VMX features are not enabled.");
+        LOG_ERROR("VMX features are not enabled.");
         return false;
     }
 
     if (!EptIsEptAvailable()) {
-        HYPERPLATFORM_LOG_ERROR("EPT features are not fully supported.");
+        LOG_ERROR("EPT features are not fully supported.");
         return false;
     }
 
@@ -154,7 +154,7 @@ _Use_decl_annotations_ static NTSTATUS VmpSetLockBitCallback(void *context)
     __writemsr(0x03A, vmx_feature_control.all);
     vmx_feature_control.all = __readmsr(0x03A);
     if (!vmx_feature_control.fields.lock) {
-        HYPERPLATFORM_LOG_ERROR("The lock bit is still clear.");
+        LOG_ERROR("The lock bit is still clear.");
         return STATUS_DEVICE_CONFIGURATION_ERROR;
     }
 
@@ -271,7 +271,7 @@ _Use_decl_annotations_ static NTSTATUS VmpStartVm(void *context)
     NT_ASSERT(VmpIsHyperPlatformInstalled() == ok);
     if (!ok) 
     {
-        HYPERPLATFORM_LOG_INFO("Initializing VMX for the processor %d fail.", KeGetCurrentProcessorNumberEx(nullptr));
+        LOG_INFO("Initializing VMX for the processor %d fail.", KeGetCurrentProcessorNumberEx(nullptr));
         return STATUS_UNSUCCESSFUL;
     }
 
@@ -611,7 +611,7 @@ _Use_decl_annotations_ static void VmpLaunchVm()
 
     ULONG_PTR error_code = UtilVmRead(VmcsField::kVmInstructionError);
     if (error_code) {
-        HYPERPLATFORM_LOG_WARN("VM_INSTRUCTION_ERROR = %Iu", error_code);
+        LOG_WARN("VM_INSTRUCTION_ERROR = %Iu", error_code);
     }
 
     VmxStatus vmx_status = static_cast<VmxStatus>(__vmx_vmlaunch());
@@ -619,10 +619,8 @@ _Use_decl_annotations_ static void VmpLaunchVm()
     // Here should not executed with successful vmlaunch. Instead, the context jumps to an address specified by GUEST_RIP.
     if (vmx_status == VmxStatus::kErrorWithStatus) {
         error_code = UtilVmRead(VmcsField::kVmInstructionError);
-        HYPERPLATFORM_LOG_ERROR("VM_INSTRUCTION_ERROR = %Iu", error_code);
+        LOG_ERROR("VM_INSTRUCTION_ERROR = %Iu", error_code);
     }
-
-    KdBreakPoint();
 }
 
 
@@ -721,13 +719,11 @@ _Use_decl_annotations_ void VmTermination()
 {
     PAGED_CODE();
 
-    HYPERPLATFORM_LOG_INFO("Uninstalling VMM.");
-
     NTSTATUS status = UtilForEachProcessor(VmpStopVm, nullptr);
     if (NT_SUCCESS(status)) {
-        HYPERPLATFORM_LOG_INFO("The VMM has been uninstalled.");
+        LOG_INFO("The VMM has been uninstalled.");
     } else {
-        HYPERPLATFORM_LOG_WARN("The VMM has not been uninstalled (%08x).", status);
+        LOG_WARN("The VMM has not been uninstalled (%08x).", status);
     }
 
     NT_ASSERT(!VmpIsHyperPlatformInstalled());
@@ -739,8 +735,6 @@ _Use_decl_annotations_ static NTSTATUS VmpStopVm(void *context)
 {
     UNREFERENCED_PARAMETER(context);
     PAGED_CODE();
-
-    HYPERPLATFORM_LOG_INFO("Terminating VMX for the processor %d.", KeGetCurrentProcessorNumberEx(nullptr));
     
     ProcessorData *processor_data = nullptr;
     NTSTATUS status = UtilVmCall(HypercallNumber::kTerminateVmm, &processor_data);// Stop virtualization and get an address of the management structure
@@ -797,7 +791,6 @@ _Use_decl_annotations_ static void VmpFreeSharedData(ProcessorData *processor_da
         return;
     }
 
-    HYPERPLATFORM_LOG_DEBUG("Freeing shared data...");
     if (processor_data->shared_data->io_bitmap_a) {
         ExFreePoolWithTag(processor_data->shared_data->io_bitmap_a, TAG);
     }
@@ -834,12 +827,9 @@ _Use_decl_annotations_ NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_n
     GROUP_AFFINITY affinity = {};
     GROUP_AFFINITY previous_affinity = {};
     KeSetSystemGroupAffinityThread(&affinity, &previous_affinity);
-
     SharedProcessorData *shared_data = nullptr;
     NTSTATUS status = UtilVmCall(HypercallNumber::kGetSharedProcessorData, &shared_data);
-
     KeSetSystemGroupAffinityThread(&affinity, &previous_affinity);
-
     if (!NT_SUCCESS(status)) {
         return status;
     }
@@ -851,9 +841,7 @@ _Use_decl_annotations_ NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_n
     affinity.Group = proc_num.Group;
     affinity.Mask = 1ull << proc_num.Number;
     KeSetSystemGroupAffinityThread(&affinity, &previous_affinity);
-
     status = VmpStartVm(shared_data);
-
     KeRevertToUserGroupAffinityThread(&previous_affinity);
     return status;
 }

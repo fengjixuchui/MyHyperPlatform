@@ -24,10 +24,9 @@ extern "C"
     ///  @li ERROR: info about issues may stop the program working properly.
     ///
     /// A message should not exceed 512 bytes after all string construction is done; otherwise this macro fails to log and returns non STATUS_SUCCESS.
-#define HYPERPLATFORM_LOG_DEBUG(format, ...)   LogpPrint(kLogpLevelDebug, __FUNCTION__, (format), __VA_ARGS__)
-#define HYPERPLATFORM_LOG_INFO(format, ...)   LogpPrint(kLogpLevelInfo, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG
-#define HYPERPLATFORM_LOG_WARN(format, ...)   LogpPrint(kLogpLevelWarn, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG
-#define HYPERPLATFORM_LOG_ERROR(format, ...)   LogpPrint(kLogpLevelError, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG
+#define LOG_INFO(format, ...)   LogpPrint(kLogpLevelInfo, __FUNCTION__, (format), __VA_ARGS__)
+#define LOG_WARN(format, ...)   LogpPrint(kLogpLevelWarn, __FUNCTION__, (format), __VA_ARGS__)
+#define LOG_ERROR(format, ...)  LogpPrint(kLogpLevelError, __FUNCTION__, (format), __VA_ARGS__)
 
 /// Buffers a message as respective severity
 /// @param format   A format string
@@ -35,11 +34,7 @@ extern "C"
 ///
 /// Buffers the log to buffer and neither calls DbgPrint() nor writes to a file.
 /// It is strongly recommended to use it when a status of a system is not expectable in order to avoid system instability.
-/// @see HYPERPLATFORM_LOG_DEBUG
-#define HYPERPLATFORM_LOG_DEBUG_SAFE(format, ...) LogpPrint(kLogpLevelDebug | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)
-#define HYPERPLATFORM_LOG_INFO_SAFE(format, ...)  LogpPrint(kLogpLevelInfo | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
-#define HYPERPLATFORM_LOG_WARN_SAFE(format, ...)  LogpPrint(kLogpLevelWarn | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
-#define HYPERPLATFORM_LOG_ERROR_SAFE(format, ...) LogpPrint(kLogpLevelError | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)/// @see HYPERPLATFORM_LOG_DEBUG_SAFE
+#define LOG_DEBUG_SAFE(format, ...) LogpPrint(kLogpLevelDebug | kLogpLevelOptSafe, __FUNCTION__, (format), __VA_ARGS__)
 
     static const auto kLogpLevelOptSafe = 0x1ul;/// Save this log to buffer and not try to write to a log file.
 
@@ -84,7 +79,6 @@ extern "C"
     /// @param function_name   A name of a function called this function
     /// @param format   A format string
     /// @return STATUS_SUCCESS on success
-    /// @see HYPERPLATFORM_LOG_DEBUG
-    /// @see HYPERPLATFORM_LOG_DEBUG_SAFE
+    /// @see LOG_DEBUG_SAFE
     NTSTATUS LogpPrint(_In_ ULONG level, _In_z_ const char *function_name, _In_z_ _Printf_format_string_ const char *format, ...);
 }

@@ -258,11 +258,9 @@ _Use_decl_annotations_ NTSTATUS UtilVmCall(HypercallNumber hypercall_number, voi
     __try {
         VmxStatus vmx_status = static_cast<VmxStatus>(AsmVmxCall(static_cast<ULONG>(hypercall_number), context));
         return (vmx_status == VmxStatus::kOk) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER) {
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
         NTSTATUS status = GetExceptionCode();
         KdBreakPoint();
-        HYPERPLATFORM_LOG_WARN_SAFE("Exception thrown (code %08x)", status);
         return status;
     }
 }

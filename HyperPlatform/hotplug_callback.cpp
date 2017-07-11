@@ -55,12 +55,9 @@ _Use_decl_annotations_ static void HotplugCallbackpCallbackRoutine(PVOID callbac
         return;
     }
 
-    HYPERPLATFORM_LOG_DEBUG("A new processor %hu:%hu has been added.", change_context->ProcNumber.Group, change_context->ProcNumber.Number);
-    KdBreakPoint();
-
     NTSTATUS status = VmHotplugCallback(change_context->ProcNumber);
     if (!NT_SUCCESS(status)) {
-        HYPERPLATFORM_LOG_ERROR("Failed to virtualize the new processors.");
+        LOG_ERROR("Failed to virtualize the new processors.");
     }
 }
 

@@ -21,22 +21,22 @@ static const auto kLogpBufferUsableSize = kLogpBufferSize - 1;// A size that is 
 static const auto kLogpLogFlushIntervalMsec = 50;// An interval to flush buffered log entries into a log file.
 
 struct LogBufferInfo {
-  volatile char *log_buffer_head;// A pointer to buffer currently used. It is either log_buffer1 or log_buffer2.
-  volatile char *log_buffer_tail;// A pointer to where the next log should be written.
+    volatile char *log_buffer_head;// A pointer to buffer currently used. It is either log_buffer1 or log_buffer2.
+    volatile char *log_buffer_tail;// A pointer to where the next log should be written.
 
-  char *log_buffer1;
-  char *log_buffer2;
-  
-  SIZE_T log_max_usage;// Holds the biggest buffer usage to determine a necessary buffer size.
+    char *log_buffer1;
+    char *log_buffer2;
 
-  HANDLE log_file_handle;
-  KSPIN_LOCK spin_lock;
-  ERESOURCE resource;
-  bool resource_initialized;
-  volatile bool buffer_flush_thread_should_be_alive;
-  volatile bool buffer_flush_thread_started;
-  HANDLE buffer_flush_thread_handle;
-  wchar_t log_file_path[200];
+    SIZE_T log_max_usage;// Holds the biggest buffer usage to determine a necessary buffer size.
+
+    HANDLE log_file_handle;
+    KSPIN_LOCK spin_lock;
+    ERESOURCE resource;
+    bool resource_initialized;
+    volatile bool buffer_flush_thread_should_be_alive;
+    volatile bool buffer_flush_thread_started;
+    HANDLE buffer_flush_thread_handle;
+    wchar_t log_file_path[200];
 };
 
 
@@ -145,10 +145,9 @@ _Use_decl_annotations_ static NTSTATUS LogpInitializeBufferInfo(const wchar_t *l
 
     status = LogpInitializeLogFile(info);
     if (status == STATUS_OBJECT_PATH_NOT_FOUND) {
-        HYPERPLATFORM_LOG_INFO("The log file needs to be activated later.");
+        LOG_INFO("The log file needs to be activated later.");
         status = STATUS_REINITIALIZATION_NEEDED;
-    }
-    else if (!NT_SUCCESS(status)) {
+    } else if (!NT_SUCCESS(status)) {
         LogpFinalizeBufferInfo(info);
     }
 
@@ -212,7 +211,7 @@ _Use_decl_annotations_ void LogRegisterReinitialization(PDRIVER_OBJECT driver_ob
 {
     PAGED_CODE();
     IoRegisterBootDriverReinitialization(driver_object, LogpReinitializationRoutine, &g_logp_log_buffer_info);
-    HYPERPLATFORM_LOG_INFO("The log file will be activated later.");
+    LOG_INFO("The log file will be activated later.");
 }
 
 
@@ -228,7 +227,7 @@ _Use_decl_annotations_ VOID static LogpReinitializationRoutine(_DRIVER_OBJECT *d
     NTSTATUS status = LogpInitializeLogFile(info);
     NT_ASSERT(NT_SUCCESS(status));
     if (NT_SUCCESS(status)) {
-        HYPERPLATFORM_LOG_INFO("The log file has been activated.");
+        LOG_INFO("The log file has been activated.");
     }
 }
 
@@ -238,8 +237,6 @@ _Use_decl_annotations_ void LogTermination()
 {
     PAGED_CODE();
 
-    HYPERPLATFORM_LOG_DEBUG("Finalizing... (Max log usage = %Iu/%lu bytes)", g_logp_log_buffer_info.log_max_usage, kLogpBufferSize);
-    HYPERPLATFORM_LOG_INFO("Bye!");
     g_logp_debug_flag = kLogPutLevelDisable;
     LogpFinalizeBufferInfo(&g_logp_log_buffer_info);
 }
@@ -307,8 +304,7 @@ _Use_decl_annotations_ NTSTATUS LogpPrint(ULONG level, const char *function_name
     ULONG pure_level = level & 0xf0;
     ULONG attribute = level & 0x0f;
 
-    // A single entry of log should not exceed 512 bytes. See
-    // Reading and Filtering Debugging Messages in MSDN for details.
+    // A single entry of log should not exceed 512 bytes. See Reading and Filtering Debugging Messages in MSDN for details.
     char message[512];
     static_assert(RTL_NUMBER_OF(message) <= 512, "One log message should not exceed 512 bytes.");
     status = LogpMakePrefix(pure_level, function_name, log_message, message, RTL_NUMBER_OF(message));
@@ -319,7 +315,6 @@ _Use_decl_annotations_ NTSTATUS LogpPrint(ULONG level, const char *function_name
 
     status = LogpPut(message, attribute);
     ASSERT(NT_SUCCESS(status));
-
     return status;
 }
 
@@ -352,10 +347,10 @@ _Use_decl_annotations_ static NTSTATUS LogpMakePrefix(ULONG level, const char *f
     if ((g_logp_debug_flag & kLogOptDisableTime) == 0) {
         TIME_FIELDS time_fields;
         LARGE_INTEGER system_time, local_time;
+
         KeQuerySystemTime(&system_time);// Want the current time.
         ExSystemTimeToLocalTime(&system_time, &local_time);
         RtlTimeToTimeFields(&local_time, &time_fields);
-
         status = RtlStringCchPrintfA(time_buffer, RTL_NUMBER_OF(time_buffer), "%02u:%02u:%02u.%03u\t", time_fields.Hour, time_fields.Minute, time_fields.Second, time_fields.Milliseconds);
         if (!NT_SUCCESS(status)) {
             return status;
@@ -435,8 +430,7 @@ _Use_decl_annotations_ static NTSTATUS LogpPut(char *message, ULONG attribute)
                 status = LogpWriteMessageToFile(message, info);
             }
 #pragma warning(pop)
-        }
-        else {// No, it cannot. Set the printed bit if needed, and then buffer it.
+        } else {// No, it cannot. Set the printed bit if needed, and then buffer it.
             if (do_DbgPrint) {
                 LogpSetPrintedBit(message, true);
             }
@@ -461,13 +455,11 @@ _Use_decl_annotations_ static NTSTATUS LogpFlushLogBuffer(LogBufferInfo *info)
     NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
 
     NTSTATUS status = STATUS_SUCCESS;
-
-    // Enter a critical section and acquire a reader lock for info in order to write a log file safely.
-    ExEnterCriticalRegionAndAcquireResourceExclusive(&info->resource);
-
-    // Acquire a spin lock for info.log_buffer(s) in order to switch its head safely.
+    
+    ExEnterCriticalRegionAndAcquireResourceExclusive(&info->resource);// Enter a critical section and acquire a reader lock for info in order to write a log file safely.
+    
     KLOCK_QUEUE_HANDLE lock_handle = {};
-    KeAcquireInStackQueuedSpinLock(&info->spin_lock, &lock_handle);
+    KeAcquireInStackQueuedSpinLock(&info->spin_lock, &lock_handle);// Acquire a spin lock for info.log_buffer(s) in order to switch its head safely.
     char * old_log_buffer = const_cast<char *>(info->log_buffer_head);
     if (old_log_buffer[0]) {
         info->log_buffer_head = (old_log_buffer == info->log_buffer1) ? info->log_buffer2 : info->log_buffer1;
@@ -524,8 +516,7 @@ _Use_decl_annotations_ static NTSTATUS LogpBufferMessage(const char *message, Lo
     KIRQL old_irql = KeGetCurrentIrql();
     if (old_irql < DISPATCH_LEVEL) {
         KeAcquireInStackQueuedSpinLock(&info->spin_lock, &lock_handle);
-    }
-    else {
+    } else {
         KeAcquireInStackQueuedSpinLockAtDpcLevel(&info->spin_lock, &lock_handle);
     }
     NT_ASSERT(KeGetCurrentIrql() >= DISPATCH_LEVEL);
@@ -533,25 +524,21 @@ _Use_decl_annotations_ static NTSTATUS LogpBufferMessage(const char *message, Lo
     // Copy the current log to the buffer.
     SIZE_T used_buffer_size = info->log_buffer_tail - info->log_buffer_head;
     NTSTATUS status = RtlStringCchCopyA(const_cast<char *>(info->log_buffer_tail), kLogpBufferUsableSize - used_buffer_size, message);
-
-    // Update info.log_max_usage if necessary.
-    if (NT_SUCCESS(status)) {
+    if (NT_SUCCESS(status)) {// Update info.log_max_usage if necessary.
         SIZE_T message_length = strlen(message) + 1;
         info->log_buffer_tail += message_length;
         used_buffer_size += message_length;
         if (used_buffer_size > info->log_max_usage) {
             info->log_max_usage = used_buffer_size;  // Update
         }
-    }
-    else {
+    } else {
         info->log_max_usage = kLogpBufferSize;  // Indicates overflow
     }
     *info->log_buffer_tail = '\0';
 
     if (old_irql < DISPATCH_LEVEL) {
         KeReleaseInStackQueuedSpinLock(&lock_handle);
-    }
-    else {
+    } else {
         KeReleaseInStackQueuedSpinLockFromDpcLevel(&lock_handle);
     }
 
@@ -659,8 +646,7 @@ _Use_decl_annotations_ static void LogpSetPrintedBit(char *message, bool on)
 {
     if (on) {
         message[0] |= 0x80;
-    }
-    else {
+    } else {
         message[0] &= 0x7f;
     }
 }

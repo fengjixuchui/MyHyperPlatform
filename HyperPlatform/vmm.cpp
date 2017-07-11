@@ -22,33 +22,33 @@ static const long kVmmpNumberOfProcessors = 2;// How many processors are support
 
 // Represents raw structure of stack of VMM when VmmVmExitHandler() is called
 struct VmmInitialStack {
-  GpRegisters gp_regs;
-  ULONG_PTR reserved;
-  ProcessorData *processor_data;
+    GpRegisters gp_regs;
+    ULONG_PTR reserved;
+    ProcessorData *processor_data;
 };
 
 // Things need to be read and written by each VM-exit handler
 struct GuestContext {
-  union {
-    VmmInitialStack *stack;
-    GpRegisters *gp_regs;
-  };
-  FlagRegister flag_reg;
-  ULONG_PTR ip;
-  ULONG_PTR cr8;
-  KIRQL irql;
-  bool vm_continue;
+    union {
+        VmmInitialStack *stack;
+        GpRegisters *gp_regs;
+    };
+    FlagRegister flag_reg;
+    ULONG_PTR ip;
+    ULONG_PTR cr8;
+    KIRQL irql;
+    bool vm_continue;
 };
 
 static_assert(sizeof(GuestContext) == 40, "Size check");
 
 // Context at the moment of vmexit
 struct VmExitHistory {
-  GpRegisters gp_regs;
-  ULONG_PTR ip;
-  VmExitInformation exit_reason;
-  ULONG_PTR exit_qualification;
-  ULONG_PTR instruction_info;
+    GpRegisters gp_regs;
+    ULONG_PTR ip;
+    VmExitInformation exit_reason;
+    ULONG_PTR exit_qualification;
+    ULONG_PTR instruction_info;
 };
 
 bool __stdcall VmmVmExitHandler(_Inout_ VmmInitialStack *stack);
@@ -323,7 +323,6 @@ _Use_decl_annotations_ static void VmmpHandleRdtsc(GuestContext *guest_context)
     tsc.QuadPart = __rdtsc();
     guest_context->gp_regs->dx = tsc.HighPart;
     guest_context->gp_regs->ax = tsc.LowPart;
-
     VmmpAdjustGuestInstructionPointer(guest_context);
 }
 
@@ -337,7 +336,6 @@ _Use_decl_annotations_ static void VmmpHandleRdtscp(GuestContext *guest_context)
     guest_context->gp_regs->dx = tsc.HighPart;
     guest_context->gp_regs->ax = tsc.LowPart;
     guest_context->gp_regs->cx = tsc_aux;
-
     VmmpAdjustGuestInstructionPointer(guest_context);
 }
 
@@ -349,7 +347,6 @@ _Use_decl_annotations_ static void VmmpHandleXsetbv(GuestContext *guest_context)
     value.LowPart = static_cast<ULONG>(guest_context->gp_regs->ax);
     value.HighPart = static_cast<ULONG>(guest_context->gp_regs->dx);
     _xsetbv(static_cast<ULONG>(guest_context->gp_regs->cx), value.QuadPart);
-
     VmmpAdjustGuestInstructionPointer(guest_context);
 }
 
@@ -732,8 +729,7 @@ _Use_decl_annotations_ static void VmmpIoWrapper(bool to_memory, bool is_string,
 {
     NT_ASSERT(size_of_access == 1 || size_of_access == 2 || size_of_access == 4);
 
-    // Update CR3 with that of the guest since below code is going to access
-    // memory.
+    // Update CR3 with that of the guest since below code is going to access memory.
     const auto guest_cr3 = UtilVmRead(VmcsField::kGuestCr3);
     const auto vmm_cr3 = __readcr3();
     __writecr3(guest_cr3);
@@ -781,8 +777,7 @@ _Use_decl_annotations_ static void VmmpIoWrapper(bool to_memory, bool is_string,
                 __outdwordstring(port, reinterpret_cast<ULONG*>(address), count);
                 break;
             }
-        }
-        else {// OUT
+        } else {// OUT
             switch (size_of_access)
             {
             case 1:
@@ -1097,9 +1092,8 @@ _Use_decl_annotations_ static void VmmpAdjustGuestInstructionPointer(GuestContex
 {
     ULONG_PTR exit_inst_length = UtilVmRead(VmcsField::kVmExitInstructionLen);
     UtilVmWrite(VmcsField::kGuestRip, guest_context->ip + exit_inst_length);
-
-    // Inject #DB if TF is set
-    if (guest_context->flag_reg.fields.tf) {
+    
+    if (guest_context->flag_reg.fields.tf) {// Inject #DB if TF is set
         VmmpInjectInterruption(InterruptionType::kHardwareException, InterruptionVector::kDebugException, false, 0);
         UtilVmWrite(VmcsField::kVmEntryInstructionLen, exit_inst_length);
     }

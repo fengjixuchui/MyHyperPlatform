@@ -11,67 +11,52 @@
 extern "C"
 {
 
-/// Represents ranges of addresses
-struct PhysicalMemoryRun {
-  ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)
-  ULONG_PTR page_count;  //!< A number of pages
-};
-static_assert(sizeof(PhysicalMemoryRun) == 0x10, "Size check");
+    /// Represents ranges of addresses
+    struct PhysicalMemoryRun {
+        ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)
+        ULONG_PTR page_count;  //!< A number of pages
+    };
+    static_assert(sizeof(PhysicalMemoryRun) == 0x10, "Size check");
 
-/// Represents a physical memory ranges of the system
-struct PhysicalMemoryDescriptor {
-  PFN_COUNT number_of_runs;    //!< A number of PhysicalMemoryDescriptor::run
-  PFN_NUMBER number_of_pages;  //!< A physical memory size in pages
-  PhysicalMemoryRun run[1];    //!< ranges of addresses
-};
-static_assert(sizeof(PhysicalMemoryDescriptor) == 0x20, "Size check");
+    /// Represents a physical memory ranges of the system
+    struct PhysicalMemoryDescriptor {
+        PFN_COUNT number_of_runs;    //!< A number of PhysicalMemoryDescriptor::run
+        PFN_NUMBER number_of_pages;  //!< A physical memory size in pages
+        PhysicalMemoryRun run[1];    //!< ranges of addresses
+    };
+    static_assert(sizeof(PhysicalMemoryDescriptor) == 0x20, "Size check");
 
-/// Indicates a result of VMX-instructions
-/// This convention was taken from the VMX-intrinsic functions by Microsoft.
-enum class VmxStatus : unsigned __int8 {
-  kOk = 0,                  //!< Operation succeeded
-  kErrorWithStatus = 1,     //!< Operation failed with extended status available
-  kErrorWithoutStatus = 2,  //!< Operation failed without status available
-};
+    /// Indicates a result of VMX-instructions
+    /// This convention was taken from the VMX-intrinsic functions by Microsoft.
+    enum class VmxStatus : unsigned __int8 {
+        kOk = 0,                  //!< Operation succeeded
+        kErrorWithStatus = 1,     //!< Operation failed with extended status available
+        kErrorWithoutStatus = 2,  //!< Operation failed without status available
+    };
 
-/// Provides |= operator for VmxStatus
-constexpr VmxStatus operator|=(_In_ VmxStatus lhs, _In_ VmxStatus rhs)
-{
-    return static_cast<VmxStatus>(static_cast<unsigned __int8>(lhs) | static_cast<unsigned __int8>(rhs));
-}
+    /// Provides |= operator for VmxStatus
+    constexpr VmxStatus operator|=(_In_ VmxStatus lhs, _In_ VmxStatus rhs)
+    {
+        return static_cast<VmxStatus>(static_cast<unsigned __int8>(lhs) | static_cast<unsigned __int8>(rhs));
+    }
 
-/// Available command numbers for VMCALL
-enum class HypercallNumber : unsigned __int32 {
-  kTerminateVmm,            //!< Terminates VMM
-  kPingVmm,                 //!< Sends ping to the VMM
-  kGetSharedProcessorData,  //!< Terminates VMM
-};
+    enum class HypercallNumber : unsigned __int32 {/// Available command numbers for VMCALL
+        kTerminateVmm,            //!< Terminates VMM
+        kPingVmm,                 //!< Sends ping to the VMM
+        kGetSharedProcessorData,  //!< Terminates VMM
+    };
 
+    NTSTATUS UtilpInitializePhysicalMemoryRanges();
 
-NTSTATUS UtilpInitializePhysicalMemoryRanges();
+    _IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();/// Frees all resources allocated for the sake of the Util functions
 
-_IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();/// Frees all resources allocated for the sake of the Util functions
-
-extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
+    extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 
 /// Executes \a callback_routine on each processor
 /// @param callback_routine   A function to execute
 /// @param context  An arbitrary parameter for \a callback_routine
 /// @return STATUS_SUCCESS when \a returned STATUS_SUCCESS on all processors
 _IRQL_requires_max_(APC_LEVEL) NTSTATUS UtilForEachProcessor(_In_ NTSTATUS (*callback_routine)(void *), _In_opt_ void *context);
-
-/// Searches a byte pattern from a given address range
-/// @param search_base  An address to start search
-/// @param search_size  A length to search in bytes
-/// @param pattern  A byte pattern to search
-/// @param pattern_size   A size of \a pattern
-/// @return An address of the first occurrence of the patten if found, or nullptr
-void *UtilMemMem(_In_ const void *search_base, _In_ SIZE_T search_size, _In_ const void *pattern, _In_ SIZE_T pattern_size);
-
-/// Get an address of an exported symbol by the kernel or HAL
-/// @param proc_name  A name of a symbol to locate an address
-/// @return An address of the symbol or nullptr
-void * GetSystemProcAddress(_In_ const wchar_t *proc_name);
 
 /// VA -> PA
 /// @param va   A virtual address to get its physical address
@@ -126,7 +111,9 @@ NTSTATUS UtilVmCall(_In_ HypercallNumber hypercall_number, _In_opt_ void *contex
 /// Debug prints registers
 /// @param all_regs   Registers to print out
 /// @param stack_pointer  A stack pointer before calling this function
-void UtilDumpGpRegisters(_In_ const AllRegisters *all_regs, _In_ ULONG_PTR stack_pointer);/// Reads natural-width VMCS
+void UtilDumpGpRegisters(_In_ const AllRegisters *all_regs, _In_ ULONG_PTR stack_pointer);
+
+/// Reads natural-width VMCS
 /// @param field  VMCS-field to read
 /// @return read value
 ULONG_PTR UtilVmRead(_In_ VmcsField field);

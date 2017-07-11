@@ -688,8 +688,8 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBaseByDescriptor(const Segm
     SIZE_T base_middle = segment_descriptor->fields.base_mid << (4 * 4);
     SIZE_T base_low = segment_descriptor->fields.base_low;
     SIZE_T base = (base_high | base_middle | base_low) & MAXULONG;
-    // Get upper 32bit of the base address if needed
-    if (!segment_descriptor->fields.system) {
+    
+    if (!segment_descriptor->fields.system) {// Get upper 32bit of the base address if needed
         const SegmentDesctiptorX64 * desc64 = reinterpret_cast<const SegmentDesctiptorX64 *>(segment_descriptor);
         ULONG64 base_upper32 = desc64->base_upper32;
         base |= (base_upper32 << 32);
@@ -706,8 +706,8 @@ _Use_decl_annotations_ static ULONG VmpAdjustControlValue(Msr msr, ULONG request
 
     LARGE_INTEGER msr_value = {};
     msr_value.QuadPart = __readmsr((ULONG)msr);
-    ULONG adjusted_value = requested_value;
 
+    ULONG adjusted_value = requested_value;
     adjusted_value &= msr_value.HighPart;// bit == 0 in high word ==> must be zero
     adjusted_value |= msr_value.LowPart;// bit == 1 in low word  ==> must be one
     return adjusted_value;

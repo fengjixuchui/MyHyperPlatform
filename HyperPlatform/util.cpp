@@ -45,7 +45,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPh
 #pragma alloc_text(INIT, UtilpInitializePhysicalMemoryRanges)
 #pragma alloc_text(INIT, UtilpBuildPhysicalMemoryRanges)
 #pragma alloc_text(PAGE, UtilForEachProcessor)
-#pragma alloc_text(PAGE, GetSystemProcAddress)
 #endif
 
 PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
@@ -158,35 +157,6 @@ _Use_decl_annotations_ NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine
 }
 
 
-// memmem().
-_Use_decl_annotations_ void *UtilMemMem(const void *search_base, SIZE_T search_size, const void *pattern, SIZE_T pattern_size)
-{
-    if (pattern_size > search_size) {
-        return nullptr;
-    }
-    const char * base = static_cast<const char *>(search_base);
-    for (SIZE_T i = 0; i <= search_size - pattern_size; i++)
-    {
-        if (RtlCompareMemory(pattern, &base[i], pattern_size) == pattern_size) {
-            return const_cast<char *>(&base[i]);
-        }
-    }
-
-    return nullptr;
-}
-
-
-_Use_decl_annotations_ void *GetSystemProcAddress(const wchar_t *proc_name)
-// A wrapper of MmGetSystemRoutineAddress
-{
-    PAGED_CODE();
-
-    UNICODE_STRING proc_name_U = {};
-    RtlInitUnicodeString(&proc_name_U, proc_name);
-    return MmGetSystemRoutineAddress(&proc_name_U);
-}
-
-
 // VA -> PA
 _Use_decl_annotations_ ULONG64 UtilPaFromVa(void *va)
 {
@@ -289,7 +259,6 @@ _Use_decl_annotations_ ULONG_PTR UtilVmRead(VmcsField field)
     size_t field_value = 0;
     VmxStatus vmx_status = static_cast<VmxStatus>(__vmx_vmread(static_cast<size_t>(field), &field_value));
     ASSERT(vmx_status == VmxStatus::kOk);
-
     return field_value;
 }
 

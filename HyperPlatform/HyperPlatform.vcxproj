@@ -123,7 +123,6 @@
     <ClCompile Include="ept.cpp" />
     <ClCompile Include="hotplug_callback.cpp" />
     <ClCompile Include="log.cpp" />
-    <ClCompile Include="performance.cpp" />
     <ClCompile Include="power_callback.cpp" />
     <ClCompile Include="util.cpp" />
     <ClCompile Include="vm.cpp" />
@@ -135,7 +134,6 @@
     <ClInclude Include="hotplug_callback.h" />
     <ClInclude Include="ia32_type.h" />
     <ClInclude Include="log.h" />
-    <ClInclude Include="performance.h" />
     <ClInclude Include="perf_counter.h" />
     <ClInclude Include="power_callback.h" />
     <ClInclude Include="util.h" />

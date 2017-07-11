@@ -8,7 +8,7 @@
 #include "asm.h"
 #include "log.h"
 #include "util.h"
-#include "performance.h"
+
 
 extern "C"
 {

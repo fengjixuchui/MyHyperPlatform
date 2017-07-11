@@ -10,7 +10,7 @@
 #include "ept.h"
 #include "log.h"
 #include "util.h"
-#include "performance.h"
+
 
 #pragma warning(disable:4189) // 局部变量已初始化但不引用
 

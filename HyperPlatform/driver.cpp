@@ -42,15 +42,8 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
         return status;
     }
     
-    status = PerfInitialization();// Initialize perf functions
-    if (!NT_SUCCESS(status)) {
-        LogTermination();
-        return status;
-    }
-    
     status = UtilpInitializePhysicalMemoryRanges();
     if (!NT_SUCCESS(status)) {
-        PerfTermination();
         LogTermination();
         return status;
     }
@@ -58,7 +51,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
     status = PowerCallbackInitialization();// Initialize power callback
     if (!NT_SUCCESS(status)) {
         UtilTermination();
-        PerfTermination();
         LogTermination();
         return status;
     }
@@ -67,7 +59,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
     if (!NT_SUCCESS(status)) {
         PowerCallbackTermination();
         UtilTermination();
-        PerfTermination();
         LogTermination();
         return status;
     }
@@ -77,7 +68,6 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
         HotplugCallbackTermination();
         PowerCallbackTermination();
         UtilTermination();
-        PerfTermination();
         LogTermination();
         return status;
     }
@@ -99,7 +89,6 @@ _Use_decl_annotations_ static void DriverpDriverUnload(PDRIVER_OBJECT driver_obj
     HotplugCallbackTermination();
     PowerCallbackTermination();
     UtilTermination();
-    PerfTermination();
     LogTermination();
 }
 

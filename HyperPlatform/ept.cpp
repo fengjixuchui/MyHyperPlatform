@@ -475,9 +475,7 @@ _Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAlloca
 // Return a new EPT entry from pre-allocated ones.
 {
     LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count);
-    if (count > kEptpNumberOfPreallocatedEntries) {
-        HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kExhaustedPreallocatedEntries, count, reinterpret_cast<ULONG_PTR>(ept_data), 0);
-    }
+    ASSERT(count <= kEptpNumberOfPreallocatedEntries);
 
     return ept_data->preallocated_entries[count - 1];
 }

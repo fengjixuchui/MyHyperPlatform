@@ -256,9 +256,7 @@ _Use_decl_annotations_ static void LogpFinalizeBufferInfo(LogBufferInfo *info)
     if (info->buffer_flush_thread_handle) {
         info->buffer_flush_thread_should_be_alive = false;
         NTSTATUS status = ZwWaitForSingleObject(info->buffer_flush_thread_handle, FALSE, nullptr);
-        if (!NT_SUCCESS(status)) {
-            __debugbreak();
-        }
+        ASSERT(NT_SUCCESS(status));
         ZwClose(info->buffer_flush_thread_handle);
         info->buffer_flush_thread_handle = nullptr;
     }
@@ -321,9 +319,7 @@ _Use_decl_annotations_ NTSTATUS LogpPrint(ULONG level, const char *function_name
     }
 
     status = LogpPut(message, attribute);
-    if (!NT_SUCCESS(status)) {
-        __debugbreak();
-    }
+    ASSERT(NT_SUCCESS(status));
 
     return status;
 }

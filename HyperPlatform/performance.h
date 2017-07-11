@@ -11,29 +11,20 @@
 extern "C"
 {
 #if (HYPERPLATFORM_PERFORMANCE_ENABLE_PERFCOUNTER != 0)
-/// Measures an elapsed time from execution of this macro to the end of a scope
-///
-/// @warning
-/// This macro cannot be called from an INIT section. See
-/// #HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME() for details.
+    /// Measures an elapsed time from execution of this macro to the end of a scope
+    /// @warning This macro cannot be called from an INIT section. See #HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME() for details.
 #define HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE()   HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME(g_performance_collector, PerfGetTime)
 #else
 #define HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE()
 #endif
+    
+    _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS PerfInitialization();/// Makes #HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE() ready for use
+    _IRQL_requires_max_(PASSIVE_LEVEL) void PerfTermination();/// Ends performance monitoring and outputs its results
 
-/// Makes #HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE() ready for use
-/// @return STATUS_SUCCESS on success
-_IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS PerfInitialization();
-
-_IRQL_requires_max_(PASSIVE_LEVEL) void PerfTermination();/// Ends performance monitoring and outputs its results
-
-/// Returns the current "time" for performance measurement.
-/// @return Current performance counter
-///
-/// It should only be used by #HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE().
-ULONG64 PerfGetTime();
-
-/// Stores all performance data collected by
-/// #HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE().
-extern PerfCollector* g_performance_collector;
+    /// Returns the current "time" for performance measurement.
+    /// @return Current performance counter
+    /// It should only be used by #HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE().
+    ULONG64 PerfGetTime();
+    
+    extern PerfCollector* g_performance_collector;/// Stores all performance data collected by #HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE().
 }

@@ -13,6 +13,8 @@
 #include "util.h"
 #include "performance.h"
 
+#pragma warning(disable:4189) // 局部变量已初始化但不引用
+
 extern "C"
 {
 static const long kVmmpEnableRecordVmExit = false;// Whether VM-exit recording is enabled
@@ -227,25 +229,31 @@ _Use_decl_annotations_ static void VmmpHandleVmExit(GuestContext *guest_context)
 // Triple fault VM-exit. Fatal error.
 _Use_decl_annotations_ static void VmmpHandleTripleFault(GuestContext *guest_context)
 {
+    UNREFERENCED_PARAMETER(guest_context);
+
     VmmpDumpGuestState();
-    HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kTripleFaultVmExit, reinterpret_cast<ULONG_PTR>(guest_context), guest_context->ip, 0);
+    __debugbreak();
 }
 
 
 // Unexpected VM-exit. Fatal error.
 _Use_decl_annotations_ static void VmmpHandleUnexpectedExit(GuestContext *guest_context)
 {
+    UNREFERENCED_PARAMETER(guest_context);
+
     VmmpDumpGuestState();
     ULONG_PTR qualification = UtilVmRead(VmcsField::kExitQualification);
-    HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnexpectedVmExit, reinterpret_cast<ULONG_PTR>(guest_context), guest_context->ip, qualification);
+    __debugbreak();
 }
 
 
 // MTF VM-exit
 _Use_decl_annotations_ static void VmmpHandleMonitorTrap(GuestContext *guest_context)
 {
+    UNREFERENCED_PARAMETER(guest_context);
+
     VmmpDumpGuestState();
-    HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnexpectedVmExit, reinterpret_cast<ULONG_PTR>(guest_context), guest_context->ip, 0);
+    __debugbreak();
 }
 
 
@@ -271,7 +279,7 @@ _Use_decl_annotations_ static void VmmpHandleException(GuestContext *guest_conte
             VmmpInjectInterruption(interruption_type, vector, true, error_code);
             HYPERPLATFORM_LOG_INFO_SAFE("GuestIp= %016Ix, #GP Code= 0x%2x", guest_context->ip, error_code);
         } else {
-            HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnspecified, 0, 0, 0);
+            __debugbreak();
         }
     } else if (interruption_type == InterruptionType::kSoftwareException) {// Software exception
         if (vector == InterruptionVector::kBreakpointException) {// #BP
@@ -279,10 +287,10 @@ _Use_decl_annotations_ static void VmmpHandleException(GuestContext *guest_conte
             HYPERPLATFORM_LOG_INFO_SAFE("GuestIp= %016Ix, #BP ", guest_context->ip);
             UtilVmWrite(VmcsField::kVmEntryInstructionLen, 1);
         } else {
-            HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnspecified, 0, 0, 0);
+            __debugbreak();
         }
     } else {
-        HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnspecified, 0, 0, 0);
+        __debugbreak();
     }
 }
 
@@ -671,7 +679,7 @@ _Use_decl_annotations_ static void VmmpHandleDrAccess(GuestContext *guest_contex
         // clang-format on
         break;
     default:
-        HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnspecified, 0, 0, 0);
+        __debugbreak();
         break;
     }
 
@@ -862,7 +870,7 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
             break;
         }
         default:
-            HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnspecified, 0, 0, 0);
+            __debugbreak();
             break;
         }
         break;
@@ -882,7 +890,7 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
             break;
         }
         default:
-            HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kUnspecified, 0, 0, 0);
+            __debugbreak();
             break;
         }
         break;
@@ -984,7 +992,7 @@ _Use_decl_annotations_ static void VmmpHandleEptMisconfig(GuestContext *guest_co
 
     ULONG_PTR fault_address = UtilVmRead(VmcsField::kGuestPhysicalAddress);
     EptCommonEntry * ept_pt_entry = EptGetEptPtEntry(guest_context->stack->processor_data->ept_data, fault_address);
-    HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kEptMisconfigVmExit, fault_address, reinterpret_cast<ULONG_PTR>(ept_pt_entry), 0);
+    __debugbreak();
 }
 
 
@@ -1132,7 +1140,7 @@ _Use_decl_annotations_ void __stdcall VmmVmxFailureHandler(AllRegisters *all_reg
     //ULONG_PTR guest_ip = UtilVmRead(VmcsField::kGuestRip);
     // See: VM-Instruction Error Numbers
     ULONG_PTR vmx_error = (all_regs->flags.fields.zf) ? UtilVmRead(VmcsField::kVmInstructionError) : 0;
-    HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kCriticalVmxInstructionFailure, vmx_error, 0, 0);
+    __debugbreak();
 }
 
 

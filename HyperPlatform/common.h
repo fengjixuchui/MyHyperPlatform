@@ -28,50 +28,13 @@
 #include <fltKernel.h>
 
 // C30030: Calling a memory allocating function and passing a parameter that indicates executable memory
-//
 // Disable C30030 since POOL_NX_OPTIN + ExInitializeDriverRuntime is in place.
 // This warning is false positive and can be seen when Target Platform Version equals to 10.0.14393.0.
 #pragma prefast(disable : 30030)
 
-
-/// Sets a break point that works only when a debugger is present
-#if !defined(HYPERPLATFORM_COMMON_DBG_BREAK)
-#define HYPERPLATFORM_COMMON_DBG_BREAK() \
-  if (KD_DEBUGGER_NOT_PRESENT) {         \
-  } else {                               \
-    __debugbreak();                      \
-  }                                      \
-  reinterpret_cast<void*>(0)
-#endif
-
-/// Issues a bug check
-/// @param hp_bug_check_code  Type of a bug
-/// @param param1   1st parameter for KeBugCheckEx()
-/// @param param2   2nd parameter for KeBugCheckEx()
-/// @param param3   3rd parameter for KeBugCheckEx()
-#if !defined(HYPERPLATFORM_COMMON_BUG_CHECK)
-#define HYPERPLATFORM_COMMON_BUG_CHECK(hp_bug_check_code, param1, param2, param3) \
-  HYPERPLATFORM_COMMON_DBG_BREAK();                                          \
-  const HyperPlatformBugCheck code = (hp_bug_check_code);                    \
-  KeBugCheckEx(MANUALLY_INITIATED_CRASH, static_cast<ULONG>(code), (param1), (param2), (param3))
-#endif
-
-
 /// Enable or disable performance monitoring globally
-///
 /// Enables #HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE() which measures an elapsed time of the scope when set to non 0.
 /// Enabling it introduces negative performance impact.
 #define HYPERPLATFORM_PERFORMANCE_ENABLE_PERFCOUNTER 1
 
 static const ULONG TAG = 'PpyH';/// A pool tag
-
-/// BugCheck codes for #HYPERPLATFORM_COMMON_BUG_CHECK().
-enum class HyperPlatformBugCheck : ULONG {
-  kUnspecified,                    //!< An unspecified bug occurred
-  kUnexpectedVmExit,               //!< An unexpected VM-exit occurred
-  kTripleFaultVmExit,              //!< A triple fault VM-exit occurred
-  kExhaustedPreallocatedEntries,   //!< All pre-allocated entries are used
-  kCriticalVmxInstructionFailure,  //!< VMRESUME or VMXOFF has failed
-  kEptMisconfigVmExit,             //!< EPT misconfiguration VM-exit occurred
-  kCritialPoolAllocationFailure,   //!< Critical pool allocation failed
-};

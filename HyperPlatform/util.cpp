@@ -291,9 +291,7 @@ _Use_decl_annotations_ ULONG_PTR UtilVmRead(VmcsField field)
 {
     size_t field_value = 0;
     VmxStatus vmx_status = static_cast<VmxStatus>(__vmx_vmread(static_cast<size_t>(field), &field_value));
-    if (vmx_status != VmxStatus::kOk) {
-        HYPERPLATFORM_COMMON_BUG_CHECK(HyperPlatformBugCheck::kCriticalVmxInstructionFailure, static_cast<ULONG_PTR>(vmx_status), static_cast<ULONG_PTR>(field), 0);
-    }
+    ASSERT(vmx_status == VmxStatus::kOk);
 
     return field_value;
 }

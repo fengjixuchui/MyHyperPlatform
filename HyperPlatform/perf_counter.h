@@ -5,66 +5,13 @@
 /// Declares interfaces to performance measurement primitives.
 ///
 /// @warning
-/// All exposed interfaces but #HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME are meant
-/// to be for internal use only. Also, the macro is only used by a wrapper code.
+/// All exposed interfaces but #HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME are meant to be for internal use only. Also, the macro is only used by a wrapper code.
 ///
 /// @see performance.h
 
 #pragma once
 
 #include <fltKernel.h>
-
-#define HYPERPLATFORM_PERFCOUNTER_P_JOIN2(x, y) x##y
-#define HYPERPLATFORM_PERFCOUNTER_P_JOIN1(x, y)   HYPERPLATFORM_PERFCOUNTER_P_JOIN2(x, y)
-
-/// Concatinates two tokens
-/// @param x  1st token
-/// @param y  2nd token
-#define HYPERPLATFORM_PERFCOUNTER_P_JOIN(x, y)   HYPERPLATFORM_PERFCOUNTER_P_JOIN1(x, y)
-
-#define HYPERPLATFORM_PERFCOUNTER_P_TO_STRING1(n) #n
-
-/// Converts a token to a string literal
-/// @param n  A token to convert to a string literal
-#define HYPERPLATFORM_PERFCOUNTER_P_TO_STRING(n)   HYPERPLATFORM_PERFCOUNTER_P_TO_STRING1(n)
-
-/// Creates an instance of PerfCounter to measure an elapsed time of this scope
-/// @param collector  A pointer to a PerfCollector instance
-/// @param query_time_routine   A function pointer to get an elapsed time
-/// @see HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME
-///
-/// This macro should not be used directly. Instead use
-/// #HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME.
-///
-/// This macro creates an instance of PerfCounter named perf_obj_N where N is a sequential number starting at 0.
-/// A current function name and a source line number are converted into a string literal and passed to the instance to uniquely identify a location of measurement.
-/// The instance gets "counters" in its constructor and destructor with \a query_time_routine, calculates an elapsed time and passes it to \a collector as well as the created string literal.
-/// In pseudo code, for example:
-///
-/// @code{.cpp}
-/// Hello.cpp:233 | {
-/// Hello.cpp:234 |   HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME(collector, fn);
-/// Hello.cpp:235 |   // do stuff
-/// Hello.cpp:236 | }
-/// @endcode
-///
-/// This works as if below:
-///
-/// @code{.cpp}
-/// {
-///   begin_time = fn();    //perf_obj_0.ctor();
-///   // do stuff
-///   elapsed_time = fn();  //perf_obj_0.dtor();
-///   collector->AddTime(elapsed_time, "Hello.cpp(234)");
-/// }
-/// @endcode
-///
-/// @warning
-/// Do not use this macro in where going to be unavailable at the time of a call of PerfCollector::Terminate(). This causes access violation because
-/// this macro builds a string literal in a used section, and the string is referenced in the PerfCollector::Terminate(), while it is no longer
-/// accessible if the section is already destroyed. In other words, do not use it in any functions in the INIT section.
-#define HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME(collector, query_time_routine) \
-  const PerfCounter HYPERPLATFORM_PERFCOUNTER_P_JOIN(perf_obj_, __COUNTER__)((collector), (query_time_routine), __FUNCTION__ "(" HYPERPLATFORM_PERFCOUNTER_P_TO_STRING(__LINE__) ")")
 
 
 /// Responsible for collecting and saving data supplied by PerfCounter.
@@ -194,7 +141,6 @@ private:
     /// Returns an index of data corresponds to the location_name.
     /// @param key   A location to get an index of corresponding data entry
     /// @return   An index of data or kInvalidDataIndex
-    ///
     /// It adds a new entry when the key is not found in existing entries.
     /// Returns kInvalidDataIndex if a corresponding entry is not found and there is no room to add a new entry.
     ULONG GetPerfDataIndex(_In_ const char* key)
@@ -226,46 +172,4 @@ private:
     void* lock_context_;
     void* output_context_;
     PerfDataEntry data_[kMaxNumberOfDataEntries];
-};
-
-
-/// Measure elapsed time of the scope
-class PerfCounter
-{
-public:
-    using QueryTimeRoutine = ULONG64();
-
-    /// Gets the current time using \a query_time_routine.
-    /// @param collector  PerfCollector instance to store performance data
-    /// @param query_time_routine  A function pointer for getting times
-    /// @param location_name  A function name where being measured
-    /// #HYPERPLATFORM_PERFCOUNTER_MEASURE_TIME() should be used to create an instance of this class.
-    PerfCounter(_In_ PerfCollector* collector, _In_opt_ QueryTimeRoutine* query_time_routine, _In_ const char* location_name)
-        : collector_(collector), query_time_routine_((query_time_routine) ? query_time_routine : RdTsc), location_name_(location_name), before_time_(query_time_routine_())
-    {
-
-    }
-
-    /// Measures an elapsed time and stores it to PerfCounter::collector_.
-    ~PerfCounter()
-    {
-        if (collector_)
-        {
-            ULONG64 elapsed_time = query_time_routine_() - before_time_;
-            collector_->AddData(location_name_, elapsed_time);
-        }
-    }
-
-private:
-    /// Gets the current time using the RDTSC instruction
-    /// @return the current time
-    static ULONG64 RdTsc()
-    {
-        return __rdtsc();
-    }
-
-    PerfCollector* collector_;
-    QueryTimeRoutine* query_time_routine_;
-    const char* location_name_;
-    const ULONG64 before_time_;
 };

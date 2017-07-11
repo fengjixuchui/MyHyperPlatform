@@ -10,6 +10,6 @@
 
 extern "C"
 {
-_IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS PowerCallbackInitialization();
-_IRQL_requires_max_(PASSIVE_LEVEL) void PowerCallbackTermination();
+    _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS PowerCallbackInitialization();
+    _IRQL_requires_max_(PASSIVE_LEVEL) void PowerCallbackTermination();
 }

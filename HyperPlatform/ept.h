@@ -40,7 +40,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) void EptInitializeMtrrEntries();/// Reads and
 
 /// Builds EPT, allocates pre-allocated entires, initializes and returns EptData
 /// @return An allocated EptData on success, or nullptr
-///
 /// A driver must call EptTermination() with a returned value when this function succeeded.
 _IRQL_requires_max_(PASSIVE_LEVEL) EptData* EptInitialization();
 

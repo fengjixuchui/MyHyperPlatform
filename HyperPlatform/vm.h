@@ -11,7 +11,6 @@
 extern "C"
 {
 /// Virtualizes all processors
-///
 /// Initializes a VMCS region and virtualizes (ie, enters the VMX non-root operation mode) for each processor.
 /// Returns non STATUS_SUCCESS value if any of processors failed to do so. In that case, this function de-virtualize already virtualized processors.
 _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS VmInitialization();
@@ -20,7 +19,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) void VmTermination();/// De-virtualize all pr
 
 /// Virtualizes the specified processor
 /// @param proc_num   A processor number to virtualize
-///
 /// The processor 0 must have already been virtualized, or it fails.
 _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER& proc_num);
 }

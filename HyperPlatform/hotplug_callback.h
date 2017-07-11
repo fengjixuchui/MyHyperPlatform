@@ -10,6 +10,6 @@
 
 extern "C"
 {
-_IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS HotplugCallbackInitialization();
-_IRQL_requires_max_(PASSIVE_LEVEL) void HotplugCallbackTermination();
+    _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS HotplugCallbackInitialization();
+    _IRQL_requires_max_(PASSIVE_LEVEL) void HotplugCallbackTermination();
 }

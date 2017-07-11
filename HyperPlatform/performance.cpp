@@ -27,10 +27,8 @@ _Use_decl_annotations_ NTSTATUS PerfInitialization()
     if (!perf_collector) {
         return STATUS_MEMORY_NOT_ALLOCATED;
     }
-
-    // No lock to avoid calling kernel APIs from VMM and race condition here is not an issue.
-    perf_collector->Initialize(PerfpOutputRoutine, PerfpInitialOutputRoutine, PerfpFinalOutputRoutine);
-
+    
+    perf_collector->Initialize(PerfpOutputRoutine, PerfpInitialOutputRoutine, PerfpFinalOutputRoutine);// No lock to avoid calling kernel APIs from VMM and race condition here is not an issue.
     g_performance_collector = perf_collector;
     return STATUS_SUCCESS;
 }
@@ -45,13 +43,6 @@ _Use_decl_annotations_ void PerfTermination()
         ExFreePoolWithTag(g_performance_collector, TAG);
         g_performance_collector = nullptr;
     }
-}
-
-
-ULONG64 PerfGetTime()
-{
-    LARGE_INTEGER counter = KeQueryPerformanceCounter(nullptr);
-    return static_cast<ULONG64>(counter.QuadPart);
 }
 
 

@@ -129,8 +129,6 @@ _Use_decl_annotations_ bool __stdcall VmmVmExitHandler(VmmInitialStack *stack)
 _Use_decl_annotations_ static void VmmpHandleVmExit(GuestContext *guest_context)
 // Dispatches VM-exit to a corresponding handler
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
-
     const VmExitInformation exit_reason = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitReason)) };
 
     if (kVmmpEnableRecordVmExit) {// Save them for ease of trouble shooting
@@ -259,7 +257,6 @@ _Use_decl_annotations_ static void VmmpHandleMonitorTrap(GuestContext *guest_con
 // Interrupt
 _Use_decl_annotations_ static void VmmpHandleException(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     const VmExitInterruptionInformationField exception = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitIntrInfo)) };
     InterruptionType interruption_type = static_cast<InterruptionType>(exception.fields.interruption_type);
     InterruptionVector vector = static_cast<InterruptionVector>(exception.fields.vector);
@@ -297,7 +294,6 @@ _Use_decl_annotations_ static void VmmpHandleException(GuestContext *guest_conte
 // CPUID
 _Use_decl_annotations_ static void VmmpHandleCpuid(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     unsigned int cpu_info[4] = {};
     int function_id = static_cast<int>(guest_context->gp_regs->ax);
     int sub_function_id = static_cast<int>(guest_context->gp_regs->cx);
@@ -324,8 +320,6 @@ _Use_decl_annotations_ static void VmmpHandleCpuid(GuestContext *guest_context)
 // RDTSC
 _Use_decl_annotations_ static void VmmpHandleRdtsc(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
-
     ULARGE_INTEGER tsc = {};
     tsc.QuadPart = __rdtsc();
     guest_context->gp_regs->dx = tsc.HighPart;
@@ -338,7 +332,6 @@ _Use_decl_annotations_ static void VmmpHandleRdtsc(GuestContext *guest_context)
 // RDTSCP
 _Use_decl_annotations_ static void VmmpHandleRdtscp(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     unsigned int tsc_aux = 0;
     ULARGE_INTEGER tsc = {};
     tsc.QuadPart = __rdtscp(&tsc_aux);
@@ -353,8 +346,6 @@ _Use_decl_annotations_ static void VmmpHandleRdtscp(GuestContext *guest_context)
 // XSETBV. It is executed at the time of system resuming
 _Use_decl_annotations_ static void VmmpHandleXsetbv(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
-
     ULARGE_INTEGER value = {};
     value.LowPart = static_cast<ULONG>(guest_context->gp_regs->ax);
     value.HighPart = static_cast<ULONG>(guest_context->gp_regs->dx);
@@ -367,7 +358,6 @@ _Use_decl_annotations_ static void VmmpHandleXsetbv(GuestContext *guest_context)
 // RDMSR
 _Use_decl_annotations_ static void VmmpHandleMsrReadAccess(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     VmmpHandleMsrAccess(guest_context, true);
 }
 
@@ -375,7 +365,6 @@ _Use_decl_annotations_ static void VmmpHandleMsrReadAccess(GuestContext *guest_c
 // WRMSR
 _Use_decl_annotations_ static void VmmpHandleMsrWriteAccess(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     VmmpHandleMsrAccess(guest_context, false);
 }
 
@@ -453,7 +442,6 @@ _Use_decl_annotations_ static void VmmpHandleMsrAccess(GuestContext *guest_conte
 // LIDT, SIDT, LGDT and SGDT
 _Use_decl_annotations_ static void VmmpHandleGdtrOrIdtrAccess(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     const GdtrOrIdtrInstInformation exit_qualification = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmxInstructionInfo)) };
     ULONG_PTR displacement = UtilVmRead(VmcsField::kExitQualification);// Calculate an address to be used for the instruction
 
@@ -528,7 +516,6 @@ _Use_decl_annotations_ static void VmmpHandleGdtrOrIdtrAccess(GuestContext *gues
 // LLDT, LTR, SLDT, and STR
 _Use_decl_annotations_ static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     const LdtrOrTrInstInformation exit_qualification = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmxInstructionInfo)) };
     ULONG_PTR displacement = UtilVmRead(VmcsField::kExitQualification);// Calculate an address or a register to be used for the instruction
     ULONG_PTR operation_address = 0;
@@ -604,7 +591,6 @@ _Use_decl_annotations_ static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_
 // MOV to / from DRx
 _Use_decl_annotations_ static void VmmpHandleDrAccess(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     const MovDrQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     ULONG_PTR * register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
 
@@ -821,7 +807,6 @@ _Use_decl_annotations_ static void VmmpIoWrapper(bool to_memory, bool is_string,
 // MOV to / from CRx
 _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     const MovCrQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     const auto register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
 
@@ -832,7 +817,6 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         {
         case 0:// CR0 <- Reg
         {
-            HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
             const Cr0 cr0_fixed0 = { __readmsr(0x486) };
             const Cr0 cr0_fixed1 = { __readmsr(0x487) };
             Cr0 cr0 = { *register_used };
@@ -844,14 +828,12 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         }
         case 3:// CR3 <- Reg
         {
-            HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
             UtilInvvpidSingleContextExceptGlobal(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1));
             UtilVmWrite(VmcsField::kGuestCr3, *register_used);
             break;
         }
         case 4:// CR4 <- Reg
         {
-            HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
             UtilInvvpidAllContext();
             const Cr4 cr4_fixed0 = { __readmsr(0x488) };
             const Cr4 cr4_fixed1 = { __readmsr(0x489) };
@@ -864,7 +846,6 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         }
         case 8:// CR8 <- Reg
         {
-            HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
             guest_context->cr8 = *register_used;
             break;
         }
@@ -878,13 +859,11 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         {
         case 3:// Reg <- CR3
         {
-            HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
             *register_used = UtilVmRead(VmcsField::kGuestCr3);
             break;
         }
         case 8:// Reg <- CR8
         {
-            HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
             *register_used = guest_context->cr8;
             break;
         }
@@ -909,7 +888,6 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
 _Use_decl_annotations_ static void VmmpHandleVmx(GuestContext *guest_context)
 // VMX instructions except for VMCALL
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     // See: CONVENTIONS
     guest_context->flag_reg.fields.cf = true;  // Error without status
     guest_context->flag_reg.fields.pf = false;
@@ -958,7 +936,6 @@ _Use_decl_annotations_ static void VmmpHandleVmCall(GuestContext *guest_context)
 // INVD
 _Use_decl_annotations_ static void VmmpHandleInvalidateInternalCaches(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     AsmInvalidateInternalCaches();
     VmmpAdjustGuestInstructionPointer(guest_context);
 }
@@ -967,7 +944,6 @@ _Use_decl_annotations_ static void VmmpHandleInvalidateInternalCaches(GuestConte
 // INVLPG
 _Use_decl_annotations_ static void VmmpHandleInvalidateTlbEntry(GuestContext *guest_context)
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     const auto invalidate_address = reinterpret_cast<void *>(UtilVmRead(VmcsField::kExitQualification));
     __invlpg(invalidate_address);
     UtilInvvpidIndividualAddress(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1), invalidate_address);
@@ -978,7 +954,6 @@ _Use_decl_annotations_ static void VmmpHandleInvalidateTlbEntry(GuestContext *gu
 _Use_decl_annotations_ static void VmmpHandleEptViolation(GuestContext *guest_context)
 // EXIT_REASON_EPT_VIOLATION
 {
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     auto processor_data = guest_context->stack->processor_data;
     EptHandleEptViolation(processor_data->ept_data);
 }

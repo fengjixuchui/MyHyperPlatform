@@ -558,7 +558,6 @@ _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
     }
 
     // EPT entry miss. It should be device memory.
-    HYPERPLATFORM_PERFORMANCE_MEASURE_THIS_SCOPE();
     NT_VERIFY(EptpIsDeviceMemory(fault_pa));//debug°æ±¾ÌØÓĞ¡£
     EptpConstructTables(ept_data->ept_pml4, 4, fault_pa, ept_data);
 

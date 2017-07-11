@@ -66,7 +66,7 @@ public:
                 break;
             }
 
-            output_routine_(data_[i].key, data_[i].total_execution_count, data_[i].total_elapsed_time, output_context_);
+            output_routine_(data_[i].key, data_[i].total_execution_count, data_[i].total_elapsed_time, output_context_);//»Øµôº¯Êý¡£
         }
 
         if (data_[0].key) {
@@ -74,23 +74,7 @@ public:
         }
     }
 
-    /// Saves performance data taken by PerfCounter.
-    bool AddData(_In_ const char* location_name, _In_ ULONG64 elapsed_time)
-    {
-        ScopedLock lock(lock_enter_routine_, lock_leave_routine_, lock_context_);
-
-        ULONG data_index = GetPerfDataIndex(location_name);
-        if (data_index == kInvalidDataIndex) {
-            return false;
-        }
-
-        data_[data_index].total_execution_count++;
-        data_[data_index].total_elapsed_time += elapsed_time;
-        return true;
-    }
-
 private:
-    static const ULONG kInvalidDataIndex = MAXULONG;
     static const ULONG kMaxNumberOfDataEntries = 200;
 
     /// Represents performance data for each location
@@ -98,32 +82,6 @@ private:
         const char* key;                //!< Identifies a subject matter location
         ULONG64 total_execution_count;  //!< How many times executed
         ULONG64 total_elapsed_time;     //!< An accumulated elapsed time
-    };
-
-    /// Scoped lock
-    class ScopedLock
-    {
-    public:
-        /// Acquires a lock using \a lock_routine.
-        /// @param lock_routine  A function pointer for acquiring a lock
-        /// @param leave_routine A function pointer for releasing a lock
-        /// @param lock_context  An arbitrary parameter for \a lock_enter_routine and \a lock_leave_routine
-        ScopedLock(_In_ LockRoutine* lock_routine, _In_ LockRoutine* leave_routine, _In_opt_ void* lock_context)
-            : lock_routine_(lock_routine), leave_routine_(leave_routine), lock_context_(lock_context)
-        {
-            lock_routine_(lock_context_);
-        }
-
-        /// Releases a lock using ScopedLock::leave_routine_.
-        ~ScopedLock()
-        {
-            leave_routine_(lock_context_);
-        }
-
-    private:
-        LockRoutine* lock_routine_;
-        LockRoutine* leave_routine_;
-        void* lock_context_;
     };
 
     /// Default empty output routine
@@ -136,32 +94,6 @@ private:
     /// @param lock_context   Ignored
     static void NoLockRoutine(_In_opt_ void* lock_context) {
         UNREFERENCED_PARAMETER(lock_context);
-    }
-
-    /// Returns an index of data corresponds to the location_name.
-    /// @param key   A location to get an index of corresponding data entry
-    /// @return   An index of data or kInvalidDataIndex
-    /// It adds a new entry when the key is not found in existing entries.
-    /// Returns kInvalidDataIndex if a corresponding entry is not found and there is no room to add a new entry.
-    ULONG GetPerfDataIndex(_In_ const char* key)
-    {
-        if (!key) {
-            return false;
-        }
-
-        for (ULONG i = 0ul; i < kMaxNumberOfDataEntries; i++)
-        {
-            if (data_[i].key == key) {
-                return i;
-            }
-
-            if (data_[i].key == nullptr) {
-                data_[i].key = key;
-                return i;
-            }
-        }
-
-        return kInvalidDataIndex;
     }
 
     InitialOutputRoutine* initial_output_routine_;

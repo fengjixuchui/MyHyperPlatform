@@ -23,13 +23,11 @@ _Use_decl_annotations_ NTSTATUS PerfInitialization()
 {
     PAGED_CODE();
 
-    PerfCollector * perf_collector = reinterpret_cast<PerfCollector*>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(PerfCollector), TAG));
-    if (!perf_collector) {
+    g_performance_collector = reinterpret_cast<PerfCollector*>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(PerfCollector), TAG));
+    if (!g_performance_collector) {
         return STATUS_MEMORY_NOT_ALLOCATED;
     }
-    
-    perf_collector->Initialize(PerfpOutputRoutine, PerfpInitialOutputRoutine, PerfpFinalOutputRoutine);// No lock to avoid calling kernel APIs from VMM and race condition here is not an issue.
-    g_performance_collector = perf_collector;
+    g_performance_collector->Initialize(PerfpOutputRoutine, PerfpInitialOutputRoutine, PerfpFinalOutputRoutine);// No lock to avoid calling kernel APIs from VMM and race condition here is not an issue.
     return STATUS_SUCCESS;
 }
 

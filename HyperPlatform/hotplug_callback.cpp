@@ -5,7 +5,6 @@
 /// Implements hot-plug callback functions.
 
 #include "hotplug_callback.h"
-#include "common.h"
 #include "log.h"
 #include "vm.h"
 

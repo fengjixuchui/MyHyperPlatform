@@ -5,7 +5,6 @@
 /// Implements power callback functions.
 
 #include "power_callback.h"
-#include "common.h"
 #include "log.h"
 #include "vm.h"
 

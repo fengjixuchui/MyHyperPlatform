@@ -19,7 +19,6 @@ static const auto kLogpBufferSizeInPages = 16ul;
 static const auto kLogpBufferSize = PAGE_SIZE * kLogpBufferSizeInPages;// An actual log buffer size in bytes.
 static const auto kLogpBufferUsableSize = kLogpBufferSize - 1;// A size that is usable for logging. Minus one because the last byte is kept for \0.
 static const auto kLogpLogFlushIntervalMsec = 50;// An interval to flush buffered log entries into a log file.
-static const ULONG TAG = ' gol';
 
 struct LogBufferInfo {
   volatile char *log_buffer_head;// A pointer to buffer currently used. It is either log_buffer1 or log_buffer2.

@@ -131,7 +131,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asm.h" />
-    <ClInclude Include="common.h" />
     <ClInclude Include="ept.h" />
     <ClInclude Include="hotplug_callback.h" />
     <ClInclude Include="ia32_type.h" />
@@ -147,12 +146,6 @@
     <MASM Include="Arch\x64\x64.asm">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </MASM>
-    <MASM Include="Arch\x86\x86.asm">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</UseSafeExceptionHandlers>
-      <UseSafeExceptionHandlers Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</UseSafeExceptionHandlers>
     </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

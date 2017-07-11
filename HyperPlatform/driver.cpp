@@ -6,7 +6,6 @@
 #endif
 
 #include "driver.h"
-#include "common.h"
 #include "hotplug_callback.h"
 #include "log.h"
 #include "power_callback.h"

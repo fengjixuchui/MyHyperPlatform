@@ -6,7 +6,6 @@
 
 #include "ept.h"
 #include "asm.h"
-#include "common.h"
 #include "log.h"
 #include "util.h"
 #include "performance.h"

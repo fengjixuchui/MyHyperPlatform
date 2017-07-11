@@ -7,7 +7,6 @@
 #include "util.h"
 #include <intrin.h>
 #include "asm.h"
-#include "common.h"
 #include "log.h"
 
 extern "C"

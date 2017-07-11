@@ -8,7 +8,6 @@
 #include <limits.h>
 #include <intrin.h>
 #include "asm.h"
-#include "common.h"
 #include "ept.h"
 #include "log.h"
 #include "util.h"

@@ -5,7 +5,6 @@
 /// Implements performance measurement functions.
 
 #include "performance.h"
-#include "common.h"
 #include "log.h"
 
 static PerfCollector::InitialOutputRoutine PerfpInitialOutputRoutine;

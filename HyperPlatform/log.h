@@ -8,6 +8,8 @@
 
 #include <fltKernel.h>
 
+static const ULONG TAG = 'PpyH';/// A pool tag
+
 extern "C"
 {
 /// Logs a message as respective severity

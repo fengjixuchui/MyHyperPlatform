@@ -193,8 +193,7 @@ _Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
 }
 
 
-_Use_decl_annotations_ static void * BuildMsrBitmap()
-// Build MSR bitmap
+_Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
 {
     PAGED_CODE();
 
@@ -209,11 +208,10 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()
     UCHAR * bitmap_read_high = bitmap_read_low + 1024;
     RtlFillMemory(bitmap_read_low, 1024, 0xff);   // read        0 -     1fff
     RtlFillMemory(bitmap_read_high, 1024, 0xff);  // read c0000000 - c0001fff
-
-    // Ignore IA32_MPERF (000000e7) and IA32_APERF (000000e8)
+    
     RTL_BITMAP bitmap_read_low_header = {};
     RtlInitializeBitMap(&bitmap_read_low_header, reinterpret_cast<PULONG>(bitmap_read_low), 1024 * 8);
-    RtlClearBits(&bitmap_read_low_header, 0xe7, 2);
+    RtlClearBits(&bitmap_read_low_header, 0xe7, 2);// Ignore IA32_MPERF (000000e7) and IA32_APERF (000000e8)
 
     // Checks MSRs that cause #GP from 0 to 0xfff, and ignore all of them
     for (ULONG msr = 0ul; msr < 0x1000; ++msr)
@@ -224,18 +222,16 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()
             RtlClearBits(&bitmap_read_low_header, msr, 1);
         }
     }
-
-    // Ignore IA32_GS_BASE (c0000101) and IA32_KERNEL_GS_BASE (c0000102)
+    
     RTL_BITMAP bitmap_read_high_header = {};
     RtlInitializeBitMap(&bitmap_read_high_header, reinterpret_cast<PULONG>(bitmap_read_high), 1024 * CHAR_BIT);
-    RtlClearBits(&bitmap_read_high_header, 0x101, 2);
+    RtlClearBits(&bitmap_read_high_header, 0x101, 2);// Ignore IA32_GS_BASE (c0000101) and IA32_KERNEL_GS_BASE (c0000102)
 
     return msr_bitmap;
 }
 
 
-_Use_decl_annotations_ static UCHAR * BuildIoBitmaps()
-// Build IO bitmaps
+_Use_decl_annotations_ static UCHAR * BuildIoBitmaps()// Build IO bitmaps
 {
     PAGED_CODE();
 
@@ -252,18 +248,15 @@ _Use_decl_annotations_ static UCHAR * BuildIoBitmaps()
     // Activate VM-exit for IO port 0x10 - 0x2010 as an example
     RTL_BITMAP bitmap_a_header = {};
     RtlInitializeBitMap(&bitmap_a_header, reinterpret_cast<PULONG>(io_bitmap_a), PAGE_SIZE * CHAR_BIT);
-    // RtlSetBits(&bitmap_a_header, 0x10, 0x2000);
 
     RTL_BITMAP bitmap_b_header = {};
     RtlInitializeBitMap(&bitmap_b_header, reinterpret_cast<PULONG>(io_bitmap_b), PAGE_SIZE * CHAR_BIT);
-    // RtlSetBits(&bitmap_b_header, 0, 0x8000);
 
     return io_bitmaps;
 }
 
 
-_Use_decl_annotations_ static NTSTATUS VmpStartVm(void *context)
-// Virtualize the current processor
+_Use_decl_annotations_ static NTSTATUS VmpStartVm(void *context)// Virtualize the current processor
 {
     PAGED_CODE();
 
@@ -604,8 +597,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
 }
 
 
-_Use_decl_annotations_ static void VmpLaunchVm() 
-// Executes vmlaunch
+_Use_decl_annotations_ static void VmpLaunchVm() // Executes vmlaunch
 {
     PAGED_CODE();
 
@@ -714,8 +706,7 @@ _Use_decl_annotations_ static ULONG VmpAdjustControlValue(Msr msr, ULONG request
 }
 
 
-_Use_decl_annotations_ void VmTermination()
-// Terminates VM
+_Use_decl_annotations_ void VmTermination()// Terminates VM
 {
     PAGED_CODE();
 
@@ -751,8 +742,7 @@ _Use_decl_annotations_ static NTSTATUS VmpStopVm(void *context)
 }
 
 
-_Use_decl_annotations_ static void VmpFreeProcessorData(ProcessorData *processor_data)
-// Frees all related memory
+_Use_decl_annotations_ static void VmpFreeProcessorData(ProcessorData *processor_data)// Frees all related memory
 {
     PAGED_CODE();
 

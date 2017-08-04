@@ -169,9 +169,7 @@ _Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
     PAGED_CODE();
 
     SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG));
-    if (!shared_data) {
-        return nullptr;
-    }
+    ASSERT(shared_data);
     RtlZeroMemory(shared_data, sizeof(SharedProcessorData));
 
     shared_data->msr_bitmap = BuildMsrBitmap();// Setup MSR bitmap
@@ -199,9 +197,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
     PAGED_CODE();
 
     void * msr_bitmap = ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG);
-    if (!msr_bitmap) {
-        return nullptr;
-    }
+    ASSERT(msr_bitmap);
     RtlZeroMemory(msr_bitmap, PAGE_SIZE);
 
     // Activate VM-exit for RDMSR against all MSRs
@@ -237,9 +233,7 @@ _Use_decl_annotations_ static UCHAR * BuildIoBitmaps()// Build IO bitmaps
     PAGED_CODE();
 
     UCHAR * io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE * 2, TAG));// Allocate two IO bitmaps as one contiguous 4K+4K page
-    if (!io_bitmaps) {
-        return nullptr;
-    }
+    ASSERT(io_bitmaps);
 
     UCHAR * io_bitmap_a = io_bitmaps;              // for    0x0 - 0x7fff
     UCHAR * io_bitmap_b = io_bitmaps + PAGE_SIZE;  // for 0x8000 - 0xffff
@@ -284,9 +278,7 @@ _Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer
     }
     
     ProcessorData * processor_data = reinterpret_cast<ProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(ProcessorData), TAG));// Allocate related structures
-    if (!processor_data) {
-        return;
-    }
+    ASSERT(processor_data);
     RtlZeroMemory(processor_data, sizeof(ProcessorData));
     processor_data->shared_data = shared_data;
     InterlockedIncrement(&processor_data->shared_data->reference_count);
@@ -303,15 +295,11 @@ _Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer
     RtlZeroMemory(processor_data->vmm_stack_limit, KERNEL_STACK_SIZE);
 
     processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG));
-    if (!processor_data->vmcs_region) {
-        goto ReturnFalse;
-    }
+    ASSERT(processor_data->vmcs_region);
     RtlZeroMemory(processor_data->vmcs_region, kVmxMaxVmcsSize);
 
     processor_data->vmxon_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG));
-    if (!processor_data->vmxon_region) {
-        goto ReturnFalse;
-    }
+    ASSERT(processor_data->vmxon_region);
     RtlZeroMemory(processor_data->vmxon_region, kVmxMaxVmcsSize);
 
     // Initialize stack memory for VMM like this:

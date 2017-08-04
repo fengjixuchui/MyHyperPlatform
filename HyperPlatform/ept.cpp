@@ -315,25 +315,16 @@ _Use_decl_annotations_ EptData *EptInitialization()
     static const ULONG64 kEptPageWalkLevel = 4ul;
     
     EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
-    if (!ept_data) {
-        return nullptr;
-    }
+    ASSERT(ept_data);
     RtlZeroMemory(ept_data, sizeof(EptData));
     
     EptPointer * ept_poiner = reinterpret_cast<EptPointer *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));// Allocate EptPointer
-    if (!ept_poiner) {
-        ExFreePoolWithTag(ept_data, TAG);
-        return nullptr;
-    }
+    ASSERT(ept_poiner);
     RtlZeroMemory(ept_poiner, PAGE_SIZE);
 
     // Allocate EPT_PML4 and initialize EptPointer
     EptCommonEntry * ept_pml4 = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));
-    if (!ept_pml4) {
-        ExFreePoolWithTag(ept_poiner, TAG);
-        ExFreePoolWithTag(ept_data, TAG);
-        return nullptr;
-    }
+    ASSERT(ept_pml4);
     RtlZeroMemory(ept_pml4, PAGE_SIZE);
     ept_poiner->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(UtilPaFromVa(ept_pml4)));
     ept_poiner->fields.page_walk_length = kEptPageWalkLevel - 1;
@@ -369,12 +360,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     // Allocate preallocated_entries
     const SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
     EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
-    if (!preallocated_entries) {
-        EptpDestructTables(ept_pml4, 4);
-        ExFreePoolWithTag(ept_poiner, TAG);
-        ExFreePoolWithTag(ept_data, TAG);
-        return nullptr;
-    }
+    ASSERT(preallocated_entries);
     RtlZeroMemory(preallocated_entries, preallocated_entries_size);
 
     // And fill preallocated_entries with newly created entries
@@ -487,9 +473,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
     static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
     EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
-    if (!entry) {
-        return nullptr;
-    }
+    ASSERT(entry);
     RtlZeroMemory(entry, kAllocSize);
     return entry;
 }

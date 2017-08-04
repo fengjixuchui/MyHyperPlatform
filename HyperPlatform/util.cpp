@@ -104,10 +104,7 @@ _Use_decl_annotations_ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemor
 
     SIZE_T memory_block_size = sizeof(PhysicalMemoryDescriptor) + sizeof(PhysicalMemoryRun) * (number_of_runs - 1);
     PhysicalMemoryDescriptor * pm_block = reinterpret_cast<PhysicalMemoryDescriptor *>(ExAllocatePoolWithTag(NonPagedPoolNx, memory_block_size, TAG));
-    if (!pm_block) {
-        ExFreePoolWithTag(pm_ranges, 'hPmM');
-        return nullptr;
-    }
+    ASSERT(pm_block);
     RtlZeroMemory(pm_block, memory_block_size);
 
     pm_block->number_of_runs = number_of_runs;

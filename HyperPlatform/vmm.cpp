@@ -4,8 +4,9 @@
 /// @file
 /// Implements VMM functions.
 
-#include "vmm.h"
 #include <intrin.h>
+
+#include "vmm.h"
 #include "asm.h"
 #include "ept.h"
 #include "log.h"

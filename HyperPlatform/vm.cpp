@@ -4,9 +4,10 @@
 /// @file
 /// Implements VMM initialization functions.
 
-#include "vm.h"
 #include <limits.h>
 #include <intrin.h>
+
+#include "vm.h"
 #include "asm.h"
 #include "ept.h"
 #include "log.h"

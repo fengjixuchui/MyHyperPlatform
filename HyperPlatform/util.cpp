@@ -4,8 +4,9 @@
 /// @file
 /// Implements primitive utility functions.
 
-#include "util.h"
 #include <intrin.h>
+
+#include "util.h"
 #include "asm.h"
 #include "log.h"
 

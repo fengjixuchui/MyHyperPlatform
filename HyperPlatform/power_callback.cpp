@@ -73,7 +73,7 @@ _Use_decl_annotations_ static void PowerCallbackpCallbackRoutine(PVOID callback_
 
     if (argument2) {// the computer has just reentered S0.
         LOG_INFO("Resuming the system...");
-        auto status = VmInitialization();
+        NTSTATUS status = VmInitialization();
         if (!NT_SUCCESS(status)) {
             LOG_ERROR("Failed to re-virtualize processors. Please unload the driver.");
         }

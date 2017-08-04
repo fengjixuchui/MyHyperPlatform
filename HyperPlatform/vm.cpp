@@ -65,36 +65,6 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpIsHyperPlatformInstalled();
 #endif
 
 
-_Use_decl_annotations_ NTSTATUS VmInitialization()
-// Checks if a VMM can be installed, and so, installs it
-{
-    PAGED_CODE();
-
-    if (VmpIsHyperPlatformInstalled()) {
-        return STATUS_CANCELLED;
-    }
-
-    if (!VmpIsVmxAvailable()) {
-        return STATUS_HV_FEATURE_UNAVAILABLE;
-    }
-
-    static SharedProcessorData * shared_data = InitializeSharedData();
-    if (!shared_data) {
-        return STATUS_MEMORY_NOT_ALLOCATED;
-    }
-
-    EptInitializeMtrrEntries();// Read and store all MTRRs to set a correct memory type for EPT
-
-    NTSTATUS status = UtilForEachProcessor(VmpStartVm, shared_data);// Virtualize all processors
-    if (!NT_SUCCESS(status)) {
-        UtilForEachProcessor(VmpStopVm, nullptr);
-        return status;
-    }
-
-    return status;
-}
-
-
 _Use_decl_annotations_ static bool VmpIsVmxAvailable()
 // Checks if the system supports virtualization
 {
@@ -163,35 +133,6 @@ _Use_decl_annotations_ static NTSTATUS VmpSetLockBitCallback(void *context)
 }
 
 
-_Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
-// Initialize shared processor data
-{
-    PAGED_CODE();
-
-    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG));
-    ASSERT(shared_data);
-    RtlZeroMemory(shared_data, sizeof(SharedProcessorData));
-
-    shared_data->msr_bitmap = BuildMsrBitmap();// Setup MSR bitmap
-    if (!shared_data->msr_bitmap) {
-        ExFreePoolWithTag(shared_data, TAG);
-        return nullptr;
-    }
-
-    UCHAR * io_bitmaps = BuildIoBitmaps();// Setup IO bitmaps
-    if (!io_bitmaps) {
-        ExFreePoolWithTag(shared_data->msr_bitmap, TAG);
-        ExFreePoolWithTag(shared_data, TAG);
-        return nullptr;
-    }
-
-    shared_data->io_bitmap_a = io_bitmaps;
-    shared_data->io_bitmap_b = io_bitmaps + PAGE_SIZE;
-
-    return shared_data;
-}
-
-
 _Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
 {
     PAGED_CODE();
@@ -205,7 +146,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
     UCHAR * bitmap_read_high = bitmap_read_low + 1024;
     RtlFillMemory(bitmap_read_low, 1024, 0xff);   // read        0 -     1fff
     RtlFillMemory(bitmap_read_high, 1024, 0xff);  // read c0000000 - c0001fff
-    
+
     RTL_BITMAP bitmap_read_low_header = {};
     RtlInitializeBitMap(&bitmap_read_low_header, reinterpret_cast<PULONG>(bitmap_read_low), 1024 * 8);
     RtlClearBits(&bitmap_read_low_header, 0xe7, 2);// Ignore IA32_MPERF (000000e7) and IA32_APERF (000000e8)
@@ -215,11 +156,12 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
     {
         __try {
             __readmsr(msr);
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
             RtlClearBits(&bitmap_read_low_header, msr, 1);
         }
     }
-    
+
     RTL_BITMAP bitmap_read_high_header = {};
     RtlInitializeBitMap(&bitmap_read_high_header, reinterpret_cast<PULONG>(bitmap_read_high), 1024 * CHAR_BIT);
     RtlClearBits(&bitmap_read_high_header, 0x101, 2);// Ignore IA32_GS_BASE (c0000101) and IA32_KERNEL_GS_BASE (c0000102)
@@ -248,6 +190,56 @@ _Use_decl_annotations_ static UCHAR * BuildIoBitmaps()// Build IO bitmaps
     RtlInitializeBitMap(&bitmap_b_header, reinterpret_cast<PULONG>(io_bitmap_b), PAGE_SIZE * CHAR_BIT);
 
     return io_bitmaps;
+}
+
+
+_Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
+// Initialize shared processor data
+{
+    PAGED_CODE();
+
+    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG));
+    ASSERT(shared_data);
+    RtlZeroMemory(shared_data, sizeof(SharedProcessorData));
+
+    shared_data->msr_bitmap = BuildMsrBitmap();// Setup MSR bitmap
+    ASSERT(shared_data->msr_bitmap);
+
+    UCHAR * io_bitmaps = BuildIoBitmaps();// Setup IO bitmaps
+    ASSERT(io_bitmaps);
+
+    shared_data->io_bitmap_a = io_bitmaps;
+    shared_data->io_bitmap_b = io_bitmaps + PAGE_SIZE;
+
+    return shared_data;
+}
+
+
+_Use_decl_annotations_ NTSTATUS VmInitialization()
+// Checks if a VMM can be installed, and so, installs it
+{
+    PAGED_CODE();
+
+    if (VmpIsHyperPlatformInstalled()) {
+        return STATUS_CANCELLED;
+    }
+
+    if (!VmpIsVmxAvailable()) {
+        return STATUS_HV_FEATURE_UNAVAILABLE;
+    }
+
+    static SharedProcessorData * shared_data = InitializeSharedData();
+    ASSERT(shared_data);
+
+    EptInitializeMtrrEntries();// Read and store all MTRRs to set a correct memory type for EPT
+
+    NTSTATUS status = UtilForEachProcessor(VmpStartVm, shared_data);// Virtualize all processors
+    if (!NT_SUCCESS(status)) {
+        UtilForEachProcessor(VmpStopVm, nullptr);
+        return status;
+    }
+
+    return status;
 }
 
 

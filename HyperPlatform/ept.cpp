@@ -58,14 +58,6 @@ static EptCommonEntry *EptpConstructTables(_In_ EptCommonEntry *table, _In_ ULON
 
 static void EptpDestructTables(_In_ EptCommonEntry *table, _In_ ULONG table_level);
 
-_Must_inspect_result_ __drv_allocatesMem(Mem) _When_(ept_data == nullptr, _IRQL_requires_max_(DISPATCH_LEVEL)) 
-static EptCommonEntry *EptpAllocateEptEntry(_In_opt_ EptData *ept_data);
-
-static EptCommonEntry *EptpAllocateEptEntryFromPreAllocated(_In_ EptData *ept_data);
-
-_Must_inspect_result_ __drv_allocatesMem(Mem) _IRQL_requires_max_(DISPATCH_LEVEL)
-static EptCommonEntry *EptpAllocateEptEntryFromPool();
-
 static void EptpInitTableEntry(_In_ EptCommonEntry *Entry, _In_ ULONG table_level, _In_ ULONG64 physical_address);
 static ULONG64 EptpAddressToPxeIndex(_In_ ULONG64 physical_address);
 static ULONG64 EptpAddressToPpeIndex(_In_ ULONG64 physical_address);
@@ -307,6 +299,40 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
 }
 
 
+_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
+// Return a new EPT entry either by creating new one
+{
+    static const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
+    static_assert(kAllocSize == PAGE_SIZE, "Size check");
+
+    EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
+    ASSERT(entry);
+    RtlZeroMemory(entry, kAllocSize);
+    return entry;
+}
+
+
+_Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)
+// Return a new EPT entry from pre-allocated ones.
+{
+    LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count);
+    ASSERT(count <= kEptpNumberOfPreallocatedEntries);
+
+    return ept_data->preallocated_entries[count - 1];
+}
+
+
+_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data)
+// Return a new EPT entry either by creating new one or from pre-allocated ones
+{
+    if (ept_data) {
+        return EptpAllocateEptEntryFromPreAllocated(ept_data);
+    } else {
+        return EptpAllocateEptEntryFromPool();
+    }
+}
+
+
 _Use_decl_annotations_ EptData *EptInitialization() 
 // Builds EPT, allocates pre-allocated entires, initializes and returns EptData
 {
@@ -367,13 +393,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     for (SIZE_T i = 0ul; i < kEptpNumberOfPreallocatedEntries; ++i)
     {
         EptCommonEntry * ept_entry = EptpAllocateEptEntry(nullptr);
-        if (!ept_entry) {
-            EptpFreeUnusedPreAllocatedEntries(preallocated_entries, 0);
-            EptpDestructTables(ept_pml4, 4);
-            ExFreePoolWithTag(ept_poiner, TAG);
-            ExFreePoolWithTag(ept_data, TAG);
-            return nullptr;
-        }
+        ASSERT (ept_entry);
         preallocated_entries[i] = ept_entry;
     }
 
@@ -443,41 +463,6 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
         return nullptr;
     }
 }
-
-
-_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data)
-// Return a new EPT entry either by creating new one or from pre-allocated ones
-{
-    if (ept_data) {
-        return EptpAllocateEptEntryFromPreAllocated(ept_data);
-    } else {
-        return EptpAllocateEptEntryFromPool();
-    }
-}
-
-
-_Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)
-// Return a new EPT entry from pre-allocated ones.
-{
-    LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count);
-    ASSERT(count <= kEptpNumberOfPreallocatedEntries);
-
-    return ept_data->preallocated_entries[count - 1];
-}
-
-
-_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
-// Return a new EPT entry either by creating new one
-{
-    static const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
-    static_assert(kAllocSize == PAGE_SIZE, "Size check");
-
-    EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
-    ASSERT(entry);
-    RtlZeroMemory(entry, kAllocSize);
-    return entry;
-}
-
 
 
 _Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)

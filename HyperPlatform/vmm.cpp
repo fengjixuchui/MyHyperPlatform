@@ -38,15 +38,6 @@ struct GuestContext {
 };
 static_assert(sizeof(GuestContext) == 40, "Size check");
 
-// Context at the moment of vmexit
-struct VmExitHistory {
-    GpRegisters gp_regs;
-    ULONG_PTR ip;
-    VmExitInformation exit_reason;
-    ULONG_PTR exit_qualification;
-    ULONG_PTR instruction_info;
-};
-
 bool __stdcall VmmVmExitHandler(_Inout_ VmmInitialStack *stack);
 DECLSPEC_NORETURN void __stdcall VmmVmxFailureHandler(_Inout_ AllRegisters *all_regs);
 static void VmmpHandleVmExit(_Inout_ GuestContext *guest_context);
@@ -288,7 +279,6 @@ _Use_decl_annotations_ static void VmmpHandleCpuid(GuestContext *guest_context)
     guest_context->gp_regs->bx = cpu_info[1];
     guest_context->gp_regs->cx = cpu_info[2];
     guest_context->gp_regs->dx = cpu_info[3];
-
     VmmpAdjustGuestInstructionPointer(guest_context);
 }
 
@@ -798,11 +788,9 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
             break;
         }
         case 3:// CR3 <- Reg
-        {
             UtilInvvpidSingleContextExceptGlobal(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1));
             UtilVmWrite(VmcsField::kGuestCr3, *register_used);
             break;
-        }
         case 4:// CR4 <- Reg
         {
             UtilInvvpidAllContext();
@@ -816,10 +804,8 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
             break;
         }
         case 8:// CR8 <- Reg
-        {
             guest_context->cr8 = *register_used;
             break;
-        }
         default:
             __debugbreak();
             break;
@@ -829,15 +815,11 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
         switch (exit_qualification.fields.control_register)
         {
         case 3:// Reg <- CR3
-        {
             *register_used = UtilVmRead(VmcsField::kGuestCr3);
             break;
-        }
         case 8:// Reg <- CR8
-        {
             *register_used = guest_context->cr8;
             break;
-        }
         default:
             __debugbreak();
             break;

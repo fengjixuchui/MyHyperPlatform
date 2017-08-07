@@ -400,9 +400,8 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
 
     Idtr idtr = {};
     __sidt(&idtr);
-
-    // See: Algorithms for Determining VMX Capabilities
-    bool use_true_msrs = Ia32VmxBasicMsr{ __readmsr(0x480) }.fields.vmx_capability_hint;
+    
+    bool use_true_msrs = Ia32VmxBasicMsr{ __readmsr(0x480) }.fields.vmx_capability_hint;// See: Algorithms for Determining VMX Capabilities
 
     VmxVmEntryControls vm_entryctl_requested = {};
     vm_entryctl_requested.fields.load_debug_controls = 1;
@@ -432,13 +431,6 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     vm_procctl2_requested.fields.enable_vpid = true;
     vm_procctl2_requested.fields.enable_xsaves_xstors = true;  // for Win10
     VmxSecondaryProcessorBasedControls vm_procctl2 = { VmpAdjustControlValue(Msr::kIa32VmxProcBasedCtls2, vm_procctl2_requested.all) };
-
-    // NOTE: Comment in any of those as needed
-    ULONG_PTR exception_bitmap =
-        // 1 << InterruptionVector::kBreakpointException |
-        // 1 << InterruptionVector::kGeneralProtectionException |
-        // 1 << InterruptionVector::kPageFaultException |
-        0;
 
     // Set up CR0 and CR4 bitmaps
     // - Where a bit is     masked, the shadow bit appears
@@ -490,7 +482,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
     /* 32-Bit Control Fields */
     error |= UtilVmWrite(VmcsField::kPinBasedVmExecControl, vm_pinctl.all);
     error |= UtilVmWrite(VmcsField::kCpuBasedVmExecControl, vm_procctl.all);
-    error |= UtilVmWrite(VmcsField::kExceptionBitmap, exception_bitmap);
+    error |= UtilVmWrite(VmcsField::kExceptionBitmap, 0);
     error |= UtilVmWrite(VmcsField::kVmExitControls, vm_exitctl.all);
     error |= UtilVmWrite(VmcsField::kVmEntryControls, vm_entryctl.all);
     error |= UtilVmWrite(VmcsField::kSecondaryVmExecControl, vm_procctl2.all);

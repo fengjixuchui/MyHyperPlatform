@@ -4,18 +4,16 @@
 /// @file
 /// Implements primitive utility functions.
 
+
 #include <intrin.h>
 
 #include "util.h"
 #include "asm.h"
 #include "log.h"
 
+
 extern "C"
 {
-NTKERNELAPI PVOID NTAPI RtlPcToFileHeader(_In_ PVOID PcValue, _Out_ PVOID *BaseOfImage);
-
-using RtlPcToFileHeaderType = decltype(RtlPcToFileHeader);
-
 _Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) NTKERNELAPI _When_(return != NULL, _Post_writable_byte_size_(NumberOfBytes))
 PVOID MmAllocateContiguousNodeMemory(
         _In_ SIZE_T NumberOfBytes,
@@ -23,21 +21,6 @@ PVOID MmAllocateContiguousNodeMemory(
         _In_ PHYSICAL_ADDRESS HighestAcceptableAddress,
         _In_opt_ PHYSICAL_ADDRESS BoundaryAddressMultiple, _In_ ULONG Protect,
         _In_ NODE_REQUIREMENT PreferredNode);
-
-using MmAllocateContiguousNodeMemoryType = decltype(MmAllocateContiguousNodeMemory);
-
-// dt nt!_LDR_DATA_TABLE_ENTRY
-struct LdrDataTableEntry {
-  LIST_ENTRY in_load_order_links;
-  LIST_ENTRY in_memory_order_links;
-  LIST_ENTRY in_initialization_order_links;
-  void *dll_base;
-  void *entry_point;
-  ULONG size_of_image;
-  UNICODE_STRING full_dll_name;
-  // ...
-};
-
 NTSTATUS UtilpInitializePhysicalMemoryRanges();
 _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPhysicalMemoryRanges();
 

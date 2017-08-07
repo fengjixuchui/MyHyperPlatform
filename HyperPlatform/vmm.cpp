@@ -17,10 +17,6 @@
 
 extern "C"
 {
-static const long kVmmpEnableRecordVmExit = false;// Whether VM-exit recording is enabled
-static const long kVmmpNumberOfRecords = 100;// How many events should be recorded per a processor
-static const long kVmmpNumberOfProcessors = 2;// How many processors are supported for recording
-
 // Represents raw structure of stack of VMM when VmmVmExitHandler() is called
 struct VmmInitialStack {
     GpRegisters gp_regs;
@@ -40,7 +36,6 @@ struct GuestContext {
     KIRQL irql;
     bool vm_continue;
 };
-
 static_assert(sizeof(GuestContext) == 40, "Size check");
 
 // Context at the moment of vmexit
@@ -87,10 +82,6 @@ static void VmmpHandleVmCallTermination(_In_ GuestContext *guest_context, _Inout
 static UCHAR VmmpGetGuestCpl();
 static void VmmpInjectInterruption(_In_ InterruptionType interruption_type, _In_ InterruptionVector vector, _In_ bool deliver_error_code, _In_ ULONG32 error_code);
 
-// Those variables are all for diagnostic purpose
-static ULONG g_vmmp_next_history_index[kVmmpNumberOfProcessors];
-static VmExitHistory g_vmmp_vm_exit_history[kVmmpNumberOfProcessors] [kVmmpNumberOfRecords];
-
 
 #pragma warning(push)
 #pragma warning(disable : 28167)
@@ -131,21 +122,6 @@ _Use_decl_annotations_ static void VmmpHandleVmExit(GuestContext *guest_context)
 // Dispatches VM-exit to a corresponding handler
 {
     const VmExitInformation exit_reason = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitReason)) };
-
-    if (kVmmpEnableRecordVmExit) {// Save them for ease of trouble shooting
-        ULONG processor = KeGetCurrentProcessorNumberEx(nullptr);
-        ULONG &index = g_vmmp_next_history_index[processor];
-        VmExitHistory &history = g_vmmp_vm_exit_history[processor][index];
-
-        history.gp_regs = *guest_context->gp_regs;
-        history.ip = guest_context->ip;
-        history.exit_reason = exit_reason;
-        history.exit_qualification = UtilVmRead(VmcsField::kExitQualification);
-        history.instruction_info = UtilVmRead(VmcsField::kVmxInstructionInfo);
-        if (++index == kVmmpNumberOfRecords) {
-            index = 0;
-        }
-    }
 
     switch (exit_reason.fields.reason)
     {

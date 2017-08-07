@@ -10,7 +10,6 @@
 
 extern "C"
 {
-
     /// Represents ranges of addresses
     struct PhysicalMemoryRun {
         ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)

@@ -25,12 +25,11 @@ _Use_decl_annotations_ NTSTATUS HotplugCallbackInitialization() // Registers pow
 {
     PAGED_CODE();
 
-    PVOID callback_handle = KeRegisterProcessorChangeCallback(HotplugCallbackpCallbackRoutine, nullptr, 0);
-    if (!callback_handle) {
+    g_hpp_callback_handle = KeRegisterProcessorChangeCallback(HotplugCallbackpCallbackRoutine, nullptr, 0);
+    if (!g_hpp_callback_handle) {
         return STATUS_UNSUCCESSFUL;
     }
 
-    g_hpp_callback_handle = callback_handle;
     return STATUS_SUCCESS;
 }
 

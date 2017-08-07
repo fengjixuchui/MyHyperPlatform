@@ -148,7 +148,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
     RtlFillMemory(bitmap_read_high, 1024, 0xff);  // read c0000000 - c0001fff
 
     RTL_BITMAP bitmap_read_low_header = {};
-    RtlInitializeBitMap(&bitmap_read_low_header, reinterpret_cast<PULONG>(bitmap_read_low), 1024 * 8);
+    RtlInitializeBitMap(&bitmap_read_low_header, reinterpret_cast<PULONG>(bitmap_read_low), 1024 * CHAR_BIT);
     RtlClearBits(&bitmap_read_low_header, 0xe7, 2);// Ignore IA32_MPERF (000000e7) and IA32_APERF (000000e8)
 
     // Checks MSRs that cause #GP from 0 to 0xfff, and ignore all of them
@@ -176,18 +176,7 @@ _Use_decl_annotations_ static UCHAR * BuildIoBitmaps()// Build IO bitmaps
 
     UCHAR * io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE * 2, TAG));// Allocate two IO bitmaps as one contiguous 4K+4K page
     ASSERT(io_bitmaps);
-
-    UCHAR * io_bitmap_a = io_bitmaps;              // for    0x0 - 0x7fff
-    UCHAR * io_bitmap_b = io_bitmaps + PAGE_SIZE;  // for 0x8000 - 0xffff
-    RtlFillMemory(io_bitmap_a, PAGE_SIZE, 0);
-    RtlFillMemory(io_bitmap_b, PAGE_SIZE, 0);
-
-    // Activate VM-exit for IO port 0x10 - 0x2010 as an example
-    RTL_BITMAP bitmap_a_header = {};
-    RtlInitializeBitMap(&bitmap_a_header, reinterpret_cast<PULONG>(io_bitmap_a), PAGE_SIZE * CHAR_BIT);
-
-    RTL_BITMAP bitmap_b_header = {};
-    RtlInitializeBitMap(&bitmap_b_header, reinterpret_cast<PULONG>(io_bitmap_b), PAGE_SIZE * CHAR_BIT);
+    RtlZeroMemory(io_bitmaps, PAGE_SIZE * 2);
 
     return io_bitmaps;
 }
@@ -205,11 +194,9 @@ _Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
     shared_data->msr_bitmap = BuildMsrBitmap();// Setup MSR bitmap
     ASSERT(shared_data->msr_bitmap);
 
-    UCHAR * io_bitmaps = BuildIoBitmaps();// Setup IO bitmaps
-    ASSERT(io_bitmaps);
-
-    shared_data->io_bitmap_a = io_bitmaps;
-    shared_data->io_bitmap_b = io_bitmaps + PAGE_SIZE;
+    shared_data->io_bitmap_a = BuildIoBitmaps();// Setup IO bitmaps
+    ASSERT(shared_data->io_bitmap_a);
+    shared_data->io_bitmap_b = (UCHAR *)shared_data->io_bitmap_a + PAGE_SIZE;
 
     return shared_data;
 }

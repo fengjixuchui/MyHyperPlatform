@@ -1,10 +1,6 @@
 // Copyright (c) 2015-2017, Satoshi Tanda. All rights reserved.
 // Use of this source code is governed by a MIT-style license that can be found in the LICENSE file.
 
-#ifndef POOL_NX_OPTIN
-#define POOL_NX_OPTIN 1
-#endif
-
 #include "driver.h"
 #include "hotplug_callback.h"
 #include "log.h"

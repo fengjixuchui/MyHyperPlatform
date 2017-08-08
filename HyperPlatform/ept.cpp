@@ -20,16 +20,16 @@ extern "C"
 // EPT Page table selector                 9 bits
 // EPT Byte within page                   12 bits
 
-static const auto kEptpPxiShift = 39ull;// Get the highest 25 bits
-static const auto kEptpPpiShift = 30ull;// Get the highest 34 bits
-static const auto kEptpPdiShift = 21ull;// Get the highest 43 bits
-static const auto kEptpPtiShift = 12ull;// Get the highest 52 bits
+const auto kEptpPxiShift = 39ull;// Get the highest 25 bits
+const auto kEptpPpiShift = 30ull;// Get the highest 34 bits
+const auto kEptpPdiShift = 21ull;// Get the highest 43 bits
+const auto kEptpPtiShift = 12ull;// Get the highest 52 bits
 
-static const auto kEptpPtxMask = 0x1ffull;// Use 9 bits; 0b0000_0000_0000_0000_0000_0000_0001_1111_1111
-static const auto kEptpNumberOfPreallocatedEntries = 50;// How many EPT entries are preallocated. When the number exceeds it, the hypervisor issues a bugcheck.
-static const auto kEptpNumOfMaxVariableRangeMtrrs = 255;// Architecture defined number of variable range MTRRs
-static const auto kEptpNumOfFixedRangeMtrrs = 1 + 2 + 8;// Architecture defined number of fixed range MTRRs (1 for 64k, 2 for 16k, 8 for 4k)
-static const auto kEptpMtrrEntriesSize = kEptpNumOfMaxVariableRangeMtrrs + kEptpNumOfFixedRangeMtrrs;// A size of array to store all possible MTRRs
+const auto kEptpPtxMask = 0x1ffull;// Use 9 bits; 0b0000_0000_0000_0000_0000_0000_0001_1111_1111
+const auto kEptpNumberOfPreallocatedEntries = 50;// How many EPT entries are preallocated. When the number exceeds it, the hypervisor issues a bugcheck.
+const auto kEptpNumOfMaxVariableRangeMtrrs = 255;// Architecture defined number of variable range MTRRs
+const auto kEptpNumOfFixedRangeMtrrs = 1 + 2 + 8;// Architecture defined number of fixed range MTRRs (1 for 64k, 2 for 16k, 8 for 4k)
+const auto kEptpMtrrEntriesSize = kEptpNumOfMaxVariableRangeMtrrs + kEptpNumOfFixedRangeMtrrs;// A size of array to store all possible MTRRs
 
 #include <pshpack1.h>
 struct MtrrData {
@@ -70,8 +70,8 @@ static void EptpFreeUnusedPreAllocatedEntries(_Pre_notnull_ __drv_freesMem(Mem) 
 #pragma alloc_text(PAGE, EptInitializeMtrrEntries)
 #endif
 
-static MtrrData g_eptp_mtrr_entries[kEptpMtrrEntriesSize];
-static UCHAR g_eptp_mtrr_default_type;
+MtrrData g_eptp_mtrr_entries[kEptpMtrrEntriesSize];
+UCHAR g_eptp_mtrr_default_type;
 
 
 _Use_decl_annotations_ bool EptIsEptAvailable()
@@ -124,12 +124,12 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     
     if (mtrr_capabilities.fields.fixed_range_supported && default_type.fields.fixed_mtrrs_enabled)// Read fixed range MTRRs if supported
     {
-        static const ULONG64 k64kBase = 0x0;
-        static const ULONG64 k64kManagedSize = 0x10000;
-        static const ULONG64 k16kBase = 0x80000;
-        static const ULONG64 k16kManagedSize = 0x4000;
-        static const ULONG64 k4kBase = 0xC0000;
-        static const ULONG64 k4kManagedSize = 0x1000;
+        ULONG64 k64kBase = 0x0;
+        ULONG64 k64kManagedSize = 0x10000;
+        ULONG64 k16kBase = 0x80000;
+        ULONG64 k16kManagedSize = 0x4000;
+        ULONG64 k4kBase = 0xC0000;
+        ULONG64 k4kManagedSize = 0x1000;
 
         // The kIa32MtrrFix64k00000 manages 8 ranges of memory.
         // The first range starts at 0x0, and each range manages a 64k (0x10000) range.
@@ -255,7 +255,7 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
 {
     UCHAR result_type = MAXUCHAR;// Indicate that MTRR is not defined (as a default)
     
-    for (const auto mtrr_entry : g_eptp_mtrr_entries)// Looks for MTRR that includes the specified physical_address
+    for (auto mtrr_entry : g_eptp_mtrr_entries)// Looks for MTRR that includes the specified physical_address
     {
         if (!mtrr_entry.enabled) {
             break;// Reached out the end of stored MTRRs
@@ -299,7 +299,7 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
 _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
 // Return a new EPT entry either by creating new one
 {
-    static const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
+    const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
     static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
     EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
@@ -335,7 +335,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
 {
     PAGED_CODE();
 
-    static const ULONG64 kEptPageWalkLevel = 4ul;
+    ULONG64 kEptPageWalkLevel = 4ul;
     
     EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
     ASSERT(ept_data);
@@ -356,12 +356,12 @@ _Use_decl_annotations_ EptData *EptInitialization()
     // Initialize all EPT entries for all physical memory pages
     for (PFN_COUNT run_index = 0ul; run_index < g_utilp_physical_memory_ranges->number_of_runs; ++run_index)
     {
-        const PhysicalMemoryRun * run = &g_utilp_physical_memory_ranges->run[run_index];
-        const ULONG_PTR base_addr = run->base_page * PAGE_SIZE;
+        PhysicalMemoryRun * run = &g_utilp_physical_memory_ranges->run[run_index];
+        ULONG_PTR base_addr = run->base_page * PAGE_SIZE;
         for (ULONG_PTR page_index = 0ull; page_index < run->page_count; ++page_index)
         {
-            const ULONG_PTR indexed_addr = base_addr + page_index * PAGE_SIZE;
-            const EptCommonEntry * ept_pt_entry = EptpConstructTables(ept_pml4, 4, indexed_addr, nullptr);
+            ULONG_PTR indexed_addr = base_addr + page_index * PAGE_SIZE;
+            EptCommonEntry * ept_pt_entry = EptpConstructTables(ept_pml4, 4, indexed_addr, nullptr);
             if (!ept_pt_entry) {
                 EptpDestructTables(ept_pml4, 4);
                 ExFreePoolWithTag(ept_poiner, TAG);
@@ -372,7 +372,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     }
 
     // Initialize an EPT entry for APIC_BASE. It is required to allocated it now for some reasons, or else, system hangs.
-    const Ia32ApicBaseMsr apic_msr = { __readmsr(0x01B) };
+    Ia32ApicBaseMsr apic_msr = { __readmsr(0x01B) };
     if (!EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr)) {
         EptpDestructTables(ept_pml4, 4);
         ExFreePoolWithTag(ept_poiner, TAG);
@@ -381,7 +381,7 @@ _Use_decl_annotations_ EptData *EptInitialization()
     }
 
     // Allocate preallocated_entries
-    const SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
+    SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
     EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
     ASSERT(preallocated_entries);
     RtlZeroMemory(preallocated_entries, preallocated_entries_size);
@@ -506,7 +506,7 @@ _Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_add
 _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
 // Deal with EPT violation VM-exit.
 {
-    const EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
+    EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     ULONG64 fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
 
     if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
@@ -533,7 +533,7 @@ _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 {
     for (PFN_COUNT i = 0ul; i < g_utilp_physical_memory_ranges->number_of_runs; ++i)
     {
-        const PhysicalMemoryRun * current_run = &g_utilp_physical_memory_ranges->run[i];
+        PhysicalMemoryRun * current_run = &g_utilp_physical_memory_ranges->run[i];
         ULONG64 base_addr = static_cast<ULONG64>(current_run->base_page) * PAGE_SIZE;
         ULONG64 endAddr = base_addr + current_run->page_count * PAGE_SIZE - 1;
         if (UtilIsInBounds(physical_address, base_addr, endAddr)) {

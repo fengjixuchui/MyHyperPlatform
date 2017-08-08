@@ -156,8 +156,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
     {
         __try {
             __readmsr(msr);
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
             RtlClearBits(&bitmap_read_low_header, msr, 1);
         }
     }
@@ -268,9 +267,7 @@ _Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer
     }
     
     processor_data->vmm_stack_limit = AllocateContiguousMemory(KERNEL_STACK_SIZE);// Allocate other processor data fields
-    if (!processor_data->vmm_stack_limit) {
-        goto ReturnFalse;
-    }
+    ASSERT(processor_data->vmm_stack_limit);
     RtlZeroMemory(processor_data->vmm_stack_limit, KERNEL_STACK_SIZE);
 
     processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG));
@@ -336,8 +333,8 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
     // Values 1                   *                   bit of CRx is fixed to 1
     // Values 0                   1                   bit of CRx is flexible
     // Values *                   0                   bit of CRx is fixed to 0
-    const Cr0 cr0_fixed0 = { __readmsr(0x486) };
-    const Cr0 cr0_fixed1 = { __readmsr(0x487) };
+    Cr0 cr0_fixed0 = { __readmsr(0x486) };
+    Cr0 cr0_fixed1 = { __readmsr(0x487) };
     Cr0 cr0 = { __readcr0() };
     Cr0 cr0_original = cr0;
     cr0.all &= cr0_fixed1.all;
@@ -345,8 +342,8 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
     __writecr0(cr0.all);
 
     // See: VMX-FIXED BITS IN CR4
-    const Cr4 cr4_fixed0 = { __readmsr(0x488) };
-    const Cr4 cr4_fixed1 = { __readmsr(0x489) };
+    Cr4 cr4_fixed0 = { __readmsr(0x488) };
+    Cr4 cr4_fixed1 = { __readmsr(0x489) };
     Cr4 cr4 = { __readcr4() };
     Cr4 cr4_original = cr4;
     cr4.all &= cr4_fixed1.all;
@@ -354,7 +351,7 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
     __writecr4(cr4.all);
 
     // Write a VMCS revision identifier
-    const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
+    Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     processor_data->vmxon_region->revision_identifier = vmx_basic_msr.fields.revision_identifier;
 
     ULONG64 vmxon_region_pa = UtilPaFromVa(processor_data->vmxon_region);
@@ -375,7 +372,7 @@ _Use_decl_annotations_ static bool VmpInitializeVmcs(ProcessorData *processor_da
     PAGED_CODE();
 
     // Write a VMCS revision identifier
-    const Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
+    Ia32VmxBasicMsr vmx_basic_msr = { __readmsr(0x480) };
     processor_data->vmcs_region->revision_identifier = vmx_basic_msr.fields.revision_identifier;
 
     SIZE_T vmcs_region_pa = UtilPaFromVa(processor_data->vmcs_region);
@@ -582,7 +579,7 @@ _Use_decl_annotations_ static ULONG VmpGetSegmentAccessRight(USHORT segment_sele
     PAGED_CODE();
 
     VmxRegmentDescriptorAccessRight access_right = {};
-    const SegmentSelector ss = { segment_selector };
+    SegmentSelector ss = { segment_selector };
     if (segment_selector) {
         ULONG_PTR native_access_right = AsmLoadAccessRightsByte(ss.all);
         native_access_right >>= 8;
@@ -603,7 +600,7 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, US
 {
     PAGED_CODE();
 
-    const SegmentSelector ss = { segment_selector };
+    SegmentSelector ss = { segment_selector };
     if (!ss.all) {
         return 0;
     }
@@ -625,7 +622,7 @@ _Use_decl_annotations_ static SegmentDescriptor *VmpGetSegmentDescriptor(ULONG_P
 {
     PAGED_CODE();
 
-    const SegmentSelector ss = { segment_selector };
+    SegmentSelector ss = { segment_selector };
     return reinterpret_cast<SegmentDescriptor *>(descriptor_table_base + ss.fields.index * sizeof(SegmentDescriptor));
 }
 
@@ -758,7 +755,7 @@ _Use_decl_annotations_ static bool VmpIsHyperPlatformInstalled()
 
     int cpu_info[4] = {};
     __cpuid(cpu_info, 1);
-    const CpuFeaturesEcx cpu_features = { static_cast<ULONG_PTR>(cpu_info[2]) };
+    CpuFeaturesEcx cpu_features = { static_cast<ULONG_PTR>(cpu_info[2]) };
     if (!cpu_features.fields.not_used) {
         return false;
     }

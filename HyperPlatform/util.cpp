@@ -20,7 +20,7 @@ PVOID MmAllocateContiguousNodeMemory(
         _In_ PHYSICAL_ADDRESS LowestAcceptableAddress,
         _In_ PHYSICAL_ADDRESS HighestAcceptableAddress,
         _In_opt_ PHYSICAL_ADDRESS BoundaryAddressMultiple, _In_ ULONG Protect,
-        _In_ NODE_REQUIREMENT PreferredNode);
+        _In_ NODE_REQUIREMENT PreferredNode);//Available starting with Windows 8
 NTSTATUS UtilpInitializePhysicalMemoryRanges();
 _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPhysicalMemoryRanges();
 

@@ -229,25 +229,11 @@ AsmReadLDTR PROC
 AsmReadLDTR ENDP
 
 
-; void __stdcall AsmWriteTR(_In_ USHORT task_register);
-AsmWriteTR PROC
-    ltr cx
-    ret
-AsmWriteTR ENDP
-
-
 ; USHORT __stdcall AsmReadTR();
 AsmReadTR PROC
     str ax
     ret
 AsmReadTR ENDP
-
-
-; void __stdcall AsmWriteES(_In_ USHORT segment_selector);
-AsmWriteES PROC
-    mov es, cx
-    ret
-AsmWriteES ENDP
 
 
 ; USHORT __stdcall AsmReadES();
@@ -257,25 +243,11 @@ AsmReadES PROC
 AsmReadES ENDP
 
 
-; void __stdcall AsmWriteCS(_In_ USHORT segment_selector);
-AsmWriteCS PROC
-    mov cs, cx
-    ret
-AsmWriteCS ENDP
-
-
 ; USHORT __stdcall AsmReadCS();
 AsmReadCS PROC
     mov ax, cs
     ret
 AsmReadCS ENDP
-
-
-; void __stdcall AsmWriteSS(_In_ USHORT segment_selector);
-AsmWriteSS PROC
-    mov ss, cx
-    ret
-AsmWriteSS ENDP
 
 
 ; USHORT __stdcall AsmReadSS();
@@ -285,13 +257,6 @@ AsmReadSS PROC
 AsmReadSS ENDP
 
 
-; void __stdcall AsmWriteDS(_In_ USHORT segment_selector);
-AsmWriteDS PROC
-    mov ds, cx
-    ret
-AsmWriteDS ENDP
-
-
 ; USHORT __stdcall AsmReadDS();
 AsmReadDS PROC
     mov ax, ds
@@ -299,25 +264,11 @@ AsmReadDS PROC
 AsmReadDS ENDP
 
 
-; void __stdcall AsmWriteFS(_In_ USHORT segment_selector);
-AsmWriteFS PROC
-    mov fs, cx
-    ret
-AsmWriteFS ENDP
-
-
 ; USHORT __stdcall AsmReadFS();
 AsmReadFS PROC
     mov ax, fs
     ret
 AsmReadFS ENDP
-
-
-; void __stdcall AsmWriteGS(_In_ USHORT segment_selector);
-AsmWriteGS PROC
-    mov gs, cx
-    ret
-AsmWriteGS ENDP
 
 
 ; USHORT __stdcall AsmReadGS();

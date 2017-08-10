@@ -36,57 +36,29 @@ void __stdcall AsmReadGDT(_Out_ Gdtr *gdtr);
 /// @return LDT
 USHORT __stdcall AsmReadLDTR();
 
-/// Writes to TR
-/// @param task_register   A value to write
-void __stdcall AsmWriteTR(_In_ USHORT task_register);
-
 /// Reads STR
 /// @return TR
 USHORT __stdcall AsmReadTR();
-
-/// Writes to ES
-/// @param segment_selector   A value to write
-void __stdcall AsmWriteES(_In_ USHORT segment_selector);
 
 /// Reads ES
 /// @return ES
 USHORT __stdcall AsmReadES();
 
-/// Writes to CS
-/// @param segment_selector   A value to write
-void __stdcall AsmWriteCS(_In_ USHORT segment_selector);
-
 /// Reads CS
 /// @return CS
 USHORT __stdcall AsmReadCS();
-
-/// Writes to SS
-/// @param segment_selector   A value to write
-void __stdcall AsmWriteSS(_In_ USHORT segment_selector);
 
 /// Reads SS
 /// @return SS
 USHORT __stdcall AsmReadSS();
 
-/// Writes to DS
-/// @param segment_selector   A value to write
-void __stdcall AsmWriteDS(_In_ USHORT segment_selector);
-
 /// Reads DS
 /// @return DS
 USHORT __stdcall AsmReadDS();
 
-/// Writes to FS
-/// @param segment_selector   A value to write
-void __stdcall AsmWriteFS(_In_ USHORT segment_selector);
-
 /// Reads FS
 /// @return FS
 USHORT __stdcall AsmReadFS();
-
-/// Writes to GS
-/// @param segment_selector   A value to write
-void __stdcall AsmWriteGS(_In_ USHORT segment_selector);
 
 /// Reads GS
 /// @return GS
@@ -119,10 +91,16 @@ unsigned char __stdcall AsmInvvpid(_In_ InvVpidType invvpid_type, _In_ const Inv
 
 /// Writes to GDT
 /// @param gdtr   A value to write
-inline void __sgdt(_Out_ void *gdtr) { AsmReadGDT(static_cast<Gdtr *>(gdtr)); }
+inline void __sgdt(_Out_ void *gdtr)
+{
+    AsmReadGDT(static_cast<Gdtr *>(gdtr));
+}
 
 /// Reads SGDT
 /// @param gdtr   A pointer to read GDTR
-inline void __lgdt(_In_ void *gdtr) { AsmWriteGDT(static_cast<Gdtr *>(gdtr)); }
+inline void __lgdt(_In_ void *gdtr)
+{ 
+    AsmWriteGDT(static_cast<Gdtr *>(gdtr));
+}
 
 }  // extern "C"

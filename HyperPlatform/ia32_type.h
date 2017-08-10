@@ -65,18 +65,6 @@ struct GpRegistersX64 {
   ULONG_PTR ax;
 };
 
-/// Represents a stack layout after PUSHAD
-struct GpRegistersX86 {
-  ULONG_PTR di;
-  ULONG_PTR si;
-  ULONG_PTR bp;
-  ULONG_PTR sp;
-  ULONG_PTR bx;
-  ULONG_PTR dx;
-  ULONG_PTR cx;
-  ULONG_PTR ax;
-};
-
 /// Represents a stack layout after a sequence of PUSHFx, PUSHAx
 struct AllRegisters {
     GpRegistersX64 gp;
@@ -145,34 +133,6 @@ struct Idtr {
 using Gdtr = Idtr;
 static_assert(sizeof(Idtr) == 10, "Size check");
 static_assert(sizeof(Gdtr) == 10, "Size check");
-#include <poppack.h>
-
-/// IDT entry (nt!_KIDTENTRY)
-#include <pshpack1.h>
-union KidtEntry {
-  ULONG64 all;
-  struct {
-    unsigned short offset_low;
-    unsigned short selector;
-    unsigned char ist_index : 3;  //!< [0:2]
-    unsigned char reserved : 5;   //!< [3:7]
-    unsigned char type : 5;       //!< [8:12]
-    unsigned char dpl : 2;        //!< [13:14]
-    unsigned char present : 1;    //!< [15]
-    unsigned short offset_middle;
-  } fields;
-};
-static_assert(sizeof(KidtEntry) == 8, "Size check");
-#include <poppack.h>
-
-/// IDT entry for x64 (nt!_KIDTENTRY64)
-#include <pshpack1.h>
-struct KidtEntry64 {
-  KidtEntry idt_entry;
-  ULONG32 offset_high;
-  ULONG32 reserved;
-};
-static_assert(sizeof(KidtEntry64) == 16, "Size check");
 #include <poppack.h>
 
 /// See: Segment Selectors
@@ -257,83 +217,8 @@ union CpuFeaturesEcx {
 };
 static_assert(sizeof(CpuFeaturesEcx) == 4, "Size check");
 
-/// See: More on Feature Information Returned in the EDX Register
-union CpuFeaturesEdx {
-  ULONG32 all;
-  struct {
-    ULONG32 fpu : 1;        //!< [0] Floating Point Unit On-Chip
-    ULONG32 vme : 1;        //!< [1] Virtual 8086 Mode Enhancements
-    ULONG32 de : 1;         //!< [2] Debugging Extensions
-    ULONG32 pse : 1;        //!< [3] Page Size Extension
-    ULONG32 tsc : 1;        //!< [4] Time Stamp Counter
-    ULONG32 msr : 1;        //!< [5] RDMSR and WRMSR Instructions
-    ULONG32 mce : 1;        //!< [7] Machine Check Exception
-    ULONG32 cx8 : 1;        //!< [8] Thermal monitor 2
-    ULONG32 apic : 1;       //!< [9] APIC On-Chip
-    ULONG32 reserved1 : 1;  //!< [10] Reserved
-    ULONG32 sep : 1;        //!< [11] SYSENTER and SYSEXIT Instructions
-    ULONG32 mtrr : 1;       //!< [12] Memory Type Range Registers
-    ULONG32 pge : 1;        //!< [13] Page Global Bit
-    ULONG32 mca : 1;        //!< [14] Machine Check Architecture
-    ULONG32 cmov : 1;       //!< [15] Conditional Move Instructions
-    ULONG32 pat : 1;        //!< [16] Page Attribute Table
-    ULONG32 pse36 : 1;      //!< [17] 36-Bit Page Size Extension
-    ULONG32 psn : 1;        //!< [18] Processor Serial Number
-    ULONG32 clfsh : 1;      //!< [19] CLFLUSH Instruction
-    ULONG32 reserved2 : 1;  //!< [20] Reserved
-    ULONG32 ds : 1;         //!< [21] Debug Store
-    ULONG32 acpi : 1;       //!< [22] TM and Software Controlled Clock
-    ULONG32 mmx : 1;        //!< [23] Intel MMX Technology
-    ULONG32 fxsr : 1;       //!< [24] FXSAVE and FXRSTOR Instructions
-    ULONG32 sse : 1;        //!< [25] SSE
-    ULONG32 sse2 : 1;       //!< [26] SSE2
-    ULONG32 ss : 1;         //!< [27] Self Snoop
-    ULONG32 htt : 1;        //!< [28] Max APIC IDs reserved field is Valid
-    ULONG32 tm : 1;         //!< [29] Thermal Monitor
-    ULONG32 reserved3 : 1;  //!< [30] Reserved
-    ULONG32 pbe : 1;        //!< [31] Pending Break Enable
-  } fields;
-};
-static_assert(sizeof(CpuFeaturesEdx) == 4, "Size check");
 
-/// See: Use of CR3 with PAE Paging
-union PaeCr3 {
-  ULONG64 all;
-  struct {
-    ULONG64 ignored1 : 5;                          //!< [0:4]
-    ULONG64 page_directory_pointer_table_pa : 27;  //!< [5:31]
-    ULONG64 ignored2 : 32;                         //!< [32:63]
-  } fields;
-};
-static_assert(sizeof(PaeCr3) == 8, "Size check");
-
-/// See: PDPTE Registers
-union PdptrRegister {
-  ULONG64 all;
-  struct {
-    ULONG64 present : 1;             //!< [0]
-    ULONG64 reserved1 : 2;           //!< [1:2]
-    ULONG64 write_through : 1;       //!< [3]
-    ULONG64 cache_disable : 1;       //!< [4]
-    ULONG64 reserved2 : 4;           //!< [5:8]
-    ULONG64 ignored : 3;             //!< [9:11]
-    ULONG64 page_directory_pa : 41;  //!< [12:52]
-    ULONG64 reserved3 : 11;          //!< [53:63]
-  } fields;
-};
-static_assert(sizeof(PdptrRegister) == 8, "Size check");
-
-/// See: Information Returned by CPUID Instruction
-union Cpuid80000008Eax {
-  ULONG32 all;
-  struct {
-    ULONG32 physical_address_bits : 8;  //!< [0:7]
-    ULONG32 linear_address_bits : 8;    //!< [8:15]
-  } fields;
-};
-
-/// See: IA32_MTRRCAP Register
-union Ia32MtrrCapabilitiesMsr {
+union Ia32MtrrCapabilitiesMsr {/// See: IA32_MTRRCAP Register
   ULONG64 all;
   struct {
     ULONG64 variable_range_count : 8;   //<! [0:7]
@@ -345,8 +230,8 @@ union Ia32MtrrCapabilitiesMsr {
 };
 static_assert(sizeof(Ia32MtrrCapabilitiesMsr) == 8, "Size check");
 
-/// See: IA32_MTRR_DEF_TYPE MSR
-union Ia32MtrrDefaultTypeMsr {
+
+union Ia32MtrrDefaultTypeMsr {/// See: IA32_MTRR_DEF_TYPE MSR
   ULONG64 all;
   struct {
     ULONG64 default_mtemory_type : 3;  //<! [0:2]
@@ -357,8 +242,8 @@ union Ia32MtrrDefaultTypeMsr {
 };
 static_assert(sizeof(Ia32MtrrDefaultTypeMsr) == 8, "Size check");
 
-/// See: Fixed Range MTRRs
-union Ia32MtrrFixedRangeMsr {
+
+union Ia32MtrrFixedRangeMsr {/// See: Fixed Range MTRRs
   ULONG64 all;
   struct {
     UCHAR types[8];
@@ -376,8 +261,8 @@ union Ia32MtrrPhysBaseMsr {/// See: IA32_MTRR_PHYSBASEn and IA32_MTRR_PHYSMASKn 
 };
 static_assert(sizeof(Ia32MtrrPhysBaseMsr) == 8, "Size check");
 
-/// See: IA32_MTRR_PHYSBASEn and IA32_MTRR_PHYSMASKn Variable-Range Register Pair
-union Ia32MtrrPhysMaskMsr {
+
+union Ia32MtrrPhysMaskMsr {/// See: IA32_MTRR_PHYSBASEn and IA32_MTRR_PHYSMASKn Variable-Range Register Pair
   ULONG64 all;
   struct {
     ULONG64 reserved : 11;   //!< [0:10]
@@ -387,8 +272,8 @@ union Ia32MtrrPhysMaskMsr {
 };
 static_assert(sizeof(Ia32MtrrPhysMaskMsr) == 8, "Size check");
 
-/// See: IA32_APIC_BASE MSR Supporting x2APIC
-union Ia32ApicBaseMsr {
+
+union Ia32ApicBaseMsr {/// See: IA32_APIC_BASE MSR Supporting x2APIC
   ULONG64 all;
   struct {
     ULONG64 reserved1 : 8;            //!< [0:7]
@@ -812,8 +697,8 @@ union VmxPinBasedControls {/// See: Definitions of Pin-Based VM-Execution Contro
 };
 static_assert(sizeof(VmxPinBasedControls) == 4, "Size check");
 
-/// See: Definitions of Primary Processor-Based VM-Execution Controls
-union VmxProcessorBasedControls {
+
+union VmxProcessorBasedControls {/// See: Definitions of Primary Processor-Based VM-Execution Controls
   unsigned int all;
   struct {
     unsigned reserved1 : 2;                   //!< [0:1]
@@ -847,8 +732,8 @@ union VmxProcessorBasedControls {
 };
 static_assert(sizeof(VmxProcessorBasedControls) == 4, "Size check");
 
-/// See: Definitions of Secondary Processor-Based VM-Execution Controls
-union VmxSecondaryProcessorBasedControls {
+
+union VmxSecondaryProcessorBasedControls {/// See: Definitions of Secondary Processor-Based VM-Execution Controls
   unsigned int all;
   struct {
     unsigned virtualize_apic_accesses : 1;            //!< [0]
@@ -880,8 +765,8 @@ union VmxSecondaryProcessorBasedControls {
 };
 static_assert(sizeof(VmxSecondaryProcessorBasedControls) == 4, "Size check");
 
-/// See: Definitions of VM-Exit Controls
-union VmxVmExitControls {
+
+union VmxVmExitControls {/// See: Definitions of VM-Exit Controls
   unsigned int all;
   struct {
     unsigned reserved1 : 2;                        //!< [0:1]
@@ -904,8 +789,8 @@ union VmxVmExitControls {
 };
 static_assert(sizeof(VmxVmExitControls) == 4, "Size check");
 
-/// See: Definitions of VM-Entry Controls
-union VmxVmEntryControls {
+
+union VmxVmEntryControls {/// See: Definitions of VM-Entry Controls
   unsigned int all;
   struct {
     unsigned reserved1 : 2;                          //!< [0:1]
@@ -924,8 +809,8 @@ union VmxVmEntryControls {
 };
 static_assert(sizeof(VmxVmExitControls) == 4, "Size check");
 
-/// See: Guest Register State
-union VmxRegmentDescriptorAccessRight {
+
+union VmxRegmentDescriptorAccessRight {/// See: Guest Register State
   unsigned int all;
   struct {
     unsigned type : 4;        //!< [0:3]
@@ -959,8 +844,8 @@ union Ia32FeatureControlMsr {/// See: ARCHITECTURAL MSRS
 };
 static_assert(sizeof(Ia32FeatureControlMsr) == 8, "Size check");
 
-/// See: BASIC VMX INFORMATION
-union Ia32VmxBasicMsr {
+
+union Ia32VmxBasicMsr {/// See: BASIC VMX INFORMATION
   unsigned __int64 all;
   struct {
     unsigned revision_identifier : 31;    //!< [0:30]
@@ -978,8 +863,8 @@ union Ia32VmxBasicMsr {
 };
 static_assert(sizeof(Ia32VmxBasicMsr) == 8, "Size check");
 
-/// See: MISCELLANEOUS DATA
-union Ia32VmxMiscMsr {
+
+union Ia32VmxMiscMsr {/// See: MISCELLANEOUS DATA
   unsigned __int64 all;
   struct {
     unsigned time_stamp : 5;                               //!< [0:4]
@@ -1000,8 +885,8 @@ union Ia32VmxMiscMsr {
 };
 static_assert(sizeof(Ia32VmxMiscMsr) == 8, "Size check");
 
-/// See: VMCS ENUMERATION
-union Ia32VmxVmcsEnumMsr {
+
+union Ia32VmxVmcsEnumMsr {/// See: VMCS ENUMERATION
   unsigned __int64 all;
   struct {
     unsigned reserved1 : 1;                        //!< [0]
@@ -1012,8 +897,8 @@ union Ia32VmxVmcsEnumMsr {
 };
 static_assert(sizeof(Ia32VmxVmcsEnumMsr) == 8, "Size check");
 
-/// See: VPID AND EPT CAPABILITIES
-union Ia32VmxEptVpidCapMsr {
+
+union Ia32VmxEptVpidCapMsr {/// See: VPID AND EPT CAPABILITIES
   unsigned __int64 all;
   struct {
     unsigned support_execute_only_pages : 1;                        //!< [0]
@@ -1044,8 +929,8 @@ union Ia32VmxEptVpidCapMsr {
 };
 static_assert(sizeof(Ia32VmxEptVpidCapMsr) == 8, "Size check");
 
-/// See: Format of Exit Reason in Basic VM-Exit Information
-union VmExitInformation {
+
+union VmExitInformation {/// See: Format of Exit Reason in Basic VM-Exit Information
   unsigned int all;
   struct {
     VmxExitReason reason;                      //!< [0:15]
@@ -1058,8 +943,8 @@ union VmExitInformation {
 };
 static_assert(sizeof(VmExitInformation) == 4, "Size check");
 
-/// See: Format of the VM-Exit Instruction-Information Field as Used for INS and OUTS
-union InsOrOutsInstInformation {
+
+union InsOrOutsInstInformation {/// See: Format of the VM-Exit Instruction-Information Field as Used for INS and OUTS
   ULONG32 all;
   struct {
     ULONG32 reserved1 : 7;         //!< [0:6]
@@ -1071,8 +956,8 @@ union InsOrOutsInstInformation {
 };
 static_assert(sizeof(InsOrOutsInstInformation) == 4, "Size check");
 
-/// See: Format of the VM-Exit Instruction-Information Field as Used for INVEPT, INVPCID, and INVVPID
-union InvEptOrPcidOrVpidInstInformation {
+
+union InvEptOrPcidOrVpidInstInformation {/// See: Format of the VM-Exit Instruction-Information Field as Used for INVEPT, INVPCID, and INVVPID
   ULONG32 all;
   struct {
     ULONG32 scalling : 2;                //!< [0:1]
@@ -1090,8 +975,8 @@ union InvEptOrPcidOrVpidInstInformation {
 };
 static_assert(sizeof(InvEptOrPcidOrVpidInstInformation) == 4, "Size check");
 
-/// See: Format of the VM-Exit Instruction-Information Field as Used for LIDT, LGDT, SIDT, or SGDT
-union GdtrOrIdtrInstInformation {
+
+union GdtrOrIdtrInstInformation {/// See: Format of the VM-Exit Instruction-Information Field as Used for LIDT, LGDT, SIDT, or SGDT
   ULONG32 all;
   struct {
     ULONG32 scalling : 2;                //!< [0:1]
@@ -1194,8 +1079,8 @@ union MovDrQualification {
 };
 static_assert(sizeof(MovDrQualification) == 8, "Size check");
 
-/// See: Exit Qualification for I/O Instructions
-union IoInstQualification {
+
+union IoInstQualification {/// See: Exit Qualification for I/O Instructions
   ULONG_PTR all;
   struct {
     ULONG_PTR size_of_access : 3;      //!< [0:2]
@@ -1224,8 +1109,8 @@ enum class MovCrAccessType {
   kLmsw,
 };
 
-/// @copydoc MovCrAccessType
-union MovCrQualification {
+
+union MovCrQualification {/// @copydoc MovCrAccessType
   ULONG_PTR all;
   struct {
     ULONG_PTR control_register : 4;   //!< [0:3]
@@ -1259,135 +1144,6 @@ static_assert(sizeof(EptPointer) == 8, "Size check");
 // N is the physical-address width supported by the logical processor.
 // Software can determine a processor's physical-address width by executing CPUID with 80000008H in EAX.
 // The physical - address width is returned in bits 7:0 of EAX.
-
-/// See: Format of an EPT PML4 Entry (PML4E) that References an EPT
-///      Page-Directory-Pointer Table
-union EptPml4Entry {
-  ULONG64 all;
-  struct {
-    ULONG64 read_access : 1;                                  //!< [0]
-    ULONG64 write_access : 1;                                 //!< [1]
-    ULONG64 execute_access : 1;                               //!< [2]
-    ULONG64 reserved1 : 5;                                    //!< [3:7]
-    ULONG64 accessed : 1;                                     //!< [8]
-    ULONG64 ignored1 : 1;                                     //!< [9]
-    ULONG64 execute_access_for_user_mode_linear_address : 1;  //!< [10]
-    ULONG64 ignored2 : 1;                                     //!< [11]
-    ULONG64 pdpt_address : 36;                                //!< [12:48-1]
-    ULONG64 reserved2 : 4;                                    //!< [48:51]
-    ULONG64 ignored3 : 12;                                    //!< [52:63]
-  } fields;
-};
-static_assert(sizeof(EptPml4Entry) == 8, "Size check");
-
-/// See: Format of an EPT Page-Directory-Pointer-Table Entry (PDPTE) that Maps
-///      a 1-GByte Page
-union EptPdptSuperPageEntry {
-  ULONG64 all;
-  struct {
-    ULONG64 read_access : 1;                                  //!< [0]
-    ULONG64 write_access : 1;                                 //!< [1]
-    ULONG64 execute_access : 1;                               //!< [2]
-    ULONG64 memory_type : 3;                                  //!< [3:5]
-    ULONG64 ignore_pat_memory_type : 1;                       //!< [6]
-    ULONG64 must_be1 : 1;                                     //!< [7]
-    ULONG64 accessed : 1;                                     //!< [8]
-    ULONG64 written : 1;                                      //!< [9]
-    ULONG64 execute_access_for_user_mode_linear_address : 1;  //!< [10]
-    ULONG64 ignored1 : 1;                                     //!< [11]
-    ULONG64 reserved1 : 18;                                   //!< [12:29]
-    ULONG64 physial_address : 18;                             //!< [30:48-1]
-    ULONG64 reserved2 : 4;                                    //!< [48:51]
-    ULONG64 ignored2 : 11;                                    //!< [52:62]
-    ULONG64 suppress_ve : 1;                                  //!< [63]
-  } fields;
-};
-static_assert(sizeof(EptPdptSuperPageEntry) == 8, "Size check");
-
-/// See: Format of an EPT Page-Directory-Pointer-Table Entry (PDPTE) that
-///      References an EPT Page Directory
-union EptPdptEntry {
-  ULONG64 all;
-  struct {
-    ULONG64 read_access : 1;                                  //!< [0]
-    ULONG64 write_access : 1;                                 //!< [1]
-    ULONG64 execute_access : 1;                               //!< [2]
-    ULONG64 reserved1 : 5;                                    //!< [3:7]
-    ULONG64 accessed : 1;                                     //!< [8]
-    ULONG64 ignored1 : 1;                                     //!< [9]
-    ULONG64 execute_access_for_user_mode_linear_address : 1;  //!< [10]
-    ULONG64 ignored2 : 1;                                     //!< [11]
-    ULONG64 pd_address : 36;                                  //!< [12:48-1]
-    ULONG64 reserved2 : 4;                                    //!< [48:51]
-    ULONG64 ignored3 : 12;                                    //!< [52:63]
-  } fields;
-};
-static_assert(sizeof(EptPdptEntry) == 8, "Size check");
-
-/// See: Format of an EPT Page-Directory Entry (PDE) that Maps a 2-MByte Page
-union EptPdLargePageEntry {
-  ULONG64 all;
-  struct {
-    ULONG64 read_access : 1;                                  //!< [0]
-    ULONG64 write_access : 1;                                 //!< [1]
-    ULONG64 execute_access : 1;                               //!< [2]
-    ULONG64 memory_type : 3;                                  //!< [3:5]
-    ULONG64 ignore_pat_memory_type : 1;                       //!< [6]
-    ULONG64 must_be1 : 1;                                     //!< [7]
-    ULONG64 accessed : 1;                                     //!< [8]
-    ULONG64 written : 1;                                      //!< [9]
-    ULONG64 execute_access_for_user_mode_linear_address : 1;  //!< [10]
-    ULONG64 ignored1 : 1;                                     //!< [11]
-    ULONG64 reserved1 : 9;                                    //!< [12:20]
-    ULONG64 physial_address : 27;                             //!< [21:48-1]
-    ULONG64 reserved2 : 4;                                    //!< [48:51]
-    ULONG64 ignored2 : 11;                                    //!< [52:62]
-    ULONG64 suppress_ve : 1;                                  //!< [63]
-  } fields;
-};
-static_assert(sizeof(EptPdLargePageEntry) == 8, "Size check");
-
-/// See: Format of an EPT Page-Directory Entry (PDE) that References an EPT Page Table
-union EptPdEntry {
-  ULONG64 all;
-  struct {
-    ULONG64 read_access : 1;                                  //!< [0]
-    ULONG64 write_access : 1;                                 //!< [1]
-    ULONG64 execute_access : 1;                               //!< [2]
-    ULONG64 reserved1 : 4;                                    //!< [3:6]
-    ULONG64 must_be0 : 1;                                     //!< [7]
-    ULONG64 accessed : 1;                                     //!< [8]
-    ULONG64 ignored1 : 1;                                     //!< [9]
-    ULONG64 execute_access_for_user_mode_linear_address : 1;  //!< [10]
-    ULONG64 ignored2 : 1;                                     //!< [11]
-    ULONG64 pt_address : 36;                                  //!< [12:48-1]
-    ULONG64 reserved2 : 4;                                    //!< [48:51]
-    ULONG64 ignored3 : 12;                                    //!< [52:63]
-  } fields;
-};
-static_assert(sizeof(EptPdEntry) == 8, "Size check");
-
-/// See: Format of an EPT Page-Table Entry that Maps a 4-KByte Page
-union EptPtEntry {
-  ULONG64 all;
-  struct {
-    ULONG64 read_access : 1;                                  //!< [0]
-    ULONG64 write_access : 1;                                 //!< [1]
-    ULONG64 execute_access : 1;                               //!< [2]
-    ULONG64 memory_type : 3;                                  //!< [3:5]
-    ULONG64 ignore_pat_memory_type : 1;                       //!< [6]
-    ULONG64 ignored1 : 1;                                     //!< [7]
-    ULONG64 accessed : 1;                                     //!< [8]
-    ULONG64 written : 1;                                      //!< [9]
-    ULONG64 execute_access_for_user_mode_linear_address : 1;  //!< [10]
-    ULONG64 ignored2 : 1;                                     //!< [11]
-    ULONG64 physial_address : 36;                             //!< [12:48-1]
-    ULONG64 reserved1 : 4;                                    //!< [48:51]
-    ULONG64 Ignored3 : 11;                                    //!< [52:62]
-    ULONG64 suppress_ve : 1;                                  //!< [63]
-  } fields;
-};
-static_assert(sizeof(EptPtEntry) == 8, "Size check");
 
 /// See: Exit Qualification for EPT Violations
 union EptViolationQualification {
@@ -1502,8 +1258,3 @@ enum class InterruptionVector {
   kSimdFloatingPointException = 19,  //!< Error code: None
   kVirtualizationException = 20,     //!< Error code: None
 };
-
-/// Provides << operator for VmEntryInterruptionInformationField
-constexpr unsigned int operator<<(_In_ unsigned int lhs, _In_ InterruptionVector rhs) {
-  return (lhs << static_cast<unsigned int>(rhs));
-}

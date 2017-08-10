@@ -233,7 +233,7 @@ _Use_decl_annotations_ static void VmmpHandleException(GuestContext *guest_conte
 
     if (interruption_type == InterruptionType::kHardwareException) {// Hardware exception
         if (vector == InterruptionVector::kPageFaultException) {// #PF
-            const PageFaultErrorCode fault_code = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitIntrErrorCode)) };
+            PageFaultErrorCode fault_code = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitIntrErrorCode)) };
             ULONG_PTR fault_address = UtilVmRead(VmcsField::kExitQualification);
 
             VmmpInjectInterruption(interruption_type, vector, true, fault_code.all);

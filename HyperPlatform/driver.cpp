@@ -1,7 +1,6 @@
 // Copyright (c) 2015-2017, Satoshi Tanda. All rights reserved.
 // Use of this source code is governed by a MIT-style license that can be found in the LICENSE file.
 
-#include "driver.h"
 #include "hotplug_callback.h"
 #include "log.h"
 #include "power_callback.h"

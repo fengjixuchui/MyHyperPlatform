@@ -422,8 +422,8 @@ static_assert(sizeof(Ia32MtrrCapabilitiesMsr) == 8, "Size check");
 union Ia32MtrrDefaultTypeMsr {
   ULONG64 all;
   struct {
-    ULONG64 default_mtemory_type : 8;  //<! [0:7]
-    ULONG64 reserved : 2;              //<! [8:9]
+    ULONG64 default_mtemory_type : 3;  //<! [0:2]
+    ULONG64 reserved : 7;              //<! [3:9]
     ULONG64 fixed_mtrrs_enabled : 1;   //<! [10]
     ULONG64 mtrrs_enabled : 1;         //<! [11]
   } fields;

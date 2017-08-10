@@ -77,11 +77,9 @@ struct GpRegistersX86 {
   ULONG_PTR ax;
 };
 
-using GpRegisters = GpRegistersX64;/// Represents a stack layout after PUSHAx
-
 /// Represents a stack layout after a sequence of PUSHFx, PUSHAx
 struct AllRegisters {
-  GpRegisters gp;
+    GpRegistersX64 gp;
   FlagRegister flags;
 };
 static_assert(sizeof(AllRegisters) == 0x88, "Size check");
@@ -297,77 +295,6 @@ union CpuFeaturesEdx {
   } fields;
 };
 static_assert(sizeof(CpuFeaturesEdx) == 4, "Size check");
-
-/// nt!_HARDWARE_PTE on x86 PAE-disabled Windows
-struct HardwarePteX86 {
-  ULONG valid : 1;               //!< [0]
-  ULONG write : 1;               //!< [1]
-  ULONG owner : 1;               //!< [2]
-  ULONG write_through : 1;       //!< [3]
-  ULONG cache_disable : 1;       //!< [4]
-  ULONG accessed : 1;            //!< [5]
-  ULONG dirty : 1;               //!< [6]
-  ULONG large_page : 1;          //!< [7]
-  ULONG global : 1;              //!< [8]
-  ULONG copy_on_write : 1;       //!< [9]
-  ULONG prototype : 1;           //!< [10]
-  ULONG reserved0 : 1;           //!< [11]
-  ULONG page_frame_number : 20;  //!< [12:31]
-};
-static_assert(sizeof(HardwarePteX86) == 4, "Size check");
-
-/// nt!_HARDWARE_PTE on x86 PAE-enabled Windows
-struct HardwarePteX86Pae {
-  ULONG64 valid : 1;               //!< [0]
-  ULONG64 write : 1;               //!< [1]
-  ULONG64 owner : 1;               //!< [2]
-  ULONG64 write_through : 1;       //!< [3]     PWT
-  ULONG64 cache_disable : 1;       //!< [4]     PCD
-  ULONG64 accessed : 1;            //!< [5]
-  ULONG64 dirty : 1;               //!< [6]
-  ULONG64 large_page : 1;          //!< [7]     PAT
-  ULONG64 global : 1;              //!< [8]
-  ULONG64 copy_on_write : 1;       //!< [9]
-  ULONG64 prototype : 1;           //!< [10]
-  ULONG64 reserved0 : 1;           //!< [11]
-  ULONG64 page_frame_number : 26;  //!< [12:37]
-  ULONG64 reserved1 : 25;          //!< [38:62]
-  ULONG64 no_execute : 1;          //!< [63]
-};
-static_assert(sizeof(HardwarePteX86Pae) == 8, "Size check");
-
-struct HardwarePteX64 {/// nt!_HARDWARE_PTE on x64 Windows
-  ULONG64 valid : 1;               //!< [0]
-  ULONG64 write : 1;               //!< [1]
-  ULONG64 owner : 1;               //!< [2]
-  ULONG64 write_through : 1;       //!< [3]     PWT
-  ULONG64 cache_disable : 1;       //!< [4]     PCD
-  ULONG64 accessed : 1;            //!< [5]
-  ULONG64 dirty : 1;               //!< [6]
-  ULONG64 large_page : 1;          //!< [7]     PAT
-  ULONG64 global : 1;              //!< [8]
-  ULONG64 copy_on_write : 1;       //!< [9]
-  ULONG64 prototype : 1;           //!< [10]
-  ULONG64 reserved0 : 1;           //!< [11]
-  ULONG64 page_frame_number : 36;  //!< [12:47]
-  ULONG64 reserved1 : 4;           //!< [48:51]
-  ULONG64 software_ws_index : 11;  //!< [52:62]
-  ULONG64 no_execute : 1;          //!< [63]
-};
-static_assert(sizeof(HardwarePteX64) == 8, "Size check");
-
-struct HardwarePteARM {/// nt!_HARDWARE_PTE on ARM Windows
-  ULONG no_execute : 1;
-  ULONG present : 1;
-  ULONG unknown1 : 5;
-  ULONG writable : 1;
-  ULONG unknown2 : 4;
-  ULONG page_frame_number : 20;
-};
-static_assert(sizeof(HardwarePteARM) == 4, "Size check");
-
-/// nt!_HARDWARE_PTE on the current platform
-using HardwarePte = HardwarePteX64;
 
 /// See: Use of CR3 with PAE Paging
 union PaeCr3 {
@@ -1131,8 +1058,7 @@ union VmExitInformation {
 };
 static_assert(sizeof(VmExitInformation) == 4, "Size check");
 
-/// See: Format of the VM-Exit Instruction-Information Field as Used for INS and
-/// OUTS
+/// See: Format of the VM-Exit Instruction-Information Field as Used for INS and OUTS
 union InsOrOutsInstInformation {
   ULONG32 all;
   struct {

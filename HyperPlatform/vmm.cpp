@@ -19,7 +19,7 @@ extern "C"
 {
 // Represents raw structure of stack of VMM when VmmVmExitHandler() is called
 struct VmmInitialStack {
-    GpRegisters gp_regs;
+    GpRegistersX64 gp_regs;
     ULONG_PTR reserved;
     ProcessorData *processor_data;
 };
@@ -28,7 +28,7 @@ struct VmmInitialStack {
 struct GuestContext {
     union {
         VmmInitialStack *stack;
-        GpRegisters *gp_regs;
+        GpRegistersX64 *gp_regs;
     };
     FlagRegister flag_reg;
     ULONG_PTR ip;

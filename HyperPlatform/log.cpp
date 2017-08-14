@@ -20,26 +20,6 @@ static const auto kLogpBufferSize = PAGE_SIZE * kLogpBufferSizeInPages;// An act
 static const auto kLogpBufferUsableSize = kLogpBufferSize - 1;// A size that is usable for logging. Minus one because the last byte is kept for \0.
 static const auto kLogpLogFlushIntervalMsec = 50;// An interval to flush buffered log entries into a log file.
 
-struct LogBufferInfo {
-    volatile char *log_buffer_head;// A pointer to buffer currently used. It is either log_buffer1 or log_buffer2.
-    volatile char *log_buffer_tail;// A pointer to where the next log should be written.
-
-    char *log_buffer1;
-    char *log_buffer2;
-
-    SIZE_T log_max_usage;// Holds the biggest buffer usage to determine a necessary buffer size.
-
-    HANDLE log_file_handle;
-    KSPIN_LOCK spin_lock;
-    ERESOURCE resource;
-    bool resource_initialized;
-    volatile bool buffer_flush_thread_should_be_alive;
-    volatile bool buffer_flush_thread_started;
-    HANDLE buffer_flush_thread_handle;
-    wchar_t log_file_path[200];
-};
-
-
 NTKERNELAPI UCHAR *NTAPI PsGetProcessImageFileName(_In_ PEPROCESS process);
 _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS LogpInitializeBufferInfo(_In_ const wchar_t *log_file_path, _Inout_ LogBufferInfo *info);
 _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS LogpInitializeLogFile(_Inout_ LogBufferInfo *info);

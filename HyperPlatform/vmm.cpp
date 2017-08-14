@@ -13,31 +13,8 @@
 #include "util.h"
 
 
-#pragma warning(disable:4189) // 局部变量已初始化但不引用
-
 extern "C"
 {
-// Represents raw structure of stack of VMM when VmmVmExitHandler() is called
-struct VmmInitialStack {
-    GpRegistersX64 gp_regs;
-    ULONG_PTR reserved;
-    ProcessorData *processor_data;
-};
-
-// Things need to be read and written by each VM-exit handler
-struct GuestContext {
-    union {
-        VmmInitialStack *stack;
-        GpRegistersX64 *gp_regs;
-    };
-    FlagRegister flag_reg;
-    ULONG_PTR ip;
-    ULONG_PTR cr8;
-    KIRQL irql;
-    bool vm_continue;
-};
-static_assert(sizeof(GuestContext) == 40, "Size check");
-
 bool __stdcall VmmVmExitHandler(_Inout_ VmmInitialStack *stack);
 DECLSPEC_NORETURN void __stdcall VmmVmxFailureHandler(_Inout_ AllRegisters *all_regs);
 static void VmmpHandleVmExit(_Inout_ GuestContext *guest_context);

@@ -9,10 +9,10 @@
 #include <fltKernel.h>
 #include <intrin.h>
 
+#include "ia32_type.h"
+
 extern "C"
 {
-struct EptData;
-
 union EptCommonEntry {/// A structure made up of mutual fields across all EPT entry types
   ULONG64 all;
   struct {
@@ -26,6 +26,26 @@ union EptCommonEntry {/// A structure made up of mutual fields across all EPT en
   } fields;
 };
 static_assert(sizeof(EptCommonEntry) == 8, "Size check");
+
+struct EptData {// EPT related data stored in ProcessorData
+    EptPointer *ept_pointer;
+    EptCommonEntry *ept_pml4;
+    EptCommonEntry **preallocated_entries;  // An array of pre-allocated entries
+    volatile long preallocated_entries_count;  // # of used pre-allocated entries
+};
+
+#include <pshpack1.h>
+struct MtrrData {
+    bool enabled;        //<! Whether this entry is valid
+    bool fixedMtrr;      //<! Whether this entry manages a fixed range MTRR
+    UCHAR type;          //<! Memory Type (such as WB, UC)
+    bool reserverd1;     //<! Padding
+    ULONG reserverd2;    //<! Padding
+    ULONG64 range_base;  //<! A base address of a range managed by this entry
+    ULONG64 range_end;   //<! An end address of a range managed by this entry
+};
+#include <poppack.h>
+static_assert(sizeof(MtrrData) == 24, "Size check");
 
 /// Checks if the system supports EPT technology sufficient enough
 /// @return true if the system supports EPT

@@ -31,26 +31,6 @@ const auto kEptpNumOfMaxVariableRangeMtrrs = 255;// Architecture defined number 
 const auto kEptpNumOfFixedRangeMtrrs = 1 + 2 + 8;// Architecture defined number of fixed range MTRRs (1 for 64k, 2 for 16k, 8 for 4k)
 const auto kEptpMtrrEntriesSize = kEptpNumOfMaxVariableRangeMtrrs + kEptpNumOfFixedRangeMtrrs;// A size of array to store all possible MTRRs
 
-#include <pshpack1.h>
-struct MtrrData {
-  bool enabled;        //<! Whether this entry is valid
-  bool fixedMtrr;      //<! Whether this entry manages a fixed range MTRR
-  UCHAR type;          //<! Memory Type (such as WB, UC)
-  bool reserverd1;     //<! Padding
-  ULONG reserverd2;    //<! Padding
-  ULONG64 range_base;  //<! A base address of a range managed by this entry
-  ULONG64 range_end;   //<! An end address of a range managed by this entry
-};
-#include <poppack.h>
-static_assert(sizeof(MtrrData) == 24, "Size check");
-
-struct EptData {// EPT related data stored in ProcessorData
-    EptPointer *ept_pointer;
-    EptCommonEntry *ept_pml4;
-    EptCommonEntry **preallocated_entries;  // An array of pre-allocated entries
-    volatile long preallocated_entries_count;  // # of used pre-allocated entries
-};
-
 static memory_type EptpGetMemoryType(_In_ ULONG64 physical_address);
 _When_(ept_data == nullptr, _IRQL_requires_max_(DISPATCH_LEVEL)) 
 static EptCommonEntry *EptpConstructTables(_In_ EptCommonEntry *table, _In_ ULONG table_level, _In_ ULONG64 physical_address, _In_opt_ EptData *ept_data);

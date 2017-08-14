@@ -12,6 +12,25 @@ static const ULONG TAG = 'PpyH';/// A pool tag
 
 extern "C"
 {
+    struct LogBufferInfo {
+        volatile char *log_buffer_head;// A pointer to buffer currently used. It is either log_buffer1 or log_buffer2.
+        volatile char *log_buffer_tail;// A pointer to where the next log should be written.
+
+        char *log_buffer1;
+        char *log_buffer2;
+
+        SIZE_T log_max_usage;// Holds the biggest buffer usage to determine a necessary buffer size.
+
+        HANDLE log_file_handle;
+        KSPIN_LOCK spin_lock;
+        ERESOURCE resource;
+        bool resource_initialized;
+        volatile bool buffer_flush_thread_should_be_alive;
+        volatile bool buffer_flush_thread_started;
+        HANDLE buffer_flush_thread_handle;
+        wchar_t log_file_path[200];
+    };
+
     /// Logs a message as respective severity
     /// @param format   A format string
     /// @return STATUS_SUCCESS on success

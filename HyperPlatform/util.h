@@ -10,6 +10,13 @@
 
 extern "C"
 {
+    _Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) NTKERNELAPI _When_(return != NULL, _Post_writable_byte_size_(NumberOfBytes)) PVOID MmAllocateContiguousNodeMemory(
+        _In_ SIZE_T NumberOfBytes,
+        _In_ PHYSICAL_ADDRESS LowestAcceptableAddress,
+        _In_ PHYSICAL_ADDRESS HighestAcceptableAddress,
+        _In_opt_ PHYSICAL_ADDRESS BoundaryAddressMultiple, _In_ ULONG Protect,
+        _In_ NODE_REQUIREMENT PreferredNode);//Available starting with Windows 8
+
     /// Represents ranges of addresses
     struct PhysicalMemoryRun {
         ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)

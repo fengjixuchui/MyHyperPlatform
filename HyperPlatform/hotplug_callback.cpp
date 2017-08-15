@@ -21,7 +21,7 @@ static PROCESSOR_CALLBACK_FUNCTION HotplugCallbackpCallbackRoutine;
 static PVOID g_hpp_callback_handle = nullptr;
 
 
-_Use_decl_annotations_ NTSTATUS HotplugCallbackInitialization() // Registers power callback
+NTSTATUS HotplugCallbackInitialization() // Registers power callback
 {
     PAGED_CODE();
 
@@ -34,7 +34,7 @@ _Use_decl_annotations_ NTSTATUS HotplugCallbackInitialization() // Registers pow
 }
 
 
-_Use_decl_annotations_ void HotplugCallbackTermination()// Unregister power callback
+void HotplugCallbackTermination()// Unregister power callback
 {
     PAGED_CODE();
 
@@ -44,7 +44,7 @@ _Use_decl_annotations_ void HotplugCallbackTermination()// Unregister power call
 }
 
 
-_Use_decl_annotations_ static void HotplugCallbackpCallbackRoutine(PVOID callback_context, PKE_PROCESSOR_CHANGE_NOTIFY_CONTEXT change_context, PNTSTATUS operation_status)
+static void HotplugCallbackpCallbackRoutine(PVOID callback_context, PKE_PROCESSOR_CHANGE_NOTIFY_CONTEXT change_context, PNTSTATUS operation_status)
 {
     PAGED_CODE();
     UNREFERENCED_PARAMETER(callback_context);

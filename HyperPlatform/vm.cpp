@@ -65,7 +65,7 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpIsHyperPlatformInstalled();
 #endif
 
 
-_Use_decl_annotations_ static bool VmpIsVmxAvailable()
+static bool VmpIsVmxAvailable()
 // Checks if the system supports virtualization
 {
     PAGED_CODE();
@@ -111,7 +111,7 @@ _Use_decl_annotations_ static bool VmpIsVmxAvailable()
 }
 
 
-_Use_decl_annotations_ static NTSTATUS VmpSetLockBitCallback(void *context)
+static NTSTATUS VmpSetLockBitCallback(void *context)
 // Sets 1 to the lock bit of the IA32_FEATURE_CONTROL MSR
 {
     UNREFERENCED_PARAMETER(context);
@@ -133,7 +133,7 @@ _Use_decl_annotations_ static NTSTATUS VmpSetLockBitCallback(void *context)
 }
 
 
-_Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
+static void * BuildMsrBitmap()// Build MSR bitmap
 {
     PAGED_CODE();
 
@@ -169,7 +169,7 @@ _Use_decl_annotations_ static void * BuildMsrBitmap()// Build MSR bitmap
 }
 
 
-_Use_decl_annotations_ static UCHAR * BuildIoBitmaps()// Build IO bitmaps
+static UCHAR * BuildIoBitmaps()// Build IO bitmaps
 {
     PAGED_CODE();
 
@@ -181,7 +181,7 @@ _Use_decl_annotations_ static UCHAR * BuildIoBitmaps()// Build IO bitmaps
 }
 
 
-_Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
+static SharedProcessorData * InitializeSharedData()
 // Initialize shared processor data
 {
     PAGED_CODE();
@@ -201,7 +201,7 @@ _Use_decl_annotations_ static SharedProcessorData * InitializeSharedData()
 }
 
 
-_Use_decl_annotations_ NTSTATUS VmInitialization()
+NTSTATUS VmInitialization()
 // Checks if a VMM can be installed, and so, installs it
 {
     PAGED_CODE();
@@ -229,7 +229,7 @@ _Use_decl_annotations_ NTSTATUS VmInitialization()
 }
 
 
-_Use_decl_annotations_ static NTSTATUS VmpStartVm(void *context)// Virtualize the current processor
+static NTSTATUS VmpStartVm(void *context)// Virtualize the current processor
 {
     PAGED_CODE();
 
@@ -245,7 +245,7 @@ _Use_decl_annotations_ static NTSTATUS VmpStartVm(void *context)// Virtualize th
 }
 
 
-_Use_decl_annotations_ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instruction_pointer, void *context) 
+static void VmpInitializeVm(ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instruction_pointer, void *context) 
 // Allocates structures for virtualization, initializes VMCS and virtualizes the current processor
 {
     PAGED_CODE();
@@ -321,7 +321,7 @@ ReturnFalse:;
 }
 
 
-_Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data)
+static bool VmpEnterVmxMode(ProcessorData *processor_data)
 // See: VMM SETUP & TEAR DOWN
 {
     PAGED_CODE();
@@ -366,7 +366,7 @@ _Use_decl_annotations_ static bool VmpEnterVmxMode(ProcessorData *processor_data
 }
 
 
-_Use_decl_annotations_ static bool VmpInitializeVmcs(ProcessorData *processor_data)
+static bool VmpInitializeVmcs(ProcessorData *processor_data)
 // See: VMM SETUP & TEAR DOWN
 {
     PAGED_CODE();
@@ -387,7 +387,7 @@ _Use_decl_annotations_ static bool VmpInitializeVmcs(ProcessorData *processor_da
 }
 
 
-_Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_data, ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instruction_pointer, ULONG_PTR vmm_stack_pointer)
+static bool VmpSetupVmcs(const ProcessorData *processor_data, ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instruction_pointer, ULONG_PTR vmm_stack_pointer)
 // See: PREPARATION AND LAUNCHING A VIRTUAL MACHINE
 {
     PAGED_CODE();
@@ -554,7 +554,7 @@ _Use_decl_annotations_ static bool VmpSetupVmcs(const ProcessorData *processor_d
 }
 
 
-_Use_decl_annotations_ static void VmpLaunchVm() // Executes vmlaunch
+static void VmpLaunchVm() // Executes vmlaunch
 {
     PAGED_CODE();
 
@@ -573,7 +573,7 @@ _Use_decl_annotations_ static void VmpLaunchVm() // Executes vmlaunch
 }
 
 
-_Use_decl_annotations_ static ULONG VmpGetSegmentAccessRight(USHORT segment_selector)
+static ULONG VmpGetSegmentAccessRight(USHORT segment_selector)
 // Returns access right of the segment specified by the SegmentSelector for VMX
 {
     PAGED_CODE();
@@ -595,7 +595,7 @@ _Use_decl_annotations_ static ULONG VmpGetSegmentAccessRight(USHORT segment_sele
 }
 
 
-_Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, USHORT segment_selector)
+static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, USHORT segment_selector)
 // Returns a base address of the segment specified by SegmentSelector
 {
     PAGED_CODE();
@@ -617,7 +617,7 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, US
 }
 
 
-_Use_decl_annotations_ static SegmentDescriptor *VmpGetSegmentDescriptor(ULONG_PTR descriptor_table_base, USHORT segment_selector)
+static SegmentDescriptor *VmpGetSegmentDescriptor(ULONG_PTR descriptor_table_base, USHORT segment_selector)
 // Returns the segment descriptor corresponds to the SegmentSelector
 {
     PAGED_CODE();
@@ -627,7 +627,7 @@ _Use_decl_annotations_ static SegmentDescriptor *VmpGetSegmentDescriptor(ULONG_P
 }
 
 
-_Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBaseByDescriptor(const SegmentDescriptor *segment_descriptor)
+static ULONG_PTR VmpGetSegmentBaseByDescriptor(const SegmentDescriptor *segment_descriptor)
 // Returns a base address of segment_descriptor
 {
     PAGED_CODE();
@@ -648,7 +648,7 @@ _Use_decl_annotations_ static ULONG_PTR VmpGetSegmentBaseByDescriptor(const Segm
 }
 
 
-_Use_decl_annotations_ static ULONG VmpAdjustControlValue(Msr msr, ULONG requested_value)
+static ULONG VmpAdjustControlValue(Msr msr, ULONG requested_value)
 // Adjust the requested control value with consulting a value of related MSR
 {
     PAGED_CODE();
@@ -663,7 +663,7 @@ _Use_decl_annotations_ static ULONG VmpAdjustControlValue(Msr msr, ULONG request
 }
 
 
-_Use_decl_annotations_ void VmTermination()// Terminates VM
+void VmTermination()// Terminates VM
 {
     PAGED_CODE();
 
@@ -678,7 +678,7 @@ _Use_decl_annotations_ void VmTermination()// Terminates VM
 }
 
 
-_Use_decl_annotations_ static NTSTATUS VmpStopVm(void *context)
+static NTSTATUS VmpStopVm(void *context)
 // Stops virtualization through a hypercall and frees all related memory
 {
     UNREFERENCED_PARAMETER(context);
@@ -699,7 +699,7 @@ _Use_decl_annotations_ static NTSTATUS VmpStopVm(void *context)
 }
 
 
-_Use_decl_annotations_ static void VmpFreeProcessorData(ProcessorData *processor_data)// Frees all related memory
+static void VmpFreeProcessorData(ProcessorData *processor_data)// Frees all related memory
 {
     PAGED_CODE();
 
@@ -725,7 +725,7 @@ _Use_decl_annotations_ static void VmpFreeProcessorData(ProcessorData *processor
 }
 
 
-_Use_decl_annotations_ static void VmpFreeSharedData(ProcessorData *processor_data)
+static void VmpFreeSharedData(ProcessorData *processor_data)
 // Decrement reference count of shared data and free it if no reference
 {
     PAGED_CODE();
@@ -748,7 +748,7 @@ _Use_decl_annotations_ static void VmpFreeSharedData(ProcessorData *processor_da
 }
 
 
-_Use_decl_annotations_ static bool VmpIsHyperPlatformInstalled()
+static bool VmpIsHyperPlatformInstalled()
 // Tests if HyperPlatform is already installed
 {
     PAGED_CODE();
@@ -765,7 +765,7 @@ _Use_decl_annotations_ static bool VmpIsHyperPlatformInstalled()
 }
 
 
-_Use_decl_annotations_ NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_num)
+NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_num)
 // Virtualizes the specified processor
 {
     PAGED_CODE();

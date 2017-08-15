@@ -57,7 +57,7 @@ static ULONG g_logp_debug_flag = kLogPutLevelDisable;
 static LogBufferInfo g_logp_log_buffer_info = {};
 
 
-_Use_decl_annotations_ NTSTATUS LogInitialization(ULONG flag, const wchar_t *log_file_path)
+NTSTATUS LogInitialization(ULONG flag, const wchar_t *log_file_path)
 {
     PAGED_CODE();
 
@@ -78,7 +78,7 @@ _Use_decl_annotations_ NTSTATUS LogInitialization(ULONG flag, const wchar_t *log
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpInitializeBufferInfo(const wchar_t *log_file_path, LogBufferInfo *info)
+static NTSTATUS LogpInitializeBufferInfo(const wchar_t *log_file_path, LogBufferInfo *info)
 // Initialize a log file related code such as a flushing thread.
 {
     PAGED_CODE();
@@ -129,7 +129,7 @@ _Use_decl_annotations_ static NTSTATUS LogpInitializeBufferInfo(const wchar_t *l
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpInitializeLogFile(LogBufferInfo *info) 
+static NTSTATUS LogpInitializeLogFile(LogBufferInfo *info) 
 // Initializes a log file and starts a log buffer thread.
 {
     PAGED_CODE();
@@ -180,7 +180,7 @@ _Use_decl_annotations_ static NTSTATUS LogpInitializeLogFile(LogBufferInfo *info
 }
 
 
-_Use_decl_annotations_ void LogRegisterReinitialization(PDRIVER_OBJECT driver_object)
+void LogRegisterReinitialization(PDRIVER_OBJECT driver_object)
 // Registers LogpReinitializationRoutine() for re-initialization.
 {
     PAGED_CODE();
@@ -189,7 +189,7 @@ _Use_decl_annotations_ void LogRegisterReinitialization(PDRIVER_OBJECT driver_ob
 }
 
 
-_Use_decl_annotations_ VOID static LogpReinitializationRoutine(_DRIVER_OBJECT *driver_object, PVOID context, ULONG count)
+VOID static LogpReinitializationRoutine(_DRIVER_OBJECT *driver_object, PVOID context, ULONG count)
 // Initializes a log file at the re-initialization phase.
 {
     PAGED_CODE();
@@ -206,7 +206,7 @@ _Use_decl_annotations_ VOID static LogpReinitializationRoutine(_DRIVER_OBJECT *d
 }
 
 
-_Use_decl_annotations_ void LogTermination()
+void LogTermination()
 // Terminates the log functions.
 {
     PAGED_CODE();
@@ -216,7 +216,7 @@ _Use_decl_annotations_ void LogTermination()
 }
 
 
-_Use_decl_annotations_ static void LogpFinalizeBufferInfo(LogBufferInfo *info)
+static void LogpFinalizeBufferInfo(LogBufferInfo *info)
 // Terminates a log file related code.
 {
     PAGED_CODE();
@@ -252,7 +252,7 @@ _Use_decl_annotations_ static void LogpFinalizeBufferInfo(LogBufferInfo *info)
 }
 
 
-_Use_decl_annotations_ NTSTATUS LogpPrint(ULONG level, const char *function_name, const char *format, ...)
+NTSTATUS LogpPrint(ULONG level, const char *function_name, const char *format, ...)
 // Actual implementation of logging API.
 {
     NTSTATUS status = STATUS_SUCCESS;
@@ -293,7 +293,7 @@ _Use_decl_annotations_ NTSTATUS LogpPrint(ULONG level, const char *function_name
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpMakePrefix(ULONG level, const char *function_name, const char *log_message, char *log_buffer, SIZE_T log_buffer_length)
+static NTSTATUS LogpMakePrefix(ULONG level, const char *function_name, const char *log_message, char *log_buffer, SIZE_T log_buffer_length)
 // Concatenates meta information such as the current time and a process ID to user given log message.
 {
     char const *level_string = nullptr;
@@ -364,7 +364,7 @@ _Use_decl_annotations_ static NTSTATUS LogpMakePrefix(ULONG level, const char *f
 }
 
 
-_Use_decl_annotations_ static const char *LogpFindBaseFunctionName(const char *function_name)
+static const char *LogpFindBaseFunctionName(const char *function_name)
 // Returns the function's base name, for example,
 // NamespaceName::ClassName::MethodName will be returned as MethodName.
 {
@@ -386,7 +386,7 @@ _Use_decl_annotations_ static const char *LogpFindBaseFunctionName(const char *f
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpPut(char *message, ULONG attribute)
+static NTSTATUS LogpPut(char *message, ULONG attribute)
 // Logs the entry according to attribute and the thread condition.
 {
     NTSTATUS status = STATUS_SUCCESS;
@@ -421,7 +421,7 @@ _Use_decl_annotations_ static NTSTATUS LogpPut(char *message, ULONG attribute)
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpFlushLogBuffer(LogBufferInfo *info)
+static NTSTATUS LogpFlushLogBuffer(LogBufferInfo *info)
 // Switches the current log buffer, saves the contents of old buffer to the log file, and prints them out as necessary.
 // This function does not flush the log file, so code should call LogpWriteMessageToFile() or ZwFlushBuffersFile() later.
 {
@@ -467,7 +467,7 @@ _Use_decl_annotations_ static NTSTATUS LogpFlushLogBuffer(LogBufferInfo *info)
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpWriteMessageToFile(const char *message, const LogBufferInfo &info)
+static NTSTATUS LogpWriteMessageToFile(const char *message, const LogBufferInfo &info)
 // Logs the current log entry to and flush the log file.
 {
     NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
@@ -480,7 +480,7 @@ _Use_decl_annotations_ static NTSTATUS LogpWriteMessageToFile(const char *messag
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpBufferMessage(const char *message, LogBufferInfo *info) 
+static NTSTATUS LogpBufferMessage(const char *message, LogBufferInfo *info) 
 // Buffer the log entry to the log buffer.
 {
     NT_ASSERT(info);
@@ -520,7 +520,7 @@ _Use_decl_annotations_ static NTSTATUS LogpBufferMessage(const char *message, Lo
 }
 
 
-_Use_decl_annotations_ static void LogpDoDbgPrint(char *message)
+static void LogpDoDbgPrint(char *message)
 // Calls DbgPrintEx() while converting \r\n to \n\0
 {
     if (!LogpIsDbgPrintNeeded()) {
@@ -533,7 +533,7 @@ _Use_decl_annotations_ static void LogpDoDbgPrint(char *message)
 }
 
 
-_Use_decl_annotations_ static bool LogpIsLogFileEnabled(const LogBufferInfo &info) 
+static bool LogpIsLogFileEnabled(const LogBufferInfo &info) 
 // Returns true when a log file is enabled.
 {
     if (info.log_buffer1) {
@@ -550,7 +550,7 @@ _Use_decl_annotations_ static bool LogpIsLogFileEnabled(const LogBufferInfo &inf
 }
 
 
-_Use_decl_annotations_ static bool LogpIsLogFileActivated(const LogBufferInfo &info)
+static bool LogpIsLogFileActivated(const LogBufferInfo &info)
 // Returns true when a log file is opened.
 {
     if (info.buffer_flush_thread_should_be_alive) {
@@ -565,7 +565,7 @@ _Use_decl_annotations_ static bool LogpIsLogFileActivated(const LogBufferInfo &i
 }
 
 
-_Use_decl_annotations_ static bool LogpIsLogNeeded(ULONG level)
+static bool LogpIsLogNeeded(ULONG level)
 // Returns true when logging is necessary according to the log's severity and a set log level.
 {
     return !!(g_logp_debug_flag & level);
@@ -579,7 +579,7 @@ static bool LogpIsDbgPrintNeeded()
 }
 
 
-_Use_decl_annotations_ static VOID LogpBufferFlushThreadRoutine(void *start_context)
+static VOID LogpBufferFlushThreadRoutine(void *start_context)
 // A thread runs as long as info.buffer_flush_thread_should_be_alive is true and flushes a log buffer to a log file every kLogpLogFlushIntervalMsec msec.
 {
     PAGED_CODE();
@@ -604,7 +604,7 @@ _Use_decl_annotations_ static VOID LogpBufferFlushThreadRoutine(void *start_cont
 }
 
 
-_Use_decl_annotations_ static NTSTATUS LogpSleep(LONG millisecond)
+static NTSTATUS LogpSleep(LONG millisecond)
 // Sleep the current thread's execution for milliseconds.
 {
     PAGED_CODE();
@@ -615,7 +615,7 @@ _Use_decl_annotations_ static NTSTATUS LogpSleep(LONG millisecond)
 }
 
 
-_Use_decl_annotations_ static void LogpSetPrintedBit(char *message, bool on)
+static void LogpSetPrintedBit(char *message, bool on)
 // Marks the message as it is already printed out, or clears the printed bit and restores it to the original
 {
     if (on) {
@@ -626,7 +626,7 @@ _Use_decl_annotations_ static void LogpSetPrintedBit(char *message, bool on)
 }
 
 
-_Use_decl_annotations_ static bool LogpIsPrinted(char *message)
+static bool LogpIsPrinted(char *message)
 // Tests if the printed bit is on
 {
     return (message[0] & 0x80) != 0;

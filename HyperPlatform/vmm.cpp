@@ -53,7 +53,7 @@ static void VmmpInjectInterruption(_In_ InterruptionType interruption_type, _In_
 
 #pragma warning(push)
 #pragma warning(disable : 28167)
-_Use_decl_annotations_ bool __stdcall VmmVmExitHandler(VmmInitialStack *stack)
+bool __stdcall VmmVmExitHandler(VmmInitialStack *stack)
 // A high level VMX handler called from AsmVmExitHandler().
 // Return true for vmresume, or return false for vmxoff.
 {
@@ -86,7 +86,7 @@ _Use_decl_annotations_ bool __stdcall VmmVmExitHandler(VmmInitialStack *stack)
 #pragma warning(pop)
 
 
-_Use_decl_annotations_ static void VmmpHandleVmExit(GuestContext *guest_context)
+static void VmmpHandleVmExit(GuestContext *guest_context)
 // Dispatches VM-exit to a corresponding handler
 {
     const VmExitInformation exit_reason = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitReason)) };
@@ -169,7 +169,7 @@ _Use_decl_annotations_ static void VmmpHandleVmExit(GuestContext *guest_context)
 
 
 // Triple fault VM-exit. Fatal error.
-_Use_decl_annotations_ static void VmmpHandleTripleFault(GuestContext *guest_context)
+static void VmmpHandleTripleFault(GuestContext *guest_context)
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -179,7 +179,7 @@ _Use_decl_annotations_ static void VmmpHandleTripleFault(GuestContext *guest_con
 
 
 // Unexpected VM-exit. Fatal error.
-_Use_decl_annotations_ static void VmmpHandleUnexpectedExit(GuestContext *guest_context)
+static void VmmpHandleUnexpectedExit(GuestContext *guest_context)
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -190,7 +190,7 @@ _Use_decl_annotations_ static void VmmpHandleUnexpectedExit(GuestContext *guest_
 
 
 // MTF VM-exit
-_Use_decl_annotations_ static void VmmpHandleMonitorTrap(GuestContext *guest_context)
+static void VmmpHandleMonitorTrap(GuestContext *guest_context)
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -200,7 +200,7 @@ _Use_decl_annotations_ static void VmmpHandleMonitorTrap(GuestContext *guest_con
 
 
 // Interrupt
-_Use_decl_annotations_ static void VmmpHandleException(GuestContext *guest_context)
+static void VmmpHandleException(GuestContext *guest_context)
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -236,7 +236,7 @@ _Use_decl_annotations_ static void VmmpHandleException(GuestContext *guest_conte
 
 
 // CPUID
-_Use_decl_annotations_ static void VmmpHandleCpuid(GuestContext *guest_context)
+static void VmmpHandleCpuid(GuestContext *guest_context)
 {
     unsigned int cpu_info[4] = {};
     int function_id = static_cast<int>(guest_context->gp_regs->ax);
@@ -261,7 +261,7 @@ _Use_decl_annotations_ static void VmmpHandleCpuid(GuestContext *guest_context)
 
 
 // RDTSC
-_Use_decl_annotations_ static void VmmpHandleRdtsc(GuestContext *guest_context)
+static void VmmpHandleRdtsc(GuestContext *guest_context)
 {
     ULARGE_INTEGER tsc = {};
     tsc.QuadPart = __rdtsc();
@@ -272,7 +272,7 @@ _Use_decl_annotations_ static void VmmpHandleRdtsc(GuestContext *guest_context)
 
 
 // RDTSCP
-_Use_decl_annotations_ static void VmmpHandleRdtscp(GuestContext *guest_context)
+static void VmmpHandleRdtscp(GuestContext *guest_context)
 {
     unsigned int tsc_aux = 0;
     ULARGE_INTEGER tsc = {};
@@ -285,7 +285,7 @@ _Use_decl_annotations_ static void VmmpHandleRdtscp(GuestContext *guest_context)
 
 
 // XSETBV. It is executed at the time of system resuming
-_Use_decl_annotations_ static void VmmpHandleXsetbv(GuestContext *guest_context)
+static void VmmpHandleXsetbv(GuestContext *guest_context)
 {
     ULARGE_INTEGER value = {};
     value.LowPart = static_cast<ULONG>(guest_context->gp_regs->ax);
@@ -296,21 +296,21 @@ _Use_decl_annotations_ static void VmmpHandleXsetbv(GuestContext *guest_context)
 
 
 // RDMSR
-_Use_decl_annotations_ static void VmmpHandleMsrReadAccess(GuestContext *guest_context)
+static void VmmpHandleMsrReadAccess(GuestContext *guest_context)
 {
     VmmpHandleMsrAccess(guest_context, true);
 }
 
 
 // WRMSR
-_Use_decl_annotations_ static void VmmpHandleMsrWriteAccess(GuestContext *guest_context)
+static void VmmpHandleMsrWriteAccess(GuestContext *guest_context)
 {
     VmmpHandleMsrAccess(guest_context, false);
 }
 
 
 // RDMSR and WRMSR
-_Use_decl_annotations_ static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)
+static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)
 {
     Msr msr = static_cast<Msr>(guest_context->gp_regs->cx);// Apply it for VMCS instead of a real MSR if a specified MSR is either of them.
 
@@ -380,7 +380,7 @@ _Use_decl_annotations_ static void VmmpHandleMsrAccess(GuestContext *guest_conte
 
 
 // LIDT, SIDT, LGDT and SGDT
-_Use_decl_annotations_ static void VmmpHandleGdtrOrIdtrAccess(GuestContext *guest_context)
+static void VmmpHandleGdtrOrIdtrAccess(GuestContext *guest_context)
 {
     const GdtrOrIdtrInstInformation exit_qualification = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmxInstructionInfo)) };
     ULONG_PTR displacement = UtilVmRead(VmcsField::kExitQualification);// Calculate an address to be used for the instruction
@@ -454,7 +454,7 @@ _Use_decl_annotations_ static void VmmpHandleGdtrOrIdtrAccess(GuestContext *gues
 
 
 // LLDT, LTR, SLDT, and STR
-_Use_decl_annotations_ static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_context)
+static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_context)
 {
     const LdtrOrTrInstInformation exit_qualification = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmxInstructionInfo)) };
     ULONG_PTR displacement = UtilVmRead(VmcsField::kExitQualification);// Calculate an address or a register to be used for the instruction
@@ -529,7 +529,7 @@ _Use_decl_annotations_ static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_
 
 
 // MOV to / from DRx
-_Use_decl_annotations_ static void VmmpHandleDrAccess(GuestContext *guest_context)
+static void VmmpHandleDrAccess(GuestContext *guest_context)
 {
     MovDrQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     ULONG_PTR * register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
@@ -613,7 +613,7 @@ _Use_decl_annotations_ static void VmmpHandleDrAccess(GuestContext *guest_contex
 
 
 // IN, INS, OUT, OUTS
-_Use_decl_annotations_ static void VmmpHandleIoPort(GuestContext *guest_context)
+static void VmmpHandleIoPort(GuestContext *guest_context)
 {
     const IoInstQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     bool is_in = exit_qualification.fields.direction == 1;  // to memory?
@@ -669,7 +669,7 @@ _Use_decl_annotations_ static void VmmpHandleIoPort(GuestContext *guest_context)
 
 
 // Perform IO instruction according with parameters
-_Use_decl_annotations_ static void VmmpIoWrapper(bool to_memory, bool is_string, SIZE_T size_of_access, unsigned short port, void *address, unsigned long count)
+static void VmmpIoWrapper(bool to_memory, bool is_string, SIZE_T size_of_access, unsigned short port, void *address, unsigned long count)
 {
     NT_ASSERT(size_of_access == 1 || size_of_access == 2 || size_of_access == 4);
 
@@ -743,7 +743,7 @@ _Use_decl_annotations_ static void VmmpIoWrapper(bool to_memory, bool is_string,
 
 
 // MOV to / from CRx
-_Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_context)
+static void VmmpHandleCrAccess(GuestContext *guest_context)
 {
     MovCrQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     PULONG_PTR register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
@@ -815,7 +815,7 @@ _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_contex
 }
 
 
-_Use_decl_annotations_ static void VmmpHandleVmx(GuestContext *guest_context)
+static void VmmpHandleVmx(GuestContext *guest_context)
 // VMX instructions except for VMCALL
 {
     // See: CONVENTIONS
@@ -831,7 +831,7 @@ _Use_decl_annotations_ static void VmmpHandleVmx(GuestContext *guest_context)
 
 
 // VMCALL
-_Use_decl_annotations_ static void VmmpHandleVmCall(GuestContext *guest_context)
+static void VmmpHandleVmCall(GuestContext *guest_context)
 {
     // VMCALL convention for HyperPlatform:
     //  ecx: hyper-call number (always 32bit)
@@ -863,7 +863,7 @@ _Use_decl_annotations_ static void VmmpHandleVmCall(GuestContext *guest_context)
 
 
 // INVD
-_Use_decl_annotations_ static void VmmpHandleInvalidateInternalCaches(GuestContext *guest_context)
+static void VmmpHandleInvalidateInternalCaches(GuestContext *guest_context)
 {
     AsmInvalidateInternalCaches();
     VmmpAdjustGuestInstructionPointer(guest_context);
@@ -871,7 +871,7 @@ _Use_decl_annotations_ static void VmmpHandleInvalidateInternalCaches(GuestConte
 
 
 // INVLPG
-_Use_decl_annotations_ static void VmmpHandleInvalidateTlbEntry(GuestContext *guest_context)
+static void VmmpHandleInvalidateTlbEntry(GuestContext *guest_context)
 {
     void * invalidate_address = reinterpret_cast<void *>(UtilVmRead(VmcsField::kExitQualification));
     __invlpg(invalidate_address);
@@ -880,7 +880,7 @@ _Use_decl_annotations_ static void VmmpHandleInvalidateTlbEntry(GuestContext *gu
 }
 
 
-_Use_decl_annotations_ static void VmmpHandleEptViolation(GuestContext *guest_context)
+static void VmmpHandleEptViolation(GuestContext *guest_context)
 // EXIT_REASON_EPT_VIOLATION
 {
     ProcessorData * processor_data = guest_context->stack->processor_data;
@@ -888,7 +888,7 @@ _Use_decl_annotations_ static void VmmpHandleEptViolation(GuestContext *guest_co
 }
 
 
-_Use_decl_annotations_ static void VmmpHandleEptMisconfig(GuestContext *guest_context)
+static void VmmpHandleEptMisconfig(GuestContext *guest_context)
 // EXIT_REASON_EPT_MISCONFIG
 {
     UNREFERENCED_PARAMETER(guest_context);
@@ -899,7 +899,7 @@ _Use_decl_annotations_ static void VmmpHandleEptMisconfig(GuestContext *guest_co
 }
 
 
-_Use_decl_annotations_ static ULONG_PTR *VmmpSelectRegister(ULONG index, GuestContext *guest_context)
+static ULONG_PTR *VmmpSelectRegister(ULONG index, GuestContext *guest_context)
 // Selects a register to be used based on the index
 {
     ULONG_PTR *register_used = nullptr;
@@ -1023,7 +1023,7 @@ static void VmmpDumpGuestState()
 }
 
 
-_Use_decl_annotations_ static void VmmpAdjustGuestInstructionPointer(GuestContext *guest_context)
+static void VmmpAdjustGuestInstructionPointer(GuestContext *guest_context)
 // Advances guest's IP to the next instruction
 {
     ULONG_PTR exit_inst_length = UtilVmRead(VmcsField::kVmExitInstructionLen);
@@ -1036,7 +1036,7 @@ _Use_decl_annotations_ static void VmmpAdjustGuestInstructionPointer(GuestContex
 }
 
 
-_Use_decl_annotations_ void __stdcall VmmVmxFailureHandler(AllRegisters *all_regs)
+void __stdcall VmmVmxFailureHandler(AllRegisters *all_regs)
 // Handle VMRESUME or VMXOFF failure. Fatal error.
 {
     //ULONG_PTR guest_ip = UtilVmRead(VmcsField::kGuestRip);
@@ -1046,7 +1046,7 @@ _Use_decl_annotations_ void __stdcall VmmVmxFailureHandler(AllRegisters *all_reg
 }
 
 
-_Use_decl_annotations_ static void VmmpIndicateSuccessfulVmcall(GuestContext *guest_context)
+static void VmmpIndicateSuccessfulVmcall(GuestContext *guest_context)
 // Indicates successful VMCALL
 {
     // See: CONVENTIONS
@@ -1064,7 +1064,7 @@ _Use_decl_annotations_ static void VmmpIndicateSuccessfulVmcall(GuestContext *gu
 
 
 // Indicates unsuccessful VMCALL
-_Use_decl_annotations_ static void VmmpIndicateUnsuccessfulVmcall(GuestContext *guest_context)
+static void VmmpIndicateUnsuccessfulVmcall(GuestContext *guest_context)
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -1073,7 +1073,7 @@ _Use_decl_annotations_ static void VmmpIndicateUnsuccessfulVmcall(GuestContext *
 }
 
 
-_Use_decl_annotations_ static void VmmpHandleVmCallTermination(GuestContext *guest_context, void *context)
+static void VmmpHandleVmCallTermination(GuestContext *guest_context, void *context)
 // Handles an unloading request
 {
   // The processor sets ffff to limits of IDT and GDT when VM-exit occurred.
@@ -1126,7 +1126,7 @@ static UCHAR VmmpGetGuestCpl()
 
 
 // Injects interruption to a guest
-_Use_decl_annotations_ static void VmmpInjectInterruption(InterruptionType interruption_type, InterruptionVector vector, bool deliver_error_code, ULONG32 error_code)
+static void VmmpInjectInterruption(InterruptionType interruption_type, InterruptionVector vector, bool deliver_error_code, ULONG32 error_code)
 {
     VmEntryInterruptionInformationField inject = {};
     inject.fields.valid = true;

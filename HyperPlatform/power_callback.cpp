@@ -22,7 +22,7 @@ static PCALLBACK_OBJECT g_pcp_callback_object = nullptr;
 static PVOID g_pcp_registration = nullptr;
 
 
-_Use_decl_annotations_ NTSTATUS PowerCallbackInitialization()
+NTSTATUS PowerCallbackInitialization()
 // Registers power callback
 {
     PAGED_CODE();
@@ -46,7 +46,7 @@ _Use_decl_annotations_ NTSTATUS PowerCallbackInitialization()
 }
 
 
-_Use_decl_annotations_ void PowerCallbackTermination()
+void PowerCallbackTermination()
 // Unregister power callback
 {
     PAGED_CODE();
@@ -61,7 +61,7 @@ _Use_decl_annotations_ void PowerCallbackTermination()
 }
 
 
-_Use_decl_annotations_ static void PowerCallbackpCallbackRoutine(PVOID callback_context, PVOID argument1, PVOID argument2)
+static void PowerCallbackpCallbackRoutine(PVOID callback_context, PVOID argument1, PVOID argument2)
 // Power callback routine dealing with hibernate and sleep
 {
     UNREFERENCED_PARAMETER(callback_context);

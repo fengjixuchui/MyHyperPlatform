@@ -32,35 +32,35 @@ MtrrData g_eptp_mtrr_entries[kEptpMtrrEntriesSize];
 UCHAR g_eptp_mtrr_default_type;
 
 
-_Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
+static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
 // Return an address of PXE
 {
     return (physical_address >> 39ull) & 0x1ffull;
 }
 
 
-_Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
+static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
 // Return an address of PPE
 {
     return (physical_address >> 30ull) & 0x1ffull;
 }
 
 
-_Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
+static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
 // Return an address of PDE
 {
     return (physical_address >> 21ull) & 0x1ffull;
 }
 
 
-_Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
+static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
 // Return an address of PTE
 {
     return (physical_address >> 12ull) & 0x1ffull;
 }
 
 
-_Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_address)
+static memory_type EptpGetMemoryType(ULONG64 physical_address)
 // Returns a memory type based on MTRRs
 {
     UCHAR result_type = MAXUCHAR;// Indicate that MTRR is not defined (as a default)
@@ -106,7 +106,7 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
 }
 
 
-_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
+static EptCommonEntry *EptpAllocateEptEntryFromPool()
 // Return a new EPT entry either by creating new one
 {
     const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
@@ -119,7 +119,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntryFromPool()
 }
 
 
-_Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)
+static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)
 // Return a new EPT entry from pre-allocated ones.
 {
     LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count);
@@ -129,7 +129,7 @@ _Use_decl_annotations_ static EptCommonEntry * EptpAllocateEptEntryFromPreAlloca
 }
 
 
-_Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data)
+static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data)
 // Return a new EPT entry either by creating new one or from pre-allocated ones
 {
     if (ept_data) {
@@ -140,7 +140,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_
 }
 
 
-_Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)
+static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)
 // Initialize an EPT entry with a "pass through" attribute
 {
     entry->fields.read_access = true;
@@ -153,7 +153,7 @@ _Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULO
 }
 
 
-_Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address, EptData *ept_data)
+static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address, EptData *ept_data)
 // Allocate and initialize all EPT entries associated with the physical_address
 {
     switch (table_level)
@@ -212,7 +212,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
 }
 
 
-_Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
+static bool EptpIsDeviceMemory(ULONG64 physical_address)
 // Returns if the physical_address is device memory (which could not have a corresponding PFN entry)
 {
     for (PFN_COUNT i = 0ul; i < g_utilp_physical_memory_ranges->number_of_runs; ++i)
@@ -229,7 +229,7 @@ _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 }
 
 
-_Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address)
+static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address)
 // Returns an EPT entry corresponds to the physical_address
 {
     if (!table) {
@@ -278,7 +278,7 @@ _Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *
 }
 
 
-_Use_decl_annotations_ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEntry **preallocated_entries, long used_count)
+static void EptpFreeUnusedPreAllocatedEntries(EptCommonEntry **preallocated_entries, long used_count)
 // Frees all unused pre-allocated EPT entries. Other used entries should be freed with EptpDestructTables().
 {
     for (SIZE_T i = used_count; i < kEptpNumberOfPreallocatedEntries; ++i)
@@ -296,7 +296,7 @@ _Use_decl_annotations_ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEn
 }
 
 
-_Use_decl_annotations_ static void EptpDestructTables(EptCommonEntry *table, ULONG table_level)
+static void EptpDestructTables(EptCommonEntry *table, ULONG table_level)
 // Frees all used EPT entries by walking through whole EPT
 {
     for (int i = 0ul; i < 512; ++i)
@@ -329,7 +329,7 @@ _Use_decl_annotations_ static void EptpDestructTables(EptCommonEntry *table, ULO
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-_Use_decl_annotations_ bool EptIsEptAvailable()
+bool EptIsEptAvailable()
 // Checks if the system supports EPT technology sufficient enough
 {
     PAGED_CODE();
@@ -358,14 +358,14 @@ _Use_decl_annotations_ bool EptIsEptAvailable()
 }
 
 
-_Use_decl_annotations_ ULONG64 EptGetEptPointer(EptData *ept_data)
+ULONG64 EptGetEptPointer(EptData *ept_data)
 // Returns an EPT pointer from ept_data
 {
     return ept_data->ept_pointer->all;
 }
 
 
-_Use_decl_annotations_ void EptInitializeMtrrEntries()
+void EptInitializeMtrrEntries()
 // Reads and stores all MTRRs to set a correct memory type for EPT
 {
     PAGED_CODE();
@@ -462,7 +462,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
 }
 
 
-_Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
+void EptHandleEptViolation(EptData *ept_data)
 // Deal with EPT violation VM-exit.
 {
     EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
@@ -487,14 +487,14 @@ _Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
 }
 
 
-_Use_decl_annotations_ EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address)
+EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address)
 // Returns an EPT entry corresponds to the physical_address
 {
     return EptpGetEptPtEntry(ept_data->ept_pml4, 4, physical_address);
 }
 
 
-_Use_decl_annotations_ void EptTermination(EptData *ept_data)// Frees all EPT stuff
+void EptTermination(EptData *ept_data)// Frees all EPT stuff
 {
     EptpFreeUnusedPreAllocatedEntries(ept_data->preallocated_entries, ept_data->preallocated_entries_count);
     EptpDestructTables(ept_data->ept_pml4, 4);
@@ -503,7 +503,7 @@ _Use_decl_annotations_ void EptTermination(EptData *ept_data)// Frees all EPT st
 }
 
 
-_Use_decl_annotations_ EptData *EptInitialization()
+EptData *EptInitialization()
 // Builds EPT, allocates pre-allocated entires, initializes and returns EptData
 {
     PAGED_CODE();

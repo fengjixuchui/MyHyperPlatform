@@ -19,7 +19,7 @@ static DRIVER_UNLOAD DriverpDriverUnload;
 #endif
 
 
-_Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) 
+NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) 
 {
     UNREFERENCED_PARAMETER(registry_path);
     PAGED_CODE();
@@ -75,7 +75,7 @@ _Use_decl_annotations_ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICO
 }
 
 
-_Use_decl_annotations_ static void DriverpDriverUnload(PDRIVER_OBJECT driver_object)
+static void DriverpDriverUnload(PDRIVER_OBJECT driver_object)
 {
     UNREFERENCED_PARAMETER(driver_object);
     PAGED_CODE();

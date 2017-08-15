@@ -27,7 +27,7 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPh
 PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 
 
-_Use_decl_annotations_ void UtilTermination() 
+void UtilTermination() 
 // Terminates utility functions
 {
     PAGED_CODE();
@@ -53,7 +53,7 @@ NTSTATUS UtilpInitializePhysicalMemoryRanges()
 }
 
 
-_Use_decl_annotations_ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemoryRanges()
+static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemoryRanges()
 // Builds the physical memory ranges
 {
     PAGED_CODE();
@@ -99,7 +99,7 @@ _Use_decl_annotations_ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemor
 }
 
 
-_Use_decl_annotations_ NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine)(void *), void *context) 
+NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine)(void *), void *context) 
 // Execute a given callback routine on all processors in PASSIVE_LEVEL.
 // Returns STATUS_SUCCESS when all callback returned STATUS_SUCCESS as well.
 // When one of callbacks returns anything but STATUS_SUCCESS, this function stops to call remaining callbacks and returns the value.
@@ -132,7 +132,7 @@ _Use_decl_annotations_ NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine
 
 
 // VA -> PA
-_Use_decl_annotations_ ULONG64 UtilPaFromVa(void *va)
+ULONG64 UtilPaFromVa(void *va)
 {
     PHYSICAL_ADDRESS pa = MmGetPhysicalAddress(va);
     return pa.QuadPart;
@@ -140,21 +140,21 @@ _Use_decl_annotations_ ULONG64 UtilPaFromVa(void *va)
 
 
 // VA -> PFN
-_Use_decl_annotations_ PFN_NUMBER UtilPfnFromVa(void *va)
+PFN_NUMBER UtilPfnFromVa(void *va)
 {
     return UtilPfnFromPa(UtilPaFromVa(va));
 }
 
 
 // PA -> PFN
-_Use_decl_annotations_ PFN_NUMBER UtilPfnFromPa(ULONG64 pa)
+PFN_NUMBER UtilPfnFromPa(ULONG64 pa)
 {
     return static_cast<PFN_NUMBER>(pa >> PAGE_SHIFT);
 }
 
 
 // PA -> VA
-_Use_decl_annotations_ void *UtilVaFromPa(ULONG64 pa)
+void *UtilVaFromPa(ULONG64 pa)
 {
     PHYSICAL_ADDRESS pa2 = {};
     pa2.QuadPart = pa;
@@ -163,20 +163,20 @@ _Use_decl_annotations_ void *UtilVaFromPa(ULONG64 pa)
 
 
 // PNF -> PA
-_Use_decl_annotations_ ULONG64 UtilPaFromPfn(PFN_NUMBER pfn)
+ULONG64 UtilPaFromPfn(PFN_NUMBER pfn)
 {
     return pfn << PAGE_SHIFT;
 }
 
 
 // PFN -> VA
-_Use_decl_annotations_ void *UtilVaFromPfn(PFN_NUMBER pfn)
+void *UtilVaFromPfn(PFN_NUMBER pfn)
 {
     return UtilVaFromPa(UtilPaFromPfn(pfn));
 }
 
 
-_Use_decl_annotations_ void * AllocateContiguousMemory(SIZE_T number_of_bytes)
+void * AllocateContiguousMemory(SIZE_T number_of_bytes)
 // Allocates continuous physical memory
 {
     PHYSICAL_ADDRESS highest_acceptable_address = {};
@@ -189,14 +189,14 @@ _Use_decl_annotations_ void * AllocateContiguousMemory(SIZE_T number_of_bytes)
 }
 
 
-_Use_decl_annotations_ void UtilFreeContiguousMemory(void *base_address)
+void UtilFreeContiguousMemory(void *base_address)
 // Frees an address allocated by AllocateContiguousMemory()
 {
     MmFreeContiguousMemory(base_address);
 }
 
 
-_Use_decl_annotations_ NTSTATUS UtilVmCall(HypercallNumber hypercall_number, void *context)
+NTSTATUS UtilVmCall(HypercallNumber hypercall_number, void *context)
 // Executes VMCALL
 {
     __try {
@@ -210,7 +210,7 @@ _Use_decl_annotations_ NTSTATUS UtilVmCall(HypercallNumber hypercall_number, voi
 }
 
 
-_Use_decl_annotations_ void UtilDumpGpRegisters(const AllRegisters *all_regs, ULONG_PTR stack_pointer)
+void UtilDumpGpRegisters(const AllRegisters *all_regs, ULONG_PTR stack_pointer)
 // Debug prints registers
 {
     UNREFERENCED_PARAMETER(all_regs);
@@ -227,7 +227,7 @@ _Use_decl_annotations_ void UtilDumpGpRegisters(const AllRegisters *all_regs, UL
 }
 
 
-_Use_decl_annotations_ ULONG_PTR UtilVmRead(VmcsField field)
+ULONG_PTR UtilVmRead(VmcsField field)
 // Reads natural-width VMCS
 {
     size_t field_value = 0;
@@ -237,7 +237,7 @@ _Use_decl_annotations_ ULONG_PTR UtilVmRead(VmcsField field)
 }
 
 
-_Use_decl_annotations_ ULONG64 UtilVmRead64(VmcsField field)
+ULONG64 UtilVmRead64(VmcsField field)
 // Reads 64bit-width VMCS
 {
     return UtilVmRead(field);
@@ -245,13 +245,13 @@ _Use_decl_annotations_ ULONG64 UtilVmRead64(VmcsField field)
 
 
 // Writes natural-width VMCS
-_Use_decl_annotations_ VmxStatus UtilVmWrite(VmcsField field, ULONG_PTR field_value)
+VmxStatus UtilVmWrite(VmcsField field, ULONG_PTR field_value)
 {
     return static_cast<VmxStatus>(__vmx_vmwrite(static_cast<size_t>(field), field_value));
 }
 
 
-_Use_decl_annotations_ VmxStatus UtilVmWrite64(VmcsField field, ULONG64 field_value)
+VmxStatus UtilVmWrite64(VmcsField field, ULONG64 field_value)
 // Writes 64bit-width VMCS
 {
     return UtilVmWrite(field, field_value);
@@ -266,7 +266,7 @@ VmxStatus UtilInveptGlobal()
 }
 
 
-_Use_decl_annotations_ VmxStatus UtilInvvpidIndividualAddress(USHORT vpid, void *address)
+VmxStatus UtilInvvpidIndividualAddress(USHORT vpid, void *address)
 // Executes the INVVPID instruction (type 0)
 {
     InvVpidDescriptor desc = {};
@@ -284,7 +284,7 @@ VmxStatus UtilInvvpidAllContext()
 }
 
 
-_Use_decl_annotations_ VmxStatus UtilInvvpidSingleContextExceptGlobal(USHORT vpid)
+VmxStatus UtilInvvpidSingleContextExceptGlobal(USHORT vpid)
 // Executes the INVVPID instruction (type 3)
 {
     InvVpidDescriptor desc = {};

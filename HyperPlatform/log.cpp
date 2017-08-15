@@ -53,7 +53,7 @@ static bool LogpIsPrinted(_In_z_ char *message);
 #pragma alloc_text(PAGE, LogpSleep)
 #endif
 
-static auto g_logp_debug_flag = kLogPutLevelDisable;
+static ULONG g_logp_debug_flag = kLogPutLevelDisable;
 static LogBufferInfo g_logp_log_buffer_info = {};
 
 

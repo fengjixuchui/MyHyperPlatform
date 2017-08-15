@@ -346,7 +346,7 @@ _Use_decl_annotations_ static void VmmpHandleMsrAccess(GuestContext *guest_conte
         break;
     }
 
-    const auto is_64bit_vmcs = UtilIsInBounds(vmcs_field, VmcsField::kIoBitmapA, VmcsField::kHostIa32PerfGlobalCtrlHigh);
+    SIZE_T is_64bit_vmcs = UtilIsInBounds(vmcs_field, VmcsField::kIoBitmapA, VmcsField::kHostIa32PerfGlobalCtrlHigh);
 
     LARGE_INTEGER msr_value = {};
     if (read_access) {
@@ -649,9 +649,9 @@ _Use_decl_annotations_ static void VmmpHandleIoPort(GuestContext *guest_context)
     // Update RCX, RDI and RSI accordingly.
     // Note that this code can handle only the REP prefix.
     if (is_string) {
-        auto update_count = (is_rep) ? guest_context->gp_regs->cx : 1;
-        auto update_size = update_count * size_of_access;
-        auto update_register = (is_in) ? &guest_context->gp_regs->di : &guest_context->gp_regs->si;
+        size_t update_count = (is_rep) ? guest_context->gp_regs->cx : 1;
+        size_t update_size = update_count * size_of_access;
+        PULONG_PTR update_register = (is_in) ? &guest_context->gp_regs->di : &guest_context->gp_regs->si;
 
         if (guest_context->flag_reg.fields.df) {
             *update_register = *update_register - update_size;
@@ -674,8 +674,8 @@ _Use_decl_annotations_ static void VmmpIoWrapper(bool to_memory, bool is_string,
     NT_ASSERT(size_of_access == 1 || size_of_access == 2 || size_of_access == 4);
 
     // Update CR3 with that of the guest since below code is going to access memory.
-    auto guest_cr3 = UtilVmRead(VmcsField::kGuestCr3);
-    auto vmm_cr3 = __readcr3();
+    size_t guest_cr3 = UtilVmRead(VmcsField::kGuestCr3);
+    size_t vmm_cr3 = __readcr3();
     __writecr3(guest_cr3);
 
     // clang-format off
@@ -746,7 +746,7 @@ _Use_decl_annotations_ static void VmmpIoWrapper(bool to_memory, bool is_string,
 _Use_decl_annotations_ static void VmmpHandleCrAccess(GuestContext *guest_context)
 {
     MovCrQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
-    auto register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
+    PULONG_PTR register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
 
     switch (static_cast<MovCrAccessType>(exit_qualification.fields.access_type)) 
     {
@@ -837,8 +837,8 @@ _Use_decl_annotations_ static void VmmpHandleVmCall(GuestContext *guest_context)
     //  ecx: hyper-call number (always 32bit)
     //  edx: arbitrary context parameter (pointer size)
     // Any unsuccessful VMCALL will inject #UD into a guest
-    auto hypercall_number = static_cast<HypercallNumber>(guest_context->gp_regs->cx);
-    auto context = reinterpret_cast<void *>(guest_context->gp_regs->dx);
+    HypercallNumber hypercall_number = static_cast<HypercallNumber>(guest_context->gp_regs->cx);
+    void * context = reinterpret_cast<void *>(guest_context->gp_regs->dx);
 
     switch (hypercall_number)
     {
@@ -873,7 +873,7 @@ _Use_decl_annotations_ static void VmmpHandleInvalidateInternalCaches(GuestConte
 // INVLPG
 _Use_decl_annotations_ static void VmmpHandleInvalidateTlbEntry(GuestContext *guest_context)
 {
-    auto invalidate_address = reinterpret_cast<void *>(UtilVmRead(VmcsField::kExitQualification));
+    void * invalidate_address = reinterpret_cast<void *>(UtilVmRead(VmcsField::kExitQualification));
     __invlpg(invalidate_address);
     UtilInvvpidIndividualAddress(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1), invalidate_address);
     VmmpAdjustGuestInstructionPointer(guest_context);
@@ -883,7 +883,7 @@ _Use_decl_annotations_ static void VmmpHandleInvalidateTlbEntry(GuestContext *gu
 _Use_decl_annotations_ static void VmmpHandleEptViolation(GuestContext *guest_context)
 // EXIT_REASON_EPT_VIOLATION
 {
-    auto processor_data = guest_context->stack->processor_data;
+    ProcessorData * processor_data = guest_context->stack->processor_data;
     EptHandleEptViolation(processor_data->ept_data);
 }
 

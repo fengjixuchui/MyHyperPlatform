@@ -1084,7 +1084,7 @@ static void VmmpHandleVmCallTermination(GuestContext *guest_context, void *conte
     ULONG_PTR gdt_base = UtilVmRead(VmcsField::kGuestGdtrBase);
     ULONG_PTR idt_limit = UtilVmRead(VmcsField::kGuestIdtrLimit);
     ULONG_PTR idt_base = UtilVmRead(VmcsField::kGuestIdtrBase);
-    Gdtr gdtr = { static_cast<USHORT>(gdt_limit), gdt_base };
+    Idtr gdtr = { static_cast<USHORT>(gdt_limit), gdt_base };
     Idtr idtr = { static_cast<USHORT>(idt_limit), idt_base };
     __lgdt(&gdtr);
     __lidt(&idtr);

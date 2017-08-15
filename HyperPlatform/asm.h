@@ -26,11 +26,11 @@ unsigned char __stdcall AsmVmxCall(_In_ ULONG_PTR hypercall_number, _In_opt_ voi
 
 /// Writes to GDT
 /// @param gdtr   A value to write
-void __stdcall AsmWriteGDT(_In_ const Gdtr *gdtr);
+void __stdcall AsmWriteGDT(_In_ const Idtr *gdtr);
 
 /// Reads SGDT
 /// @param gdtr   A pointer to read GDTR
-void __stdcall AsmReadGDT(_Out_ Gdtr *gdtr);
+void __stdcall AsmReadGDT(_Out_ Idtr *gdtr);
 
 /// Reads SLDT
 /// @return LDT
@@ -93,14 +93,14 @@ unsigned char __stdcall AsmInvvpid(_In_ InvVpidType invvpid_type, _In_ const Inv
 /// @param gdtr   A value to write
 inline void __sgdt(_Out_ void *gdtr)
 {
-    AsmReadGDT(static_cast<Gdtr *>(gdtr));
+    AsmReadGDT(static_cast<Idtr *>(gdtr));
 }
 
 /// Reads SGDT
 /// @param gdtr   A pointer to read GDTR
 inline void __lgdt(_In_ void *gdtr)
 { 
-    AsmWriteGDT(static_cast<Gdtr *>(gdtr));
+    AsmWriteGDT(static_cast<Idtr *>(gdtr));
 }
 
 }  // extern "C"

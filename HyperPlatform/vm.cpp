@@ -392,7 +392,7 @@ static bool VmpSetupVmcs(const ProcessorData *processor_data, ULONG_PTR guest_st
 {
     PAGED_CODE();
 
-    Gdtr gdtr = {};
+    Idtr gdtr = {};
     __sgdt(&gdtr);
 
     Idtr idtr = {};

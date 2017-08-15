@@ -128,11 +128,8 @@ struct Idtr {
   unsigned short limit;
   ULONG_PTR base;
 };
-
-/// @copydoc Idtr
-using Gdtr = Idtr;
+//using Gdtr = Idtr;/// @copydoc Idtr
 static_assert(sizeof(Idtr) == 10, "Size check");
-static_assert(sizeof(Gdtr) == 10, "Size check");
 #include <poppack.h>
 
 /// See: Segment Selectors

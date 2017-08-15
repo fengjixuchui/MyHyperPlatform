@@ -19,7 +19,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="HyperPlatform.inf">
+    <Inf Include="test.inf">
       <Filter>Driver Files</Filter>
     </Inf>
   </ItemGroup>

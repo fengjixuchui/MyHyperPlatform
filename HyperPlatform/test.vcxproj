@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="HyperPlatform.inf" />
+    <Inf Include="test.inf" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4C048BB2-7E8D-43BF-B29D-942461275023}</ProjectGuid>

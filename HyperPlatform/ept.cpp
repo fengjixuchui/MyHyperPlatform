@@ -120,7 +120,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         //  entry[7]: 0x70000 : 0x80000 - 1
         ULONG64 offset = 0;
         Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };//IA32_MTRR_FIX64K_00000 ÏêÏ¸µÄ¼û£º11.11.2.2   Fixed Range MTRRs
-        for (auto memory_type : fixed_range.fields.types)
+        for (UCHAR memory_type : fixed_range.fields.types)
         {
             // Each entry manages 64k (0x10000) length.
             ULONG64 base = k64kBase + offset;
@@ -153,7 +153,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
         {
             fixed_range.all = __readmsr(msr);
-            for (auto memory_type : fixed_range.fields.types)
+            for (UCHAR memory_type : fixed_range.fields.types)
             {
                 // Each entry manages 16k (0x4000) length.
                 ULONG64 base = k16kBase + offset;
@@ -183,7 +183,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix4kC0000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix4kF8000); msr++)
         {
             fixed_range.all = __readmsr(msr);
-            for (auto memory_type : fixed_range.fields.types)
+            for (UCHAR memory_type : fixed_range.fields.types)
             {
                 // Each entry manages 4k (0x1000) length.
                 ULONG64 base = k4kBase + offset;
@@ -235,7 +235,7 @@ _Use_decl_annotations_ static memory_type EptpGetMemoryType(ULONG64 physical_add
 {
     UCHAR result_type = MAXUCHAR;// Indicate that MTRR is not defined (as a default)
     
-    for (auto mtrr_entry : g_eptp_mtrr_entries)// Looks for MTRR that includes the specified physical_address
+    for (MtrrData mtrr_entry : g_eptp_mtrr_entries)// Looks for MTRR that includes the specified physical_address
     {
         if (!mtrr_entry.enabled) {
             break;// Reached out the end of stored MTRRs
@@ -638,4 +638,4 @@ _Use_decl_annotations_ static void EptpDestructTables(EptCommonEntry *table, ULO
     ExFreePoolWithTag(table, TAG);
 }
 
-}  // extern "C"
+}

@@ -104,13 +104,6 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     
     if (mtrr_capabilities.fields.MTRRs && default_type.fields.FE)// Read fixed range MTRRs if supported
     {
-        ULONG64 k64kBase = 0x0;
-        ULONG64 k64kManagedSize = 0x10000;
-        ULONG64 k16kBase = 0x80000;
-        ULONG64 k16kManagedSize = 0x4000;
-        ULONG64 k4kBase = 0xC0000;
-        ULONG64 k4kManagedSize = 0x1000;
-
         // The kIa32MtrrFix64k00000 manages 8 ranges of memory.
         // The first range starts at 0x0, and each range manages a 64k (0x10000) range.
         // For example,
@@ -123,18 +116,18 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         for (UCHAR memory_type : fixed_range.fields.types)
         {
             // Each entry manages 64k (0x10000) length.
-            ULONG64 base = k64kBase + offset;
-            offset += k64kManagedSize;
+            ULONG64 base = offset;
+            offset += 0x10000;
 
             // Saves the MTRR
             g_eptp_mtrr_entries[index].enabled = true;
             g_eptp_mtrr_entries[index].fixedMtrr = true;
             g_eptp_mtrr_entries[index].type = memory_type;
             g_eptp_mtrr_entries[index].range_base = base;
-            g_eptp_mtrr_entries[index].range_end = base + k64kManagedSize - 1;
+            g_eptp_mtrr_entries[index].range_end = base + 0x10000 - 1;
             index++;
         }
-        NT_ASSERT(k64kBase + offset == k16kBase);
+        NT_ASSERT(offset == 0x80000);
 
         // kIa32MtrrFix16k80000 manages 8 ranges of memory.
         // The first range starts at 0x80000, and each range manages a 16k (0x4000) range.
@@ -156,19 +149,19 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
             for (UCHAR memory_type : fixed_range.fields.types)
             {
                 // Each entry manages 16k (0x4000) length.
-                ULONG64 base = k16kBase + offset;
-                offset += k16kManagedSize;
+                ULONG64 base = 0x80000 + offset;
+                offset += 0x4000;
 
                 // Saves the MTRR
                 g_eptp_mtrr_entries[index].enabled = true;
                 g_eptp_mtrr_entries[index].fixedMtrr = true;
                 g_eptp_mtrr_entries[index].type = memory_type;
                 g_eptp_mtrr_entries[index].range_base = base;
-                g_eptp_mtrr_entries[index].range_end = base + k16kManagedSize - 1;
+                g_eptp_mtrr_entries[index].range_end = base + 0x4000 - 1;
                 index++;
             }
         }
-        NT_ASSERT(k16kBase + offset == k4kBase);
+        NT_ASSERT(0x80000 + offset == 0xC0000);
 
         // kIa32MtrrFix4kC0000 manages 8 ranges of memory.
         // The first range starts at 0xC0000, and each range manages a 4k (0x1000) range.
@@ -186,45 +179,39 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
             for (UCHAR memory_type : fixed_range.fields.types)
             {
                 // Each entry manages 4k (0x1000) length.
-                ULONG64 base = k4kBase + offset;
-                offset += k4kManagedSize;
+                ULONG64 base = 0xC0000 + offset;
+                offset += 0x1000;
 
                 // Saves the MTRR
                 g_eptp_mtrr_entries[index].enabled = true;
                 g_eptp_mtrr_entries[index].fixedMtrr = true;
                 g_eptp_mtrr_entries[index].type = memory_type;
                 g_eptp_mtrr_entries[index].range_base = base;
-                g_eptp_mtrr_entries[index].range_end = base + k4kManagedSize - 1;
+                g_eptp_mtrr_entries[index].range_end = base + 0x1000 - 1;
                 index++;
             }
         }
-        NT_ASSERT(k4kBase + offset == 0x100000);
+        NT_ASSERT(0xC0000 + offset == 0x100000);
     }
     
     for (ULONG i = 0; i < mtrr_capabilities.fields.VCNT; i++)// Read all variable range MTRRs
     {
-        // Read MTRR mask and check if it is in use
-        ULONG phy_mask = static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2;
-        Ia32MtrrPhysMaskMsr mtrr_mask = { __readmsr(phy_mask) };
+        Ia32MtrrPhysMaskMsr mtrr_mask = { __readmsr(static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2) };// Read MTRR mask and check if it is in use
         if (!mtrr_mask.fields.valid) {
             continue;
         }
         
         ULONG length;
         BitScanForward64(&length, mtrr_mask.fields.phys_mask * PAGE_SIZE);// Get a length this MTRR manages
-
-        // Read MTRR base and calculate a range this MTRR manages
-        ULONG phy_base = static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2;
-        Ia32MtrrPhysBaseMsr mtrr_base = { __readmsr(phy_base) };
-        ULONG64 base = mtrr_base.fields.phys_base * PAGE_SIZE;
-        ULONG64 end = base + (1ull << length) - 1;
+        
+        Ia32MtrrPhysBaseMsr mtrr_base = { __readmsr(static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2) };// Read MTRR base and calculate a range this MTRR manages
 
         // Save it
         g_eptp_mtrr_entries[index].enabled = true;
         g_eptp_mtrr_entries[index].fixedMtrr = false;
         g_eptp_mtrr_entries[index].type = mtrr_base.fields.type;
-        g_eptp_mtrr_entries[index].range_base = base;
-        g_eptp_mtrr_entries[index].range_end = end;
+        g_eptp_mtrr_entries[index].range_base = mtrr_base.fields.phys_base * PAGE_SIZE;
+        g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + (1ull << length) - 1;
         index++;
     }
 }

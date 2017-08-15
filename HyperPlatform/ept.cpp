@@ -28,19 +28,6 @@ const auto kEptpNumOfMaxVariableRangeMtrrs = 255;// Architecture defined number 
 const auto kEptpNumOfFixedRangeMtrrs = 1 + 2 + 8;// Architecture defined number of fixed range MTRRs (1 for 64k, 2 for 16k, 8 for 4k)
 const auto kEptpMtrrEntriesSize = kEptpNumOfMaxVariableRangeMtrrs + kEptpNumOfFixedRangeMtrrs;// A size of array to store all possible MTRRs
 
-static memory_type EptpGetMemoryType(_In_ ULONG64 physical_address);
-_When_(ept_data == nullptr, _IRQL_requires_max_(DISPATCH_LEVEL)) 
-static EptCommonEntry *EptpConstructTables(_In_ EptCommonEntry *table, _In_ ULONG table_level, _In_ ULONG64 physical_address, _In_opt_ EptData *ept_data);
-static void EptpDestructTables(_In_ EptCommonEntry *table, _In_ ULONG table_level);
-static void EptpInitTableEntry(_In_ EptCommonEntry *Entry, _In_ ULONG table_level, _In_ ULONG64 physical_address);
-static ULONG64 EptpAddressToPxeIndex(_In_ ULONG64 physical_address);
-static ULONG64 EptpAddressToPpeIndex(_In_ ULONG64 physical_address);
-static ULONG64 EptpAddressToPdeIndex(_In_ ULONG64 physical_address);
-static ULONG64 EptpAddressToPteIndex(_In_ ULONG64 physical_address);
-static bool EptpIsDeviceMemory(_In_ ULONG64 physical_address);
-static EptCommonEntry *EptpGetEptPtEntry(_In_ EptCommonEntry *table, _In_ ULONG table_level, _In_ ULONG64 physical_address);
-static void EptpFreeUnusedPreAllocatedEntries(_Pre_notnull_ __drv_freesMem(Mem) EptCommonEntry **preallocated_entries, _In_ long used_count);
-
 #if defined(ALLOC_PRAGMA)
 #pragma alloc_text(PAGE, EptIsEptAvailable)
 #pragma alloc_text(PAGE, EptInitialization)
@@ -51,136 +38,31 @@ MtrrData g_eptp_mtrr_entries[kEptpMtrrEntriesSize];
 UCHAR g_eptp_mtrr_default_type;
 
 
-_Use_decl_annotations_ bool EptIsEptAvailable()
-// Checks if the system supports EPT technology sufficient enough
+_Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
+// Return an address of PXE
 {
-    PAGED_CODE();
-
-    // Check the followings:
-    // - page walk length is 4 steps
-    // - extended page tables can be laid out in write-back memory
-    // - INVEPT instruction with all possible types is supported
-    // - INVVPID instruction with all possible types is supported
-    Ia32VmxEptVpidCapMsr capability = { __readmsr(0x48C) };
-    if (!capability.fields.support_page_walk_length4 ||
-        !capability.fields.support_write_back_memory_type ||
-        !capability.fields.support_invept ||
-        !capability.fields.support_single_context_invept ||
-        !capability.fields.support_all_context_invept ||
-        !capability.fields.support_invvpid ||
-        !capability.fields.support_individual_address_invvpid ||
-        !capability.fields.support_single_context_invvpid ||
-        !capability.fields.support_all_context_invvpid ||
-        !capability.fields.support_single_context_retaining_globals_invvpid) 
-    {
-        return false;
-    }
-
-    return true;
+    return (physical_address >> kEptpPxiShift) & kEptpPtxMask;
 }
 
 
-_Use_decl_annotations_ ULONG64 EptGetEptPointer(EptData *ept_data)
-// Returns an EPT pointer from ept_data
+_Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
+// Return an address of PPE
 {
-    return ept_data->ept_pointer->all;
+    return (physical_address >> kEptpPpiShift) & kEptpPtxMask;
 }
 
 
-_Use_decl_annotations_ void EptInitializeMtrrEntries()
-// Reads and stores all MTRRs to set a correct memory type for EPT
+_Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
+// Return an address of PDE
 {
-    PAGED_CODE();
+    return (physical_address >> kEptpPdiShift) & kEptpPtxMask;
+}
 
-    int index = 0;
-    
-    Ia32MtrrCapabilitiesMsr mtrr_capabilities = { __readmsr(0xFE) };//IA32_MTRRCAP Register; Read MTRR capability
 
-    Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };// IA32_MTRR_DEF_TYPE
-    g_eptp_mtrr_default_type = default_type.fields.type;// Get and store the default memory type
-    
-    if (mtrr_capabilities.fields.MTRRs && default_type.fields.FE)// Read fixed range MTRRs if supported
-    {
-        // The kIa32MtrrFix64k00000 manages 8 ranges of memory.
-        // The first range starts at 0x0, and each range manages a 64k (0x10000) range.
-        ULONG64 offset = 0;
-        Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };//IA32_MTRR_FIX64K_00000 详细的见：11.11.2.2   Fixed Range MTRRs
-        for (UCHAR memory_type : fixed_range.fields.types)
-        {
-            g_eptp_mtrr_entries[index].enabled = true;
-            g_eptp_mtrr_entries[index].fixedMtrr = true;
-            g_eptp_mtrr_entries[index].type = memory_type;
-            g_eptp_mtrr_entries[index].range_base = offset;
-            g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x10000 - 1;
-
-            index++;
-            offset += 0x10000;// Each entry manages 64k (0x10000) length.
-        }
-        NT_ASSERT(offset == 0x80000); ASSERT(8 == index);
-
-        // kIa32MtrrFix16k80000 manages 8 ranges of memory.
-        // The first range starts at 0x80000, and each range manages a 16k (0x4000) range.
-        // Also, subsequent memory ranges are managed by other MSR, kIa32MtrrFix16kA0000, which manages 8 ranges of memory starting at 0xA0000 in the same fashion.
-        offset = 0;
-        for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
-        {
-            fixed_range.all = __readmsr(msr);
-            for (UCHAR memory_type : fixed_range.fields.types)
-            {
-                g_eptp_mtrr_entries[index].enabled = true;
-                g_eptp_mtrr_entries[index].fixedMtrr = true;
-                g_eptp_mtrr_entries[index].type = memory_type;
-                g_eptp_mtrr_entries[index].range_base = 0x80000 + offset;
-                g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x4000 - 1;
-
-                index++;
-                offset += 0x4000;// Each entry manages 16k (0x4000) length.
-            }
-        }
-        NT_ASSERT(0x80000 + offset == 0xC0000);
-
-        // kIa32MtrrFix4kC0000 manages 8 ranges of memory.
-        // The first range starts at 0xC0000, and each range manages a 4k (0x1000) range.
-        // Also, subsequent memory ranges are managed by other MSRs such as kIa32MtrrFix4kC8000, kIa32MtrrFix4kD0000, and kIa32MtrrFix4kF8000.
-        // Each MSR manages 8 ranges of memory in the same fashion up to 0x100000.
-        offset = 0;
-        for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix4kC0000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix4kF8000); msr++)
-        {
-            fixed_range.all = __readmsr(msr);
-            for (UCHAR memory_type : fixed_range.fields.types)
-            {
-                g_eptp_mtrr_entries[index].enabled = true;
-                g_eptp_mtrr_entries[index].fixedMtrr = true;
-                g_eptp_mtrr_entries[index].type = memory_type;
-                g_eptp_mtrr_entries[index].range_base = 0xC0000 + offset;
-                g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x1000 - 1;
-
-                index++;
-                offset += 0x1000;// Each entry manages 4k (0x1000) length.
-            }
-        }
-        NT_ASSERT(0xC0000 + offset == 0x100000);
-    }
-    
-    for (ULONG i = 0; i < mtrr_capabilities.fields.VCNT; i++)// Read all variable range MTRRs
-    {
-        Ia32MtrrPhysMaskMsr mtrr_mask = { __readmsr(static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2) };// Read MTRR mask and check if it is in use
-        if (!mtrr_mask.fields.valid) {
-            continue;
-        }
-        
-        ULONG length;
-        BitScanForward64(&length, mtrr_mask.fields.phys_mask * PAGE_SIZE);// Get a length this MTRR manages
-        
-        Ia32MtrrPhysBaseMsr mtrr_base = { __readmsr(static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2) };// Read MTRR base and calculate a range this MTRR manages
-
-        g_eptp_mtrr_entries[index].enabled = true;
-        g_eptp_mtrr_entries[index].fixedMtrr = false;
-        g_eptp_mtrr_entries[index].type = mtrr_base.fields.type;
-        g_eptp_mtrr_entries[index].range_base = mtrr_base.fields.phys_base * PAGE_SIZE;
-        g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + (1ull << length) - 1;
-        index++;
-    }
+_Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
+// Return an address of PTE
+{
+    return (physical_address >> kEptpPtiShift) & kEptpPtxMask;
 }
 
 
@@ -264,76 +146,16 @@ _Use_decl_annotations_ static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_
 }
 
 
-_Use_decl_annotations_ EptData *EptInitialization() 
-// Builds EPT, allocates pre-allocated entires, initializes and returns EptData
+_Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)
+// Initialize an EPT entry with a "pass through" attribute
 {
-    PAGED_CODE();
-
-    ULONG64 kEptPageWalkLevel = 4ul;
-    
-    EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
-    ASSERT(ept_data);
-    RtlZeroMemory(ept_data, sizeof(EptData));
-    
-    EptPointer * ept_poiner = reinterpret_cast<EptPointer *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));// Allocate EptPointer
-    ASSERT(ept_poiner);
-    RtlZeroMemory(ept_poiner, PAGE_SIZE);
-
-    // Allocate EPT_PML4 and initialize EptPointer
-    EptCommonEntry * ept_pml4 = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));
-    ASSERT(ept_pml4);
-    RtlZeroMemory(ept_pml4, PAGE_SIZE);
-    ept_poiner->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(UtilPaFromVa(ept_pml4)));
-    ept_poiner->fields.page_walk_length = kEptPageWalkLevel - 1;
-    ept_poiner->fields.pml4_address = UtilPfnFromPa(UtilPaFromVa(ept_pml4));
-
-    // Initialize all EPT entries for all physical memory pages
-    for (PFN_COUNT run_index = 0ul; run_index < g_utilp_physical_memory_ranges->number_of_runs; ++run_index)
-    {
-        PhysicalMemoryRun * run = &g_utilp_physical_memory_ranges->run[run_index];
-        ULONG_PTR base_addr = run->base_page * PAGE_SIZE;
-        for (ULONG_PTR page_index = 0ull; page_index < run->page_count; ++page_index)
-        {
-            ULONG_PTR indexed_addr = base_addr + page_index * PAGE_SIZE;
-            EptCommonEntry * ept_pt_entry = EptpConstructTables(ept_pml4, 4, indexed_addr, nullptr);
-            if (!ept_pt_entry) {
-                EptpDestructTables(ept_pml4, 4);
-                ExFreePoolWithTag(ept_poiner, TAG);
-                ExFreePoolWithTag(ept_data, TAG);
-                return nullptr;
-            }
-        }
+    entry->fields.read_access = true;
+    entry->fields.write_access = true;
+    entry->fields.execute_access = true;
+    entry->fields.physial_address = UtilPfnFromPa(physical_address);
+    if (table_level == 1) {
+        entry->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(physical_address));
     }
-
-    // Initialize an EPT entry for APIC_BASE. It is required to allocated it now for some reasons, or else, system hangs.
-    Ia32ApicBaseMsr apic_msr = { __readmsr(0x01B) };
-    if (!EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr)) {
-        EptpDestructTables(ept_pml4, 4);
-        ExFreePoolWithTag(ept_poiner, TAG);
-        ExFreePoolWithTag(ept_data, TAG);
-        return nullptr;
-    }
-
-    // Allocate preallocated_entries
-    SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
-    EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
-    ASSERT(preallocated_entries);
-    RtlZeroMemory(preallocated_entries, preallocated_entries_size);
-
-    // And fill preallocated_entries with newly created entries
-    for (SIZE_T i = 0ul; i < kEptpNumberOfPreallocatedEntries; ++i)
-    {
-        EptCommonEntry * ept_entry = EptpAllocateEptEntry(nullptr);
-        ASSERT (ept_entry);
-        preallocated_entries[i] = ept_entry;
-    }
-
-    // Initialization completed
-    ept_data->ept_pointer = ept_poiner;
-    ept_data->ept_pml4 = ept_pml4;
-    ept_data->preallocated_entries = preallocated_entries;
-    ept_data->preallocated_entries_count = 0;
-    return ept_data;
 }
 
 
@@ -396,72 +218,6 @@ _Use_decl_annotations_ static EptCommonEntry *EptpConstructTables(EptCommonEntry
 }
 
 
-_Use_decl_annotations_ static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)
-// Initialize an EPT entry with a "pass through" attribute
-{
-    entry->fields.read_access = true;
-    entry->fields.write_access = true;
-    entry->fields.execute_access = true;
-    entry->fields.physial_address = UtilPfnFromPa(physical_address);
-    if (table_level == 1) {
-        entry->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(physical_address));
-    }
-}
-
-
-_Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
-// Return an address of PXE
-{
-    return (physical_address >> kEptpPxiShift) & kEptpPtxMask;
-}
-
-
-_Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
-// Return an address of PPE
-{
-    return (physical_address >> kEptpPpiShift) & kEptpPtxMask;
-}
-
-
-_Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
-// Return an address of PDE
-{
-    return (physical_address >> kEptpPdiShift) & kEptpPtxMask;
-}
-
-
-_Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
-// Return an address of PTE
-{
-    return (physical_address >> kEptpPtiShift) & kEptpPtxMask;
-}
-
-
-_Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
-// Deal with EPT violation VM-exit.
-{
-    EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
-    ULONG64 fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
-
-    if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
-        KdBreakPoint();
-        return;
-    }
-
-    EptCommonEntry * ept_entry = EptGetEptPtEntry(ept_data, fault_pa);
-    if (ept_entry && ept_entry->all) {
-        KdBreakPoint();
-        return;
-    }
-
-    // EPT entry miss. It should be device memory.
-    NT_VERIFY(EptpIsDeviceMemory(fault_pa));//debug版本特有。
-    EptpConstructTables(ept_data->ept_pml4, 4, fault_pa, ept_data);
-
-    UtilInveptGlobal();
-}
-
-
 _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 // Returns if the physical_address is device memory (which could not have a corresponding PFN entry)
 {
@@ -476,13 +232,6 @@ _Use_decl_annotations_ static bool EptpIsDeviceMemory(ULONG64 physical_address)
     }
 
     return true;
-}
-
-
-_Use_decl_annotations_ EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address)
-// Returns an EPT entry corresponds to the physical_address
-{
-    return EptpGetEptPtEntry(ept_data->ept_pml4, 4, physical_address);
 }
 
 
@@ -535,16 +284,6 @@ _Use_decl_annotations_ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *
 }
 
 
-_Use_decl_annotations_ void EptTermination(EptData *ept_data)
-// Frees all EPT stuff
-{
-    EptpFreeUnusedPreAllocatedEntries(ept_data->preallocated_entries, ept_data->preallocated_entries_count);
-    EptpDestructTables(ept_data->ept_pml4, 4);
-    ExFreePoolWithTag(ept_data->ept_pointer, TAG);
-    ExFreePoolWithTag(ept_data, TAG);
-}
-
-
 _Use_decl_annotations_ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEntry **preallocated_entries, long used_count)
 // Frees all unused pre-allocated EPT entries. Other used entries should be freed with EptpDestructTables().
 {
@@ -590,6 +329,256 @@ _Use_decl_annotations_ static void EptpDestructTables(EptCommonEntry *table, ULO
     }
 
     ExFreePoolWithTag(table, TAG);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+_Use_decl_annotations_ bool EptIsEptAvailable()
+// Checks if the system supports EPT technology sufficient enough
+{
+    PAGED_CODE();
+
+    // Check the followings:
+    // - page walk length is 4 steps
+    // - extended page tables can be laid out in write-back memory
+    // - INVEPT instruction with all possible types is supported
+    // - INVVPID instruction with all possible types is supported
+    Ia32VmxEptVpidCapMsr capability = { __readmsr(0x48C) };
+    if (!capability.fields.support_page_walk_length4 ||
+        !capability.fields.support_write_back_memory_type ||
+        !capability.fields.support_invept ||
+        !capability.fields.support_single_context_invept ||
+        !capability.fields.support_all_context_invept ||
+        !capability.fields.support_invvpid ||
+        !capability.fields.support_individual_address_invvpid ||
+        !capability.fields.support_single_context_invvpid ||
+        !capability.fields.support_all_context_invvpid ||
+        !capability.fields.support_single_context_retaining_globals_invvpid)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
+_Use_decl_annotations_ ULONG64 EptGetEptPointer(EptData *ept_data)
+// Returns an EPT pointer from ept_data
+{
+    return ept_data->ept_pointer->all;
+}
+
+
+_Use_decl_annotations_ void EptInitializeMtrrEntries()
+// Reads and stores all MTRRs to set a correct memory type for EPT
+{
+    PAGED_CODE();
+
+    int index = 0;
+
+    Ia32MtrrCapabilitiesMsr mtrr_capabilities = { __readmsr(0xFE) };//IA32_MTRRCAP Register; Read MTRR capability
+
+    Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };// IA32_MTRR_DEF_TYPE
+    g_eptp_mtrr_default_type = default_type.fields.type;// Get and store the default memory type
+
+    if (mtrr_capabilities.fields.MTRRs && default_type.fields.FE)// Read fixed range MTRRs if supported
+    {
+        // The kIa32MtrrFix64k00000 manages 8 ranges of memory.
+        // The first range starts at 0x0, and each range manages a 64k (0x10000) range.
+        ULONG64 offset = 0;
+        Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };//IA32_MTRR_FIX64K_00000 详细的见：11.11.2.2   Fixed Range MTRRs
+        for (UCHAR memory_type : fixed_range.fields.types)
+        {
+            g_eptp_mtrr_entries[index].enabled = true;
+            g_eptp_mtrr_entries[index].fixedMtrr = true;
+            g_eptp_mtrr_entries[index].type = memory_type;
+            g_eptp_mtrr_entries[index].range_base = offset;
+            g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x10000 - 1;
+
+            index++;
+            offset += 0x10000;// Each entry manages 64k (0x10000) length.
+        }
+        NT_ASSERT(offset == 0x80000); ASSERT(8 == index);
+
+        // kIa32MtrrFix16k80000 manages 8 ranges of memory.
+        // The first range starts at 0x80000, and each range manages a 16k (0x4000) range.
+        // Also, subsequent memory ranges are managed by other MSR, kIa32MtrrFix16kA0000, which manages 8 ranges of memory starting at 0xA0000 in the same fashion.
+        offset = 0;
+        for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
+        {
+            fixed_range.all = __readmsr(msr);
+            for (UCHAR memory_type : fixed_range.fields.types)
+            {
+                g_eptp_mtrr_entries[index].enabled = true;
+                g_eptp_mtrr_entries[index].fixedMtrr = true;
+                g_eptp_mtrr_entries[index].type = memory_type;
+                g_eptp_mtrr_entries[index].range_base = 0x80000 + offset;
+                g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x4000 - 1;
+
+                index++;
+                offset += 0x4000;// Each entry manages 16k (0x4000) length.
+            }
+        }
+        NT_ASSERT(0x80000 + offset == 0xC0000);
+
+        // kIa32MtrrFix4kC0000 manages 8 ranges of memory.
+        // The first range starts at 0xC0000, and each range manages a 4k (0x1000) range.
+        // Also, subsequent memory ranges are managed by other MSRs such as kIa32MtrrFix4kC8000, kIa32MtrrFix4kD0000, and kIa32MtrrFix4kF8000.
+        // Each MSR manages 8 ranges of memory in the same fashion up to 0x100000.
+        offset = 0;
+        for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix4kC0000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix4kF8000); msr++)
+        {
+            fixed_range.all = __readmsr(msr);
+            for (UCHAR memory_type : fixed_range.fields.types)
+            {
+                g_eptp_mtrr_entries[index].enabled = true;
+                g_eptp_mtrr_entries[index].fixedMtrr = true;
+                g_eptp_mtrr_entries[index].type = memory_type;
+                g_eptp_mtrr_entries[index].range_base = 0xC0000 + offset;
+                g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x1000 - 1;
+
+                index++;
+                offset += 0x1000;// Each entry manages 4k (0x1000) length.
+            }
+        }
+        NT_ASSERT(0xC0000 + offset == 0x100000);
+    }
+
+    for (ULONG i = 0; i < mtrr_capabilities.fields.VCNT; i++)// Read all variable range MTRRs
+    {
+        Ia32MtrrPhysMaskMsr mtrr_mask = { __readmsr(static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2) };// Read MTRR mask and check if it is in use
+        if (!mtrr_mask.fields.valid) {
+            continue;
+        }
+
+        ULONG length;
+        BitScanForward64(&length, mtrr_mask.fields.phys_mask * PAGE_SIZE);// Get a length this MTRR manages
+
+        Ia32MtrrPhysBaseMsr mtrr_base = { __readmsr(static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2) };// Read MTRR base and calculate a range this MTRR manages
+
+        g_eptp_mtrr_entries[index].enabled = true;
+        g_eptp_mtrr_entries[index].fixedMtrr = false;
+        g_eptp_mtrr_entries[index].type = mtrr_base.fields.type;
+        g_eptp_mtrr_entries[index].range_base = mtrr_base.fields.phys_base * PAGE_SIZE;
+        g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + (1ull << length) - 1;
+        index++;
+    }
+}
+
+
+_Use_decl_annotations_ void EptHandleEptViolation(EptData *ept_data)
+// Deal with EPT violation VM-exit.
+{
+    EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
+    ULONG64 fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
+
+    if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
+        KdBreakPoint();
+        return;
+    }
+
+    EptCommonEntry * ept_entry = EptGetEptPtEntry(ept_data, fault_pa);
+    if (ept_entry && ept_entry->all) {
+        KdBreakPoint();
+        return;
+    }
+
+    // EPT entry miss. It should be device memory.
+    NT_VERIFY(EptpIsDeviceMemory(fault_pa));//debug版本特有。
+    EptpConstructTables(ept_data->ept_pml4, 4, fault_pa, ept_data);
+
+    UtilInveptGlobal();
+}
+
+
+_Use_decl_annotations_ EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address)
+// Returns an EPT entry corresponds to the physical_address
+{
+    return EptpGetEptPtEntry(ept_data->ept_pml4, 4, physical_address);
+}
+
+
+_Use_decl_annotations_ void EptTermination(EptData *ept_data)// Frees all EPT stuff
+{
+    EptpFreeUnusedPreAllocatedEntries(ept_data->preallocated_entries, ept_data->preallocated_entries_count);
+    EptpDestructTables(ept_data->ept_pml4, 4);
+    ExFreePoolWithTag(ept_data->ept_pointer, TAG);
+    ExFreePoolWithTag(ept_data, TAG);
+}
+
+
+_Use_decl_annotations_ EptData *EptInitialization()
+// Builds EPT, allocates pre-allocated entires, initializes and returns EptData
+{
+    PAGED_CODE();
+
+    ULONG64 kEptPageWalkLevel = 4ul;
+
+    EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
+    ASSERT(ept_data);
+    RtlZeroMemory(ept_data, sizeof(EptData));
+
+    EptPointer * ept_poiner = reinterpret_cast<EptPointer *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));// Allocate EptPointer
+    ASSERT(ept_poiner);
+    RtlZeroMemory(ept_poiner, PAGE_SIZE);
+
+    // Allocate EPT_PML4 and initialize EptPointer
+    EptCommonEntry * ept_pml4 = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));
+    ASSERT(ept_pml4);
+    RtlZeroMemory(ept_pml4, PAGE_SIZE);
+    ept_poiner->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(UtilPaFromVa(ept_pml4)));
+    ept_poiner->fields.page_walk_length = kEptPageWalkLevel - 1;
+    ept_poiner->fields.pml4_address = UtilPfnFromPa(UtilPaFromVa(ept_pml4));
+
+    // Initialize all EPT entries for all physical memory pages
+    for (PFN_COUNT run_index = 0ul; run_index < g_utilp_physical_memory_ranges->number_of_runs; ++run_index)
+    {
+        PhysicalMemoryRun * run = &g_utilp_physical_memory_ranges->run[run_index];
+        ULONG_PTR base_addr = run->base_page * PAGE_SIZE;
+        for (ULONG_PTR page_index = 0ull; page_index < run->page_count; ++page_index)
+        {
+            ULONG_PTR indexed_addr = base_addr + page_index * PAGE_SIZE;
+            EptCommonEntry * ept_pt_entry = EptpConstructTables(ept_pml4, 4, indexed_addr, nullptr);
+            if (!ept_pt_entry) {
+                EptpDestructTables(ept_pml4, 4);
+                ExFreePoolWithTag(ept_poiner, TAG);
+                ExFreePoolWithTag(ept_data, TAG);
+                return nullptr;
+            }
+        }
+    }
+
+    // Initialize an EPT entry for APIC_BASE. It is required to allocated it now for some reasons, or else, system hangs.
+    Ia32ApicBaseMsr apic_msr = { __readmsr(0x01B) };
+    if (!EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr)) {
+        EptpDestructTables(ept_pml4, 4);
+        ExFreePoolWithTag(ept_poiner, TAG);
+        ExFreePoolWithTag(ept_data, TAG);
+        return nullptr;
+    }
+
+    // Allocate preallocated_entries
+    SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
+    EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
+    ASSERT(preallocated_entries);
+    RtlZeroMemory(preallocated_entries, preallocated_entries_size);
+
+    // And fill preallocated_entries with newly created entries
+    for (SIZE_T i = 0ul; i < kEptpNumberOfPreallocatedEntries; ++i)
+    {
+        EptCommonEntry * ept_entry = EptpAllocateEptEntry(nullptr);
+        ASSERT(ept_entry);
+        preallocated_entries[i] = ept_entry;
+    }
+
+    // Initialization completed
+    ept_data->ept_pointer = ept_poiner;
+    ept_data->ept_pml4 = ept_pml4;
+    ept_data->preallocated_entries = preallocated_entries;
+    ept_data->preallocated_entries_count = 0;
+    return ept_data;
 }
 
 }

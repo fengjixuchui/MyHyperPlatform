@@ -1,0 +1,17 @@
+TARGETNAME=test
+TARGETPATH=obj
+TARGETTYPE=DRIVER
+
+SOURCES=\
+    driver.cpp \
+    ept.cpp \
+	hotplug_callback.cpp \
+	log.cpp \
+	power_callback.cpp \
+	util.cpp \
+	vm.cpp \
+	vmm.cpp
+
+AMD64_SOURCES=\
+    .\Arch\x64\x64.asm 
+

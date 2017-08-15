@@ -221,11 +221,11 @@ static_assert(sizeof(CpuFeaturesEcx) == 4, "Size check");
 union Ia32MtrrCapabilitiesMsr {/// See: IA32_MTRRCAP Register
   ULONG64 all;
   struct {
-    ULONG64 variable_range_count : 8;   //<! [0:7]
-    ULONG64 fixed_range_supported : 1;  //<! [8]
+    ULONG64 VCNT : 8;                   //<! [0:7]   VCNT (variable range registers count) 
+    ULONG64 MTRRs : 1;                  //<! [8]     Fixed range MTRRs are supported when set.
     ULONG64 reserved : 1;               //<! [9]
-    ULONG64 write_combining : 1;        //<! [10]
-    ULONG64 smrr : 1;                   //<! [11]
+    ULONG64 wc : 1;                     //<! [10]    WC Supported when set.
+    ULONG64 smrr : 1;                   //<! [11]    SMRR Supported when set.
   } fields;
 };
 static_assert(sizeof(Ia32MtrrCapabilitiesMsr) == 8, "Size check");
@@ -234,10 +234,10 @@ static_assert(sizeof(Ia32MtrrCapabilitiesMsr) == 8, "Size check");
 union Ia32MtrrDefaultTypeMsr {/// See: IA32_MTRR_DEF_TYPE MSR
   ULONG64 all;
   struct {
-    ULONG64 default_mtemory_type : 3;  //<! [0:2]
-    ULONG64 reserved : 7;              //<! [3:9]
-    ULONG64 fixed_mtrrs_enabled : 1;   //<! [10]
-    ULONG64 mtrrs_enabled : 1;         //<! [11]
+    ULONG64 type : 3;                  //<! [0:2] Default Memory Type
+    ULONG64 reserved : 7;              //<! [3:9] 
+    ULONG64 FE : 1;                    //<! [10]  Fixed Range MTRR Enable 
+    ULONG64 E : 1;                     //<! [11]  MTRR Enable 
   } fields;
 };
 static_assert(sizeof(Ia32MtrrDefaultTypeMsr) == 8, "Size check");

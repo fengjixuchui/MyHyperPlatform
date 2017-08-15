@@ -97,12 +97,12 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
 
     int index = 0;
     
-    Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };
-    g_eptp_mtrr_default_type = default_type.fields.default_mtemory_type;// Get and store the default memory type
+    Ia32MtrrCapabilitiesMsr mtrr_capabilities = { __readmsr(0xFE) };//IA32_MTRRCAP Register; Read MTRR capability
+
+    Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };// IA32_MTRR_DEF_TYPE
+    g_eptp_mtrr_default_type = default_type.fields.type;// Get and store the default memory type
     
-    Ia32MtrrCapabilitiesMsr mtrr_capabilities = { __readmsr(0xFE) };// Read MTRR capability
-    
-    if (mtrr_capabilities.fields.fixed_range_supported && default_type.fields.fixed_mtrrs_enabled)// Read fixed range MTRRs if supported
+    if (mtrr_capabilities.fields.MTRRs && default_type.fields.FE)// Read fixed range MTRRs if supported
     {
         ULONG64 k64kBase = 0x0;
         ULONG64 k64kManagedSize = 0x10000;
@@ -119,7 +119,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         //  ...
         //  entry[7]: 0x70000 : 0x80000 - 1
         ULONG64 offset = 0;
-        Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };
+        Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };//IA32_MTRR_FIX64K_00000 ÏêÏ¸µÄ¼û£º11.11.2.2   Fixed Range MTRRs
         for (auto memory_type : fixed_range.fields.types)
         {
             // Each entry manages 64k (0x10000) length.
@@ -201,7 +201,7 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         NT_ASSERT(k4kBase + offset == 0x100000);
     }
     
-    for (ULONG i = 0; i < mtrr_capabilities.fields.variable_range_count; i++)// Read all variable range MTRRs
+    for (ULONG i = 0; i < mtrr_capabilities.fields.VCNT; i++)// Read all variable range MTRRs
     {
         // Read MTRR mask and check if it is in use
         ULONG phy_mask = static_cast<ULONG>(Msr::kIa32MtrrPhysMaskN) + i * 2;

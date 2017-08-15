@@ -40,12 +40,6 @@ extern "C"
         kErrorWithoutStatus = 2,  //!< Operation failed without status available
     };
 
-    /// Provides |= operator for VmxStatus
-    constexpr VmxStatus operator|=(_In_ VmxStatus lhs, _In_ VmxStatus rhs)
-    {
-        return static_cast<VmxStatus>(static_cast<unsigned __int8>(lhs) | static_cast<unsigned __int8>(rhs));
-    }
-
     enum class HypercallNumber : unsigned __int32 {/// Available command numbers for VMCALL
         kTerminateVmm,            //!< Terminates VMM
         kPingVmm,                 //!< Sends ping to the VMM

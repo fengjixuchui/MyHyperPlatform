@@ -444,109 +444,111 @@ static bool VmpSetupVmcs(const ProcessorData *processor_data, ULONG_PTR guest_st
     
     VmxStatus error = VmxStatus::kOk;// clang-format off
     
-    error |= UtilVmWrite(VmcsField::kVirtualProcessorId, KeGetCurrentProcessorNumberEx(nullptr) + 1);/* 16-Bit Control Field */
+    error = UtilVmWrite(VmcsField::kVirtualProcessorId, KeGetCurrentProcessorNumberEx(nullptr) + 1);/* 16-Bit Control Field */
+    ASSERT(VmxStatus::kOk == error);
 
     /* 16-Bit Guest-State Fields */
-    error |= UtilVmWrite(VmcsField::kGuestEsSelector, AsmReadES());
-    error |= UtilVmWrite(VmcsField::kGuestCsSelector, AsmReadCS());
-    error |= UtilVmWrite(VmcsField::kGuestSsSelector, AsmReadSS());
-    error |= UtilVmWrite(VmcsField::kGuestDsSelector, AsmReadDS());
-    error |= UtilVmWrite(VmcsField::kGuestFsSelector, AsmReadFS());
-    error |= UtilVmWrite(VmcsField::kGuestGsSelector, AsmReadGS());
-    error |= UtilVmWrite(VmcsField::kGuestLdtrSelector, AsmReadLDTR());
-    error |= UtilVmWrite(VmcsField::kGuestTrSelector, AsmReadTR());
+    error = UtilVmWrite(VmcsField::kGuestEsSelector, AsmReadES()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestCsSelector, AsmReadCS()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestSsSelector, AsmReadSS()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestDsSelector, AsmReadDS()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestFsSelector, AsmReadFS()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestGsSelector, AsmReadGS()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestLdtrSelector, AsmReadLDTR()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestTrSelector, AsmReadTR()); ASSERT(VmxStatus::kOk == error);
 
     /* 16-Bit Host-State Fields */
     // RPL and TI have to be 0
-    error |= UtilVmWrite(VmcsField::kHostEsSelector, AsmReadES() & 0xf8);
-    error |= UtilVmWrite(VmcsField::kHostCsSelector, AsmReadCS() & 0xf8);
-    error |= UtilVmWrite(VmcsField::kHostSsSelector, AsmReadSS() & 0xf8);
-    error |= UtilVmWrite(VmcsField::kHostDsSelector, AsmReadDS() & 0xf8);
-    error |= UtilVmWrite(VmcsField::kHostFsSelector, AsmReadFS() & 0xf8);
-    error |= UtilVmWrite(VmcsField::kHostGsSelector, AsmReadGS() & 0xf8);
-    error |= UtilVmWrite(VmcsField::kHostTrSelector, AsmReadTR() & 0xf8);
+    error = UtilVmWrite(VmcsField::kHostEsSelector, AsmReadES() & 0xf8); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostCsSelector, AsmReadCS() & 0xf8); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostSsSelector, AsmReadSS() & 0xf8); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostDsSelector, AsmReadDS() & 0xf8); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostFsSelector, AsmReadFS() & 0xf8); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostGsSelector, AsmReadGS() & 0xf8); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostTrSelector, AsmReadTR() & 0xf8); ASSERT(VmxStatus::kOk == error);
 
     /* 64-Bit Control Fields */
-    error |= UtilVmWrite64(VmcsField::kIoBitmapA, UtilPaFromVa(processor_data->shared_data->io_bitmap_a));
-    error |= UtilVmWrite64(VmcsField::kIoBitmapB, UtilPaFromVa(processor_data->shared_data->io_bitmap_b));
-    error |= UtilVmWrite64(VmcsField::kMsrBitmap, UtilPaFromVa(processor_data->shared_data->msr_bitmap));
-    error |= UtilVmWrite64(VmcsField::kEptPointer, EptGetEptPointer(processor_data->ept_data));
+    error = UtilVmWrite64(VmcsField::kIoBitmapA, UtilPaFromVa(processor_data->shared_data->io_bitmap_a)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite64(VmcsField::kIoBitmapB, UtilPaFromVa(processor_data->shared_data->io_bitmap_b)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite64(VmcsField::kMsrBitmap, UtilPaFromVa(processor_data->shared_data->msr_bitmap)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite64(VmcsField::kEptPointer, EptGetEptPointer(processor_data->ept_data)); ASSERT(VmxStatus::kOk == error);
 
     /* 64-Bit Guest-State Fields */
-    error |= UtilVmWrite64(VmcsField::kVmcsLinkPointer, MAXULONG64);
-    error |= UtilVmWrite64(VmcsField::kGuestIa32Debugctl, __readmsr(0x1D9));
+    error = UtilVmWrite64(VmcsField::kVmcsLinkPointer, MAXULONG64); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite64(VmcsField::kGuestIa32Debugctl, __readmsr(0x1D9)); ASSERT(VmxStatus::kOk == error);
 
     /* 32-Bit Control Fields */
-    error |= UtilVmWrite(VmcsField::kPinBasedVmExecControl, vm_pinctl.all);
-    error |= UtilVmWrite(VmcsField::kCpuBasedVmExecControl, vm_procctl.all);
-    error |= UtilVmWrite(VmcsField::kExceptionBitmap, 0);
-    error |= UtilVmWrite(VmcsField::kVmExitControls, vm_exitctl.all);
-    error |= UtilVmWrite(VmcsField::kVmEntryControls, vm_entryctl.all);
-    error |= UtilVmWrite(VmcsField::kSecondaryVmExecControl, vm_procctl2.all);
+    error = UtilVmWrite(VmcsField::kPinBasedVmExecControl, vm_pinctl.all); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kCpuBasedVmExecControl, vm_procctl.all); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kExceptionBitmap, 0); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kVmExitControls, vm_exitctl.all); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kVmEntryControls, vm_entryctl.all); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kSecondaryVmExecControl, vm_procctl2.all); ASSERT(VmxStatus::kOk == error);
 
     /* 32-Bit Guest-State Fields */
-    error |= UtilVmWrite(VmcsField::kGuestEsLimit, GetSegmentLimit(AsmReadES()));
-    error |= UtilVmWrite(VmcsField::kGuestCsLimit, GetSegmentLimit(AsmReadCS()));
-    error |= UtilVmWrite(VmcsField::kGuestSsLimit, GetSegmentLimit(AsmReadSS()));
-    error |= UtilVmWrite(VmcsField::kGuestDsLimit, GetSegmentLimit(AsmReadDS()));
-    error |= UtilVmWrite(VmcsField::kGuestFsLimit, GetSegmentLimit(AsmReadFS()));
-    error |= UtilVmWrite(VmcsField::kGuestGsLimit, GetSegmentLimit(AsmReadGS()));
-    error |= UtilVmWrite(VmcsField::kGuestLdtrLimit, GetSegmentLimit(AsmReadLDTR()));
-    error |= UtilVmWrite(VmcsField::kGuestTrLimit, GetSegmentLimit(AsmReadTR()));
-    error |= UtilVmWrite(VmcsField::kGuestGdtrLimit, gdtr.limit);
-    error |= UtilVmWrite(VmcsField::kGuestIdtrLimit, idtr.limit);
-    error |= UtilVmWrite(VmcsField::kGuestEsArBytes, VmpGetSegmentAccessRight(AsmReadES()));
-    error |= UtilVmWrite(VmcsField::kGuestCsArBytes, VmpGetSegmentAccessRight(AsmReadCS()));
-    error |= UtilVmWrite(VmcsField::kGuestSsArBytes, VmpGetSegmentAccessRight(AsmReadSS()));
-    error |= UtilVmWrite(VmcsField::kGuestDsArBytes, VmpGetSegmentAccessRight(AsmReadDS()));
-    error |= UtilVmWrite(VmcsField::kGuestFsArBytes, VmpGetSegmentAccessRight(AsmReadFS()));
-    error |= UtilVmWrite(VmcsField::kGuestGsArBytes, VmpGetSegmentAccessRight(AsmReadGS()));
-    error |= UtilVmWrite(VmcsField::kGuestLdtrArBytes, VmpGetSegmentAccessRight(AsmReadLDTR()));
-    error |= UtilVmWrite(VmcsField::kGuestTrArBytes, VmpGetSegmentAccessRight(AsmReadTR()));
-    error |= UtilVmWrite(VmcsField::kGuestSysenterCs, __readmsr(0x174));
+    error = UtilVmWrite(VmcsField::kGuestEsLimit, GetSegmentLimit(AsmReadES())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestCsLimit, GetSegmentLimit(AsmReadCS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestSsLimit, GetSegmentLimit(AsmReadSS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestDsLimit, GetSegmentLimit(AsmReadDS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestFsLimit, GetSegmentLimit(AsmReadFS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestGsLimit, GetSegmentLimit(AsmReadGS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestLdtrLimit, GetSegmentLimit(AsmReadLDTR())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestTrLimit, GetSegmentLimit(AsmReadTR())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestGdtrLimit, gdtr.limit); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestIdtrLimit, idtr.limit); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestEsArBytes, VmpGetSegmentAccessRight(AsmReadES())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestCsArBytes, VmpGetSegmentAccessRight(AsmReadCS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestSsArBytes, VmpGetSegmentAccessRight(AsmReadSS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestDsArBytes, VmpGetSegmentAccessRight(AsmReadDS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestFsArBytes, VmpGetSegmentAccessRight(AsmReadFS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestGsArBytes, VmpGetSegmentAccessRight(AsmReadGS())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestLdtrArBytes, VmpGetSegmentAccessRight(AsmReadLDTR())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestTrArBytes, VmpGetSegmentAccessRight(AsmReadTR())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestSysenterCs, __readmsr(0x174)); ASSERT(VmxStatus::kOk == error);
     
-    error |= UtilVmWrite(VmcsField::kHostIa32SysenterCs, __readmsr(0x174));/* 32-Bit Host-State Field */
+    error = UtilVmWrite(VmcsField::kHostIa32SysenterCs, __readmsr(0x174));/* 32-Bit Host-State Field */
+    ASSERT(VmxStatus::kOk == error);
 
     /* Natural-Width Control Fields */
-    error |= UtilVmWrite(VmcsField::kCr0GuestHostMask, cr0_mask.all);
-    error |= UtilVmWrite(VmcsField::kCr4GuestHostMask, cr4_mask.all);
-    error |= UtilVmWrite(VmcsField::kCr0ReadShadow, cr0_shadow.all);
-    error |= UtilVmWrite(VmcsField::kCr4ReadShadow, cr4_shadow.all);
+    error = UtilVmWrite(VmcsField::kCr0GuestHostMask, cr0_mask.all); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kCr4GuestHostMask, cr4_mask.all); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kCr0ReadShadow, cr0_shadow.all); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kCr4ReadShadow, cr4_shadow.all); ASSERT(VmxStatus::kOk == error);
 
     /* Natural-Width Guest-State Fields */
-    error |= UtilVmWrite(VmcsField::kGuestCr0, __readcr0());
-    error |= UtilVmWrite(VmcsField::kGuestCr3, __readcr3());
-    error |= UtilVmWrite(VmcsField::kGuestCr4, __readcr4());
-    error |= UtilVmWrite(VmcsField::kGuestEsBase, 0);
-    error |= UtilVmWrite(VmcsField::kGuestCsBase, 0);
-    error |= UtilVmWrite(VmcsField::kGuestSsBase, 0);
-    error |= UtilVmWrite(VmcsField::kGuestDsBase, 0);
-    error |= UtilVmWrite(VmcsField::kGuestFsBase, __readmsr(0xC0000100));
-    error |= UtilVmWrite(VmcsField::kGuestGsBase, __readmsr(0xC0000101));
-    error |= UtilVmWrite(VmcsField::kGuestLdtrBase, VmpGetSegmentBase(gdtr.base, AsmReadLDTR()));
-    error |= UtilVmWrite(VmcsField::kGuestTrBase, VmpGetSegmentBase(gdtr.base, AsmReadTR()));
-    error |= UtilVmWrite(VmcsField::kGuestGdtrBase, gdtr.base);
-    error |= UtilVmWrite(VmcsField::kGuestIdtrBase, idtr.base);
-    error |= UtilVmWrite(VmcsField::kGuestDr7, __readdr(7));
-    error |= UtilVmWrite(VmcsField::kGuestRsp, guest_stack_pointer);
-    error |= UtilVmWrite(VmcsField::kGuestRip, guest_instruction_pointer);
-    error |= UtilVmWrite(VmcsField::kGuestRflags, __readeflags());
-    error |= UtilVmWrite(VmcsField::kGuestSysenterEsp, __readmsr(0x175));
-    error |= UtilVmWrite(VmcsField::kGuestSysenterEip, __readmsr(0x176));
+    error = UtilVmWrite(VmcsField::kGuestCr0, __readcr0()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestCr3, __readcr3()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestCr4, __readcr4()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestEsBase, 0); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestCsBase, 0); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestSsBase, 0); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestDsBase, 0); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestFsBase, __readmsr(0xC0000100)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestGsBase, __readmsr(0xC0000101)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestLdtrBase, VmpGetSegmentBase(gdtr.base, AsmReadLDTR())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestTrBase, VmpGetSegmentBase(gdtr.base, AsmReadTR())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestGdtrBase, gdtr.base); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestIdtrBase, idtr.base); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestDr7, __readdr(7)); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestRsp, guest_stack_pointer); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestRip, guest_instruction_pointer); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestRflags, __readeflags()); ASSERT(VmxStatus::kOk == error); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestSysenterEsp, __readmsr(0x175)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestSysenterEip, __readmsr(0x176)); ASSERT(VmxStatus::kOk == error);
 
     /* Natural-Width Host-State Fields */
-    error |= UtilVmWrite(VmcsField::kHostCr0, __readcr0());
-    error |= UtilVmWrite(VmcsField::kHostCr3, __readcr3());
-    error |= UtilVmWrite(VmcsField::kHostCr4, __readcr4());
-    error |= UtilVmWrite(VmcsField::kHostFsBase, __readmsr(0xC0000100));
-    error |= UtilVmWrite(VmcsField::kHostGsBase, __readmsr(0xC0000101));
-    error |= UtilVmWrite(VmcsField::kHostTrBase, VmpGetSegmentBase(gdtr.base, AsmReadTR()));
-    error |= UtilVmWrite(VmcsField::kHostGdtrBase, gdtr.base);
-    error |= UtilVmWrite(VmcsField::kHostIdtrBase, idtr.base);
-    error |= UtilVmWrite(VmcsField::kHostIa32SysenterEsp, __readmsr(0x175));
-    error |= UtilVmWrite(VmcsField::kHostIa32SysenterEip, __readmsr(0x176));
-    error |= UtilVmWrite(VmcsField::kHostRsp, vmm_stack_pointer);
-    error |= UtilVmWrite(VmcsField::kHostRip, reinterpret_cast<ULONG_PTR>(AsmVmmEntryPoint));
+    error = UtilVmWrite(VmcsField::kHostCr0, __readcr0()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostCr3, __readcr3()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostCr4, __readcr4()); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostFsBase, __readmsr(0xC0000100)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostGsBase, __readmsr(0xC0000101)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostTrBase, VmpGetSegmentBase(gdtr.base, AsmReadTR())); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostGdtrBase, gdtr.base); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostIdtrBase, idtr.base); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostIa32SysenterEsp, __readmsr(0x175)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostIa32SysenterEip, __readmsr(0x176)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostRsp, vmm_stack_pointer); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kHostRip, reinterpret_cast<ULONG_PTR>(AsmVmmEntryPoint)); ASSERT(VmxStatus::kOk == error);
     // clang-format on
 
     VmxStatus vmx_status = static_cast<VmxStatus>(error);

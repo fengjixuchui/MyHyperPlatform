@@ -1,9 +1,6 @@
 // Copyright (c) 2015-2017, Satoshi Tanda. All rights reserved.
 // Use of this source code is governed by a MIT-style license that can be found in the LICENSE file.
 
-/// @file
-/// Implements EPT functions.
-
 #include "ept.h"
 #include "asm.h"
 #include "log.h"
@@ -106,70 +103,44 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
     {
         // The kIa32MtrrFix64k00000 manages 8 ranges of memory.
         // The first range starts at 0x0, and each range manages a 64k (0x10000) range.
-        // For example,
-        //  entry[0]:     0x0 : 0x10000 - 1
-        //  entry[1]: 0x10000 : 0x20000 - 1
-        //  ...
-        //  entry[7]: 0x70000 : 0x80000 - 1
         ULONG64 offset = 0;
         Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };//IA32_MTRR_FIX64K_00000 ÏêÏ¸µÄ¼û£º11.11.2.2   Fixed Range MTRRs
         for (UCHAR memory_type : fixed_range.fields.types)
         {
-            // Each entry manages 64k (0x10000) length.
-            ULONG64 base = offset;
-            offset += 0x10000;
-
-            // Saves the MTRR
             g_eptp_mtrr_entries[index].enabled = true;
             g_eptp_mtrr_entries[index].fixedMtrr = true;
             g_eptp_mtrr_entries[index].type = memory_type;
-            g_eptp_mtrr_entries[index].range_base = base;
-            g_eptp_mtrr_entries[index].range_end = base + 0x10000 - 1;
+            g_eptp_mtrr_entries[index].range_base = offset;
+            g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x10000 - 1;
+
             index++;
+            offset += 0x10000;// Each entry manages 64k (0x10000) length.
         }
-        NT_ASSERT(offset == 0x80000);
+        NT_ASSERT(offset == 0x80000); ASSERT(8 == index);
 
         // kIa32MtrrFix16k80000 manages 8 ranges of memory.
         // The first range starts at 0x80000, and each range manages a 16k (0x4000) range.
-        // For example,
-        //  entry[0]: 0x80000 : 0x84000 - 1
-        //  entry[1]: 0x88000 : 0x8C000 - 1
-        //  ...
-        //  entry[7]: 0x9C000 : 0xA0000 - 1
         // Also, subsequent memory ranges are managed by other MSR, kIa32MtrrFix16kA0000, which manages 8 ranges of memory starting at 0xA0000 in the same fashion.
-        // For example,
-        //  entry[0]: 0xA0000 : 0xA4000 - 1
-        //  entry[1]: 0xA8000 : 0xAC000 - 1
-        //  ...
-        //  entry[7]: 0xBC000 : 0xC0000 - 1
         offset = 0;
         for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
         {
             fixed_range.all = __readmsr(msr);
             for (UCHAR memory_type : fixed_range.fields.types)
             {
-                // Each entry manages 16k (0x4000) length.
-                ULONG64 base = 0x80000 + offset;
-                offset += 0x4000;
-
-                // Saves the MTRR
                 g_eptp_mtrr_entries[index].enabled = true;
                 g_eptp_mtrr_entries[index].fixedMtrr = true;
                 g_eptp_mtrr_entries[index].type = memory_type;
-                g_eptp_mtrr_entries[index].range_base = base;
-                g_eptp_mtrr_entries[index].range_end = base + 0x4000 - 1;
+                g_eptp_mtrr_entries[index].range_base = 0x80000 + offset;
+                g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x4000 - 1;
+
                 index++;
+                offset += 0x4000;// Each entry manages 16k (0x4000) length.
             }
         }
         NT_ASSERT(0x80000 + offset == 0xC0000);
 
         // kIa32MtrrFix4kC0000 manages 8 ranges of memory.
         // The first range starts at 0xC0000, and each range manages a 4k (0x1000) range.
-        // For example,
-        //  entry[0]: 0xC0000 : 0xC1000 - 1
-        //  entry[1]: 0xC1000 : 0xC2000 - 1
-        //  ...
-        //  entry[7]: 0xC7000 : 0xC8000 - 1
         // Also, subsequent memory ranges are managed by other MSRs such as kIa32MtrrFix4kC8000, kIa32MtrrFix4kD0000, and kIa32MtrrFix4kF8000.
         // Each MSR manages 8 ranges of memory in the same fashion up to 0x100000.
         offset = 0;
@@ -178,17 +149,14 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
             fixed_range.all = __readmsr(msr);
             for (UCHAR memory_type : fixed_range.fields.types)
             {
-                // Each entry manages 4k (0x1000) length.
-                ULONG64 base = 0xC0000 + offset;
-                offset += 0x1000;
-
-                // Saves the MTRR
                 g_eptp_mtrr_entries[index].enabled = true;
                 g_eptp_mtrr_entries[index].fixedMtrr = true;
                 g_eptp_mtrr_entries[index].type = memory_type;
-                g_eptp_mtrr_entries[index].range_base = base;
-                g_eptp_mtrr_entries[index].range_end = base + 0x1000 - 1;
+                g_eptp_mtrr_entries[index].range_base = 0xC0000 + offset;
+                g_eptp_mtrr_entries[index].range_end = g_eptp_mtrr_entries[index].range_base + 0x1000 - 1;
+
                 index++;
+                offset += 0x1000;// Each entry manages 4k (0x1000) length.
             }
         }
         NT_ASSERT(0xC0000 + offset == 0x100000);
@@ -206,7 +174,6 @@ _Use_decl_annotations_ void EptInitializeMtrrEntries()
         
         Ia32MtrrPhysBaseMsr mtrr_base = { __readmsr(static_cast<ULONG>(Msr::kIa32MtrrPhysBaseN) + i * 2) };// Read MTRR base and calculate a range this MTRR manages
 
-        // Save it
         g_eptp_mtrr_entries[index].enabled = true;
         g_eptp_mtrr_entries[index].fixedMtrr = false;
         g_eptp_mtrr_entries[index].type = mtrr_base.fields.type;

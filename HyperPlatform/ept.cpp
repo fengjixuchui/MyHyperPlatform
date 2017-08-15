@@ -17,12 +17,6 @@ extern "C"
 // EPT Page table selector                 9 bits
 // EPT Byte within page                   12 bits
 
-const auto kEptpPxiShift = 39ull;// Get the highest 25 bits
-const auto kEptpPpiShift = 30ull;// Get the highest 34 bits
-const auto kEptpPdiShift = 21ull;// Get the highest 43 bits
-const auto kEptpPtiShift = 12ull;// Get the highest 52 bits
-
-const auto kEptpPtxMask = 0x1ffull;// Use 9 bits; 0b0000_0000_0000_0000_0000_0000_0001_1111_1111
 const auto kEptpNumberOfPreallocatedEntries = 50;// How many EPT entries are preallocated. When the number exceeds it, the hypervisor issues a bugcheck.
 const auto kEptpNumOfMaxVariableRangeMtrrs = 255;// Architecture defined number of variable range MTRRs
 const auto kEptpNumOfFixedRangeMtrrs = 1 + 2 + 8;// Architecture defined number of fixed range MTRRs (1 for 64k, 2 for 16k, 8 for 4k)
@@ -41,28 +35,28 @@ UCHAR g_eptp_mtrr_default_type;
 _Use_decl_annotations_ static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
 // Return an address of PXE
 {
-    return (physical_address >> kEptpPxiShift) & kEptpPtxMask;
+    return (physical_address >> 39ull) & 0x1ffull;
 }
 
 
 _Use_decl_annotations_ static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
 // Return an address of PPE
 {
-    return (physical_address >> kEptpPpiShift) & kEptpPtxMask;
+    return (physical_address >> 30ull) & 0x1ffull;
 }
 
 
 _Use_decl_annotations_ static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
 // Return an address of PDE
 {
-    return (physical_address >> kEptpPdiShift) & kEptpPtxMask;
+    return (physical_address >> 21ull) & 0x1ffull;
 }
 
 
 _Use_decl_annotations_ static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
 // Return an address of PTE
 {
-    return (physical_address >> kEptpPtiShift) & kEptpPtxMask;
+    return (physical_address >> 12ull) & 0x1ffull;
 }
 
 

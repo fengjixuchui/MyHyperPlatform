@@ -82,7 +82,6 @@ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemoryRanges()
     PhysicalMemoryDescriptor * pm_block = reinterpret_cast<PhysicalMemoryDescriptor *>(ExAllocatePoolWithTag(NonPagedPoolNx, memory_block_size, TAG));
     ASSERT(pm_block);
     RtlZeroMemory(pm_block, memory_block_size);
-
     pm_block->number_of_runs = number_of_runs;
     pm_block->number_of_pages = number_of_pages;
 

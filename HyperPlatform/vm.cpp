@@ -262,9 +262,7 @@ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instr
     InterlockedIncrement(&processor_data->shared_data->reference_count);
     
     processor_data->ept_data = EptInitialization();// Set up EPT
-    if (!processor_data->ept_data) {
-        goto ReturnFalse;
-    }
+    ASSERT(processor_data->ept_data);
     
     processor_data->vmm_stack_limit = AllocateContiguousMemory(KERNEL_STACK_SIZE);// Allocate other processor data fields
     ASSERT(processor_data->vmm_stack_limit);

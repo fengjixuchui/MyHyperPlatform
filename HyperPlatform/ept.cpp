@@ -164,9 +164,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
         EptCommonEntry * ept_pml4_entry = &table[pxe_index];
         if (!ept_pml4_entry->all) {
             EptCommonEntry * ept_pdpt = EptpAllocateEptEntry(ept_data);
-            if (!ept_pdpt) {
-                return nullptr;
-            }
+            ASSERT(ept_pdpt);
             EptpInitTableEntry(ept_pml4_entry, table_level, UtilPaFromVa(ept_pdpt));
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pml4_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
@@ -177,9 +175,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
         EptCommonEntry * ept_pdpt_entry = &table[ppe_index];
         if (!ept_pdpt_entry->all) {
             EptCommonEntry * ept_pdt = EptpAllocateEptEntry(ept_data);
-            if (!ept_pdt) {
-                return nullptr;
-            }
+            ASSERT(ept_pdt);
             EptpInitTableEntry(ept_pdpt_entry, table_level, UtilPaFromVa(ept_pdt));
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdpt_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
@@ -190,9 +186,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
         EptCommonEntry * ept_pdt_entry = &table[pde_index];
         if (!ept_pdt_entry->all) {
             EptCommonEntry * ept_pt = EptpAllocateEptEntry(ept_data);
-            if (!ept_pt) {
-                return nullptr;
-            }
+            ASSERT(ept_pt);
             EptpInitTableEntry(ept_pdt_entry, table_level, UtilPaFromVa(ept_pt));
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdt_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
@@ -508,8 +502,6 @@ EptData *EptInitialization()
 {
     PAGED_CODE();
 
-    ULONG64 kEptPageWalkLevel = 4ul;
-
     EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
     ASSERT(ept_data);
     RtlZeroMemory(ept_data, sizeof(EptData));
@@ -523,7 +515,7 @@ EptData *EptInitialization()
     ASSERT(ept_pml4);
     RtlZeroMemory(ept_pml4, PAGE_SIZE);
     ept_poiner->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(UtilPaFromVa(ept_pml4)));
-    ept_poiner->fields.page_walk_length = kEptPageWalkLevel - 1;
+    ept_poiner->fields.page_walk_length = 3;
     ept_poiner->fields.pml4_address = UtilPfnFromPa(UtilPaFromVa(ept_pml4));
 
     // Initialize all EPT entries for all physical memory pages
@@ -535,27 +527,17 @@ EptData *EptInitialization()
         {
             ULONG_PTR indexed_addr = base_addr + page_index * PAGE_SIZE;
             EptCommonEntry * ept_pt_entry = EptpConstructTables(ept_pml4, 4, indexed_addr, nullptr);
-            if (!ept_pt_entry) {
-                EptpDestructTables(ept_pml4, 4);
-                ExFreePoolWithTag(ept_poiner, TAG);
-                ExFreePoolWithTag(ept_data, TAG);
-                return nullptr;
-            }
+            ASSERT(ept_pt_entry);
         }
     }
 
     // Initialize an EPT entry for APIC_BASE. It is required to allocated it now for some reasons, or else, system hangs.
     Ia32ApicBaseMsr apic_msr = { __readmsr(0x01B) };
-    if (!EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr)) {
-        EptpDestructTables(ept_pml4, 4);
-        ExFreePoolWithTag(ept_poiner, TAG);
-        ExFreePoolWithTag(ept_data, TAG);
-        return nullptr;
-    }
-
-    // Allocate preallocated_entries
+    EptCommonEntry * temp = EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr);
+    ASSERT(temp);
+    
     SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
-    EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));
+    EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));// Allocate preallocated_entries
     ASSERT(preallocated_entries);
     RtlZeroMemory(preallocated_entries, preallocated_entries_size);
 

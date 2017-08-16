@@ -342,7 +342,7 @@ static NTSTATUS LogpMakePrefix(ULONG level, const char *function_name, const cha
     
     char processro_number[10] = {};// Want the processor number
     if ((g_logp_debug_flag & kLogOptDisableProcessorNumber) == 0) {
-        status = RtlStringCchPrintfA(processro_number, RTL_NUMBER_OF(processro_number), "#%lu\t", KeGetCurrentProcessorNumberEx(nullptr));
+        status = RtlStringCchPrintfA(processro_number, RTL_NUMBER_OF(processro_number), "#%lu\t", KeGetCurrentProcessorNumberEx(nullptr));//NTDDI_VERSION >= NTDDI_WIN7
         if (!NT_SUCCESS(status)) {
             return status;
         }

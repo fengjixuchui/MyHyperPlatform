@@ -765,7 +765,7 @@ static void VmmpHandleCrAccess(GuestContext *guest_context)
             break;
         }
         case 3:// CR3 <- Reg
-            UtilInvvpidSingleContextExceptGlobal(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1));
+            UtilInvvpidSingleContextExceptGlobal(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1));//NTDDI_VERSION >= NTDDI_WIN7
             UtilVmWrite(VmcsField::kGuestCr3, *register_used);
             break;
         case 4:// CR4 <- Reg
@@ -875,7 +875,7 @@ static void VmmpHandleInvalidateTlbEntry(GuestContext *guest_context)
 {
     void * invalidate_address = reinterpret_cast<void *>(UtilVmRead(VmcsField::kExitQualification));
     __invlpg(invalidate_address);
-    UtilInvvpidIndividualAddress(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1), invalidate_address);
+    UtilInvvpidIndividualAddress(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1), invalidate_address);//NTDDI_VERSION >= NTDDI_WIN7
     VmmpAdjustGuestInstructionPointer(guest_context);
 }
 

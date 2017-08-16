@@ -237,7 +237,7 @@ static NTSTATUS VmpStartVm(void *context)// Virtualize the current processor
     NT_ASSERT(VmpIsHyperPlatformInstalled() == ok);
     if (!ok) 
     {
-        LOG_INFO("Initializing VMX for the processor %d fail.", KeGetCurrentProcessorNumberEx(nullptr));
+        LOG_INFO("Initializing VMX for the processor %d fail.", KeGetCurrentProcessorNumberEx(nullptr));//NTDDI_VERSION >= NTDDI_WIN7
         return STATUS_UNSUCCESSFUL;
     }
 
@@ -445,7 +445,7 @@ static bool VmpSetupVmcs(const ProcessorData *processor_data, ULONG_PTR guest_st
     
     VmxStatus error = VmxStatus::kOk;// clang-format off
     
-    error = UtilVmWrite(VmcsField::kVirtualProcessorId, KeGetCurrentProcessorNumberEx(nullptr) + 1);/* 16-Bit Control Field */
+    error = UtilVmWrite(VmcsField::kVirtualProcessorId, KeGetCurrentProcessorNumberEx(nullptr) + 1);/* 16-Bit Control Field *///NTDDI_VERSION >= NTDDI_WIN7
     ASSERT(VmxStatus::kOk == error);
 
     /* 16-Bit Guest-State Fields */

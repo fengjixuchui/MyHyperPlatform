@@ -196,13 +196,6 @@ void * AllocateContiguousMemory(SIZE_T number_of_bytes)
 }
 
 
-void UtilFreeContiguousMemory(void *base_address)
-// Frees an address allocated by AllocateContiguousMemory()
-{
-    MmFreeContiguousMemory(base_address);
-}
-
-
 NTSTATUS UtilVmCall(HypercallNumber hypercall_number, void *context)
 // Executes VMCALL
 {
@@ -244,24 +237,10 @@ ULONG_PTR UtilVmRead(VmcsField field)
 }
 
 
-ULONG64 UtilVmRead64(VmcsField field)
-// Reads 64bit-width VMCS
-{
-    return UtilVmRead(field);
-}
-
-
 // Writes natural-width VMCS
 VmxStatus UtilVmWrite(VmcsField field, ULONG_PTR field_value)
 {
     return static_cast<VmxStatus>(__vmx_vmwrite(static_cast<size_t>(field), field_value));
-}
-
-
-VmxStatus UtilVmWrite64(VmcsField field, ULONG64 field_value)
-// Writes 64bit-width VMCS
-{
-    return UtilVmWrite(field, field_value);
 }
 
 

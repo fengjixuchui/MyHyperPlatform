@@ -352,7 +352,7 @@ static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)
     if (read_access) {
         if (transfer_to_vmcs) {
             if (is_64bit_vmcs) {
-                msr_value.QuadPart = UtilVmRead64(vmcs_field);
+                msr_value.QuadPart = UtilVmRead(vmcs_field);
             } else {
                 msr_value.QuadPart = UtilVmRead(vmcs_field);
             }
@@ -366,7 +366,7 @@ static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)
         msr_value.HighPart = static_cast<ULONG>(guest_context->gp_regs->dx);
         if (transfer_to_vmcs) {
             if (is_64bit_vmcs) {
-                UtilVmWrite64(vmcs_field, static_cast<ULONG_PTR>(msr_value.QuadPart));
+                UtilVmWrite(vmcs_field, static_cast<ULONG_PTR>(msr_value.QuadPart));
             } else {
                 UtilVmWrite(vmcs_field, static_cast<ULONG_PTR>(msr_value.QuadPart));
             }
@@ -976,7 +976,7 @@ static void VmmpDumpGuestState()
     LOG_DEBUG_SAFE("Guest LdtrSelector = %016Ix", UtilVmRead(VmcsField::kGuestLdtrSelector));
     LOG_DEBUG_SAFE("Guest TrSelector   = %016Ix", UtilVmRead(VmcsField::kGuestTrSelector));
 
-    LOG_DEBUG_SAFE("Guest Ia32Debugctl = %016llx", UtilVmRead64(VmcsField::kGuestIa32Debugctl));
+    LOG_DEBUG_SAFE("Guest Ia32Debugctl = %016llx", UtilVmRead(VmcsField::kGuestIa32Debugctl));
 
     LOG_DEBUG_SAFE("Guest EsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestEsLimit));
     LOG_DEBUG_SAFE("Guest CsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestCsLimit));

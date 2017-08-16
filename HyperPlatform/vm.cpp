@@ -469,14 +469,14 @@ static bool VmpSetupVmcs(const ProcessorData *processor_data, ULONG_PTR guest_st
     error = UtilVmWrite(VmcsField::kHostTrSelector, AsmReadTR() & 0xf8); ASSERT(VmxStatus::kOk == error);
 
     /* 64-Bit Control Fields */
-    error = UtilVmWrite64(VmcsField::kIoBitmapA, UtilPaFromVa(processor_data->shared_data->io_bitmap_a)); ASSERT(VmxStatus::kOk == error);
-    error = UtilVmWrite64(VmcsField::kIoBitmapB, UtilPaFromVa(processor_data->shared_data->io_bitmap_b)); ASSERT(VmxStatus::kOk == error);
-    error = UtilVmWrite64(VmcsField::kMsrBitmap, UtilPaFromVa(processor_data->shared_data->msr_bitmap)); ASSERT(VmxStatus::kOk == error);
-    error = UtilVmWrite64(VmcsField::kEptPointer, EptGetEptPointer(processor_data->ept_data)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kIoBitmapA, UtilPaFromVa(processor_data->shared_data->io_bitmap_a)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kIoBitmapB, UtilPaFromVa(processor_data->shared_data->io_bitmap_b)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kMsrBitmap, UtilPaFromVa(processor_data->shared_data->msr_bitmap)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kEptPointer, EptGetEptPointer(processor_data->ept_data)); ASSERT(VmxStatus::kOk == error);
 
     /* 64-Bit Guest-State Fields */
-    error = UtilVmWrite64(VmcsField::kVmcsLinkPointer, MAXULONG64); ASSERT(VmxStatus::kOk == error);
-    error = UtilVmWrite64(VmcsField::kGuestIa32Debugctl, __readmsr(0x1D9)); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kVmcsLinkPointer, MAXULONG64); ASSERT(VmxStatus::kOk == error);
+    error = UtilVmWrite(VmcsField::kGuestIa32Debugctl, __readmsr(0x1D9)); ASSERT(VmxStatus::kOk == error);
 
     /* 32-Bit Control Fields */
     error = UtilVmWrite(VmcsField::kPinBasedVmExecControl, vm_pinctl.all); ASSERT(VmxStatus::kOk == error);
@@ -710,7 +710,7 @@ static void VmpFreeProcessorData(ProcessorData *processor_data)// Frees all rela
         return;
     }
     if (processor_data->vmm_stack_limit) {
-        UtilFreeContiguousMemory(processor_data->vmm_stack_limit);
+        MmFreeContiguousMemory(processor_data->vmm_stack_limit);
     }
     if (processor_data->vmcs_region) {
         ExFreePoolWithTag(processor_data->vmcs_region, TAG);

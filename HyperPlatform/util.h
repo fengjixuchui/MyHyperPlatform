@@ -95,12 +95,7 @@ void *UtilVaFromPfn(_In_ PFN_NUMBER pfn);
 /// Allocates continuous physical memory
 /// @param number_of_bytes  A size to allocate
 /// @return A base address of an allocated memory or nullptr
-/// A returned value must be freed with UtilFreeContiguousMemory().
 _Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) void *AllocateContiguousMemory(_In_ SIZE_T number_of_bytes);
-
-/// Frees an address allocated by AllocateContiguousMemory()
-/// @param base_address A return value of AllocateContiguousMemory() to free
-_IRQL_requires_max_(DISPATCH_LEVEL) void UtilFreeContiguousMemory(_In_ void *base_address);
 
 /// Executes VMCALL
 /// @param hypercall_number   A command number
@@ -118,22 +113,11 @@ void UtilDumpGpRegisters(_In_ const AllRegisters *all_regs, _In_ ULONG_PTR stack
 /// @return read value
 ULONG_PTR UtilVmRead(_In_ VmcsField field);
 
-/// Reads 64bit-width VMCS
-/// @param field  VMCS-field to read
-/// @return read value
-ULONG64 UtilVmRead64(_In_ VmcsField field);
-
 /// Writes natural-width VMCS
 /// @param field  VMCS-field to write
 /// @param field_value  A value to write
 /// @return A result of the VMWRITE instruction
 VmxStatus UtilVmWrite(_In_ VmcsField field, _In_ ULONG_PTR field_value);
-
-/// Writes 64bit-width VMCS
-/// @param field  VMCS-field to write
-/// @param field_value  A value to write
-/// @return A result of the VMWRITE instruction
-VmxStatus UtilVmWrite64(_In_ VmcsField field, _In_ ULONG64 field_value);
 
 /// Executes the INVEPT instruction and invalidates EPT entry cache
 /// @return A result of the INVEPT instruction

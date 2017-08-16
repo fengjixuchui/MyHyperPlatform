@@ -466,7 +466,7 @@ void EptHandleEptViolation(EptData *ept_data)
 // Deal with EPT violation VM-exit.
 {
     EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
-    ULONG64 fault_pa = UtilVmRead64(VmcsField::kGuestPhysicalAddress);
+    ULONG64 fault_pa = UtilVmRead(VmcsField::kGuestPhysicalAddress);
 
     if (exit_qualification.fields.ept_readable || exit_qualification.fields.ept_writeable || exit_qualification.fields.ept_executable) {
         KdBreakPoint();

@@ -185,7 +185,14 @@ void * AllocateContiguousMemory(SIZE_T number_of_bytes)
     // Allocate NX physical memory
     PHYSICAL_ADDRESS lowest_acceptable_address = {};
     PHYSICAL_ADDRESS boundary_address_multiple = {};
+
+#if (NTDDI_VERSION < NTDDI_WIN8)
+    return MmAllocateContiguousMemory(number_of_bytes, highest_acceptable_address);
+#endif
+
+#if (NTDDI_VERSION >= NTDDI_WIN8)
     return MmAllocateContiguousNodeMemory(number_of_bytes, lowest_acceptable_address, highest_acceptable_address, boundary_address_multiple, PAGE_READWRITE, MM_ANY_NODE_OK);//×¢Òâ°æ±¾¡£
+#endif
 }
 
 

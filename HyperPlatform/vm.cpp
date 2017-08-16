@@ -398,7 +398,8 @@ static bool VmpSetupVmcs(const ProcessorData *processor_data, ULONG_PTR guest_st
     Idtr idtr = {};
     __sidt(&idtr);
     
-    bool use_true_msrs = Ia32VmxBasicMsr{ __readmsr(0x480) }.fields.vmx_capability_hint;// See: Algorithms for Determining VMX Capabilities
+    Ia32VmxBasicMsr temp = { __readmsr(0x480) };
+    bool use_true_msrs = temp.fields.vmx_capability_hint;// See: Algorithms for Determining VMX Capabilities
 
     VmxVmEntryControls vm_entryctl_requested = {};
     vm_entryctl_requested.fields.load_debug_controls = 1;

@@ -54,7 +54,7 @@ static void HotplugCallbackpCallbackRoutine(PVOID callback_context, PKE_PROCESSO
         return;
     }
 
-    NTSTATUS status = VmHotplugCallback(change_context->ProcNumber);
+    NTSTATUS status = VmHotplugCallback(change_context->ProcNumber);//NTDDI_VERSION >= NTDDI_WIN7
     if (!NT_SUCCESS(status)) {
         LOG_ERROR("Failed to virtualize the new processors.");
     }

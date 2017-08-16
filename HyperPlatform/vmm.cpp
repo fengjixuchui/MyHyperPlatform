@@ -315,7 +315,7 @@ static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)
     Msr msr = static_cast<Msr>(guest_context->gp_regs->cx);// Apply it for VMCS instead of a real MSR if a specified MSR is either of them.
 
     bool transfer_to_vmcs = false;
-    VmcsField vmcs_field = {};
+    VmcsField vmcs_field;
     switch (msr)
     {
     case Msr::kIa32SysenterCs:

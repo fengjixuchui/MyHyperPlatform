@@ -8,25 +8,27 @@
 #include "vm.h"
 
 
-extern "C"
+extern "C" void DriverUnload(PDRIVER_OBJECT driver_object)
 {
-DRIVER_INITIALIZE DriverEntry;
-static DRIVER_UNLOAD DriverpDriverUnload;
+    UNREFERENCED_PARAMETER(driver_object);
+    PAGED_CODE();
 
-#if defined(ALLOC_PRAGMA)
-#pragma alloc_text(INIT, DriverEntry)
-#pragma alloc_text(PAGE, DriverpDriverUnload)
-#endif
+    VmTermination();
+    HotplugCallbackTermination();
+    PowerCallbackTermination();
+    UtilTermination();
+    LogTermination();
+}
 
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) 
+extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) 
 {
     UNREFERENCED_PARAMETER(registry_path);
     PAGED_CODE();
 
     __debugbreak();
 
-    driver_object->DriverUnload = DriverpDriverUnload;
+    driver_object->DriverUnload = DriverUnload;
     
     bool need_reinitialization = false;
 
@@ -73,18 +75,3 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path
 
     return status;
 }
-
-
-static void DriverpDriverUnload(PDRIVER_OBJECT driver_object)
-{
-    UNREFERENCED_PARAMETER(driver_object);
-    PAGED_CODE();
-
-    VmTermination();
-    HotplugCallbackTermination();
-    PowerCallbackTermination();
-    UtilTermination();
-    LogTermination();
-}
-
-}  // extern "C"

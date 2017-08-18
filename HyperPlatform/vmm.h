@@ -27,18 +27,15 @@ struct ProcessorData {/// Represents VMM related data associated with each proce
 
 #pragma warning(disable:4189) // 局部变量已初始化但不引用
 
-extern "C"
-{
-    // Represents raw structure of stack of VMM when VmmVmExitHandler() is called
-    struct VmmInitialStack {
-        GpRegistersX64 gp_regs;
-        ULONG_PTR reserved;
-        ProcessorData *processor_data;
-    };
-}
 
-// Things need to be read and written by each VM-exit handler
-struct GuestContext {
+struct VmmInitialStack {// Represents raw structure of stack of VMM when VmmVmExitHandler() is called
+    GpRegistersX64 gp_regs;
+    ULONG_PTR reserved;
+    ProcessorData *processor_data;
+};
+
+
+struct GuestContext {// Things need to be read and written by each VM-exit handler
     union {
         VmmInitialStack *stack;
         GpRegistersX64 *gp_regs;

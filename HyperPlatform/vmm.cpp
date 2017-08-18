@@ -12,171 +12,68 @@
 
 extern "C"
 {
-bool __stdcall VmmVmExitHandler(_Inout_ VmmInitialStack *stack);
-DECLSPEC_NORETURN void __stdcall VmmVmxFailureHandler(_Inout_ AllRegisters *all_regs);
-static void VmmpHandleVmExit(_Inout_ GuestContext *guest_context);
-DECLSPEC_NORETURN static void VmmpHandleTripleFault(_Inout_ GuestContext *guest_context);
-DECLSPEC_NORETURN static void VmmpHandleUnexpectedExit(_Inout_ GuestContext *guest_context);
-static void VmmpHandleMonitorTrap(_Inout_ GuestContext *guest_context);
-static void VmmpHandleException(_Inout_ GuestContext *guest_context);
-static void VmmpHandleCpuid(_Inout_ GuestContext *guest_context);
-static void VmmpHandleRdtsc(_Inout_ GuestContext *guest_context);
-static void VmmpHandleRdtscp(_Inout_ GuestContext *guest_context);
-static void VmmpHandleXsetbv(_Inout_ GuestContext *guest_context);
-static void VmmpHandleMsrReadAccess(_Inout_ GuestContext *guest_context);
-static void VmmpHandleMsrWriteAccess(_Inout_ GuestContext *guest_context);
-static void VmmpHandleMsrAccess(_Inout_ GuestContext *guest_context, _In_ bool read_access);
-static void VmmpHandleGdtrOrIdtrAccess(_Inout_ GuestContext *guest_context);
-static void VmmpHandleLdtrOrTrAccess(_Inout_ GuestContext *guest_context);
-static void VmmpHandleDrAccess(_Inout_ GuestContext *guest_context);
-static void VmmpHandleIoPort(_Inout_ GuestContext *guest_context);
-static void VmmpHandleCrAccess(_Inout_ GuestContext *guest_context);
-static void VmmpHandleVmx(_Inout_ GuestContext *guest_context);
-static void VmmpHandleVmCall(_Inout_ GuestContext *guest_context);
-static void VmmpHandleInvalidateInternalCaches(_Inout_ GuestContext *guest_context);
-static void VmmpHandleInvalidateTlbEntry(_Inout_ GuestContext *guest_context);
-static void VmmpHandleEptViolation(_Inout_ GuestContext *guest_context);
-static void VmmpHandleEptMisconfig(_Inout_ GuestContext *guest_context);
-static ULONG_PTR *VmmpSelectRegister(_In_ ULONG index, _In_ GuestContext *guest_context);
-static void VmmpDumpGuestState();
-static void VmmpAdjustGuestInstructionPointer(_In_ GuestContext *guest_context);
-static void VmmpIoWrapper(_In_ bool to_memory, _In_ bool is_string, _In_ SIZE_T size_of_access, _In_ unsigned short port, _Inout_ void *address, _In_ unsigned long count);
-static void VmmpIndicateSuccessfulVmcall(_In_ GuestContext *guest_context);
-static void VmmpIndicateUnsuccessfulVmcall(_In_ GuestContext *guest_context);
-static void VmmpHandleVmCallTermination(_In_ GuestContext *guest_context, _Inout_ void *context);
-static UCHAR VmmpGetGuestCpl();
-static void VmmpInjectInterruption(_In_ InterruptionType interruption_type, _In_ InterruptionVector vector, _In_ bool deliver_error_code, _In_ ULONG32 error_code);
 
-
-#pragma warning(push)
-#pragma warning(disable : 28167)
-bool __stdcall VmmVmExitHandler(VmmInitialStack *stack)
-// A high level VMX handler called from AsmVmExitHandler().
-// Return true for vmresume, or return false for vmxoff.
+static void VmmpDumpGuestState()
+// Dumps guest state VMCS fields
 {
-    // Save guest's context and raise IRQL as quick as possible
-    KIRQL guest_irql = KeGetCurrentIrql();
-    ULONG64 guest_cr8 = __readcr8();
-    if (guest_irql < DISPATCH_LEVEL) {
-        KeRaiseIrqlToDpcLevel();
-    }
-    NT_ASSERT(stack->reserved == MAXULONG_PTR);
+    // clang-format off
+    LOG_DEBUG_SAFE("Guest EsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestEsSelector));
+    LOG_DEBUG_SAFE("Guest CsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestCsSelector));
+    LOG_DEBUG_SAFE("Guest SsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestSsSelector));
+    LOG_DEBUG_SAFE("Guest DsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestDsSelector));
+    LOG_DEBUG_SAFE("Guest FsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestFsSelector));
+    LOG_DEBUG_SAFE("Guest GsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestGsSelector));
+    LOG_DEBUG_SAFE("Guest LdtrSelector = %016Ix", UtilVmRead(VmcsField::kGuestLdtrSelector));
+    LOG_DEBUG_SAFE("Guest TrSelector   = %016Ix", UtilVmRead(VmcsField::kGuestTrSelector));
 
-    // Capture the current guest state
-    GuestContext guest_context = { stack, UtilVmRead(VmcsField::kGuestRflags), UtilVmRead(VmcsField::kGuestRip), guest_cr8, guest_irql, true };
-    guest_context.gp_regs->sp = UtilVmRead(VmcsField::kGuestRsp);
-    VmmpHandleVmExit(&guest_context);// Dispatch the current VM-exit event
+    LOG_DEBUG_SAFE("Guest Ia32Debugctl = %016llx", UtilVmRead(VmcsField::kGuestIa32Debugctl));
 
-    if (!guest_context.vm_continue) {// See: Guidelines for Use of the INVVPID Instruction, and Guidelines for Use of the INVEPT Instruction
-        UtilInveptGlobal();
-        UtilInvvpidAllContext();
-    }
+    LOG_DEBUG_SAFE("Guest EsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestEsLimit));
+    LOG_DEBUG_SAFE("Guest CsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestCsLimit));
+    LOG_DEBUG_SAFE("Guest SsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestSsLimit));
+    LOG_DEBUG_SAFE("Guest DsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestDsLimit));
+    LOG_DEBUG_SAFE("Guest FsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestFsLimit));
+    LOG_DEBUG_SAFE("Guest GsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestGsLimit));
+    LOG_DEBUG_SAFE("Guest LdtrLimit    = %016Ix", UtilVmRead(VmcsField::kGuestLdtrLimit));
+    LOG_DEBUG_SAFE("Guest TrLimit      = %016Ix", UtilVmRead(VmcsField::kGuestTrLimit));
+    LOG_DEBUG_SAFE("Guest GdtrLimit    = %016Ix", UtilVmRead(VmcsField::kGuestGdtrLimit));
+    LOG_DEBUG_SAFE("Guest IdtrLimit    = %016Ix", UtilVmRead(VmcsField::kGuestIdtrLimit));
+    LOG_DEBUG_SAFE("Guest EsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestEsArBytes));
+    LOG_DEBUG_SAFE("Guest CsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestCsArBytes));
+    LOG_DEBUG_SAFE("Guest SsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestSsArBytes));
+    LOG_DEBUG_SAFE("Guest DsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestDsArBytes));
+    LOG_DEBUG_SAFE("Guest FsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestFsArBytes));
+    LOG_DEBUG_SAFE("Guest GsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestGsArBytes));
+    LOG_DEBUG_SAFE("Guest LdtrArBytes  = %016Ix", UtilVmRead(VmcsField::kGuestLdtrArBytes));
+    LOG_DEBUG_SAFE("Guest TrArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestTrArBytes));
+    LOG_DEBUG_SAFE("Guest SysenterCs   = %016Ix", UtilVmRead(VmcsField::kGuestSysenterCs));
 
-    if (guest_context.irql < DISPATCH_LEVEL) {// Restore guest's context
-        KeLowerIrql(guest_context.irql);
-    }
+    LOG_DEBUG_SAFE("Guest Cr0          = %016Ix", UtilVmRead(VmcsField::kGuestCr0));
+    LOG_DEBUG_SAFE("Guest Cr3          = %016Ix", UtilVmRead(VmcsField::kGuestCr3));
+    LOG_DEBUG_SAFE("Guest Cr4          = %016Ix", UtilVmRead(VmcsField::kGuestCr4));
 
-     __writecr8(guest_context.cr8);
+    LOG_DEBUG_SAFE("Guest EsBase       = %016Ix", UtilVmRead(VmcsField::kGuestEsBase));
+    LOG_DEBUG_SAFE("Guest CsBase       = %016Ix", UtilVmRead(VmcsField::kGuestCsBase));
+    LOG_DEBUG_SAFE("Guest SsBase       = %016Ix", UtilVmRead(VmcsField::kGuestSsBase));
+    LOG_DEBUG_SAFE("Guest DsBase       = %016Ix", UtilVmRead(VmcsField::kGuestDsBase));
+    LOG_DEBUG_SAFE("Guest FsBase       = %016Ix", UtilVmRead(VmcsField::kGuestFsBase));
+    LOG_DEBUG_SAFE("Guest GsBase       = %016Ix", UtilVmRead(VmcsField::kGuestGsBase));
 
-    return guest_context.vm_continue;
-}
-#pragma warning(pop)
-
-
-static void VmmpHandleVmExit(GuestContext *guest_context)
-// Dispatches VM-exit to a corresponding handler
-{
-    const VmExitInformation exit_reason = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitReason)) };
-
-    switch (exit_reason.fields.reason)
-    {
-    case VmxExitReason::kExceptionOrNmi:
-        VmmpHandleException(guest_context);
-        break;
-    case VmxExitReason::kTripleFault:
-        VmmpHandleTripleFault(guest_context);
-        break;
-    case VmxExitReason::kCpuid:
-        VmmpHandleCpuid(guest_context);
-        break;
-    case VmxExitReason::kInvd:
-        VmmpHandleInvalidateInternalCaches(guest_context);
-        break;
-    case VmxExitReason::kInvlpg:
-        VmmpHandleInvalidateTlbEntry(guest_context);
-        break;
-    case VmxExitReason::kRdtsc:
-        VmmpHandleRdtsc(guest_context);
-        break;
-    case VmxExitReason::kCrAccess:
-        VmmpHandleCrAccess(guest_context);
-        break;
-    case VmxExitReason::kDrAccess:
-        VmmpHandleDrAccess(guest_context);
-        break;
-    case VmxExitReason::kIoInstruction:
-        VmmpHandleIoPort(guest_context);
-        break;
-    case VmxExitReason::kMsrRead:
-        VmmpHandleMsrReadAccess(guest_context);
-        break;
-    case VmxExitReason::kMsrWrite:
-        VmmpHandleMsrWriteAccess(guest_context);
-        break;
-    case VmxExitReason::kMonitorTrapFlag:
-        VmmpHandleMonitorTrap(guest_context);
-        break;
-    case VmxExitReason::kGdtrOrIdtrAccess:
-        VmmpHandleGdtrOrIdtrAccess(guest_context);
-        break;
-    case VmxExitReason::kLdtrOrTrAccess:
-        VmmpHandleLdtrOrTrAccess(guest_context);
-        break;
-    case VmxExitReason::kEptViolation:
-        VmmpHandleEptViolation(guest_context);
-        break;
-    case VmxExitReason::kEptMisconfig:
-        VmmpHandleEptMisconfig(guest_context);
-        break;
-    case VmxExitReason::kVmcall:
-        VmmpHandleVmCall(guest_context);
-        break;
-    case VmxExitReason::kVmclear:
-    case VmxExitReason::kVmlaunch:
-    case VmxExitReason::kVmptrld:
-    case VmxExitReason::kVmptrst:
-    case VmxExitReason::kVmread:
-    case VmxExitReason::kVmresume:
-    case VmxExitReason::kVmwrite:
-    case VmxExitReason::kVmoff:
-    case VmxExitReason::kVmon:
-        VmmpHandleVmx(guest_context);
-        break;
-    case VmxExitReason::kRdtscp:
-        VmmpHandleRdtscp(guest_context);
-        break;
-    case VmxExitReason::kXsetbv:
-        VmmpHandleXsetbv(guest_context);
-        break;
-    default:
-        VmmpHandleUnexpectedExit(guest_context);
-        break;
-    }
+    LOG_DEBUG_SAFE("Guest LdtrBase     = %016Ix", UtilVmRead(VmcsField::kGuestLdtrBase));
+    LOG_DEBUG_SAFE("Guest TrBase       = %016Ix", UtilVmRead(VmcsField::kGuestTrBase));
+    LOG_DEBUG_SAFE("Guest GdtrBase     = %016Ix", UtilVmRead(VmcsField::kGuestGdtrBase));
+    LOG_DEBUG_SAFE("Guest IdtrBase     = %016Ix", UtilVmRead(VmcsField::kGuestIdtrBase));
+    LOG_DEBUG_SAFE("Guest Dr7          = %016Ix", UtilVmRead(VmcsField::kGuestDr7));
+    LOG_DEBUG_SAFE("Guest Rsp          = %016Ix", UtilVmRead(VmcsField::kGuestRsp));
+    LOG_DEBUG_SAFE("Guest Rip          = %016Ix", UtilVmRead(VmcsField::kGuestRip));
+    LOG_DEBUG_SAFE("Guest Rflags       = %016Ix", UtilVmRead(VmcsField::kGuestRflags));
+    LOG_DEBUG_SAFE("Guest SysenterEsp  = %016Ix", UtilVmRead(VmcsField::kGuestSysenterEsp));
+    LOG_DEBUG_SAFE("Guest SysenterEip  = %016Ix", UtilVmRead(VmcsField::kGuestSysenterEip));
+    // clang-format on
 }
 
 
-// Triple fault VM-exit. Fatal error.
-static void VmmpHandleTripleFault(GuestContext *guest_context)
-{
-    UNREFERENCED_PARAMETER(guest_context);
-
-    VmmpDumpGuestState();
-    __debugbreak();
-}
-
-
-// Unexpected VM-exit. Fatal error.
-static void VmmpHandleUnexpectedExit(GuestContext *guest_context)
+static void VmmpHandleUnexpectedExit(GuestContext *guest_context)// Unexpected VM-exit. Fatal error.
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -186,8 +83,7 @@ static void VmmpHandleUnexpectedExit(GuestContext *guest_context)
 }
 
 
-// MTF VM-exit
-static void VmmpHandleMonitorTrap(GuestContext *guest_context)
+static void VmmpHandleMonitorTrap(GuestContext *guest_context)// MTF VM-exit
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -196,8 +92,23 @@ static void VmmpHandleMonitorTrap(GuestContext *guest_context)
 }
 
 
-// Interrupt
-static void VmmpHandleException(GuestContext *guest_context)
+static void VmmpInjectInterruption(InterruptionType interruption_type, InterruptionVector vector, bool deliver_error_code, ULONG32 error_code)
+// Injects interruption to a guest
+{
+    VmEntryInterruptionInformationField inject = {};
+    inject.fields.valid = true;
+    inject.fields.interruption_type = static_cast<ULONG32>(interruption_type);
+    inject.fields.vector = static_cast<ULONG32>(vector);
+    inject.fields.deliver_error_code = deliver_error_code;
+    UtilVmWrite(VmcsField::kVmEntryIntrInfoField, inject.all);
+
+    if (deliver_error_code) {
+        UtilVmWrite(VmcsField::kVmEntryExceptionErrorCode, error_code);
+    }
+}
+
+
+static void VmmpHandleException(GuestContext *guest_context)// Interrupt
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -232,8 +143,19 @@ static void VmmpHandleException(GuestContext *guest_context)
 }
 
 
-// CPUID
-static void VmmpHandleCpuid(GuestContext *guest_context)
+static void VmmpAdjustGuestInstructionPointer(GuestContext *guest_context)// Advances guest's IP to the next instruction
+{
+    ULONG_PTR exit_inst_length = UtilVmRead(VmcsField::kVmExitInstructionLen);
+    UtilVmWrite(VmcsField::kGuestRip, guest_context->ip + exit_inst_length);
+
+    if (guest_context->flag_reg.fields.tf) {// Inject #DB if TF is set
+        VmmpInjectInterruption(InterruptionType::kHardwareException, InterruptionVector::kDebugException, false, 0);
+        UtilVmWrite(VmcsField::kVmEntryInstructionLen, exit_inst_length);
+    }
+}
+
+
+static void VmmpHandleCpuid(GuestContext *guest_context)// CPUID
 {
     unsigned int cpu_info[4] = {};
     int function_id = static_cast<int>(guest_context->gp_regs->ax);
@@ -257,8 +179,7 @@ static void VmmpHandleCpuid(GuestContext *guest_context)
 }
 
 
-// RDTSC
-static void VmmpHandleRdtsc(GuestContext *guest_context)
+static void VmmpHandleRdtsc(GuestContext *guest_context)// RDTSC
 {
     ULARGE_INTEGER tsc = {};
     tsc.QuadPart = __rdtsc();
@@ -268,8 +189,7 @@ static void VmmpHandleRdtsc(GuestContext *guest_context)
 }
 
 
-// RDTSCP
-static void VmmpHandleRdtscp(GuestContext *guest_context)
+static void VmmpHandleRdtscp(GuestContext *guest_context)// RDTSCP
 {
     unsigned int tsc_aux = 0;
     ULARGE_INTEGER tsc = {};
@@ -281,8 +201,7 @@ static void VmmpHandleRdtscp(GuestContext *guest_context)
 }
 
 
-// XSETBV. It is executed at the time of system resuming
-static void VmmpHandleXsetbv(GuestContext *guest_context)
+static void VmmpHandleXsetbv(GuestContext *guest_context)// XSETBV. It is executed at the time of system resuming
 {
     ULARGE_INTEGER value = {};
     value.LowPart = static_cast<ULONG>(guest_context->gp_regs->ax);
@@ -292,22 +211,7 @@ static void VmmpHandleXsetbv(GuestContext *guest_context)
 }
 
 
-// RDMSR
-static void VmmpHandleMsrReadAccess(GuestContext *guest_context)
-{
-    VmmpHandleMsrAccess(guest_context, true);
-}
-
-
-// WRMSR
-static void VmmpHandleMsrWriteAccess(GuestContext *guest_context)
-{
-    VmmpHandleMsrAccess(guest_context, false);
-}
-
-
-// RDMSR and WRMSR
-static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)
+static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)// RDMSR and WRMSR
 {
     Msr msr = static_cast<Msr>(guest_context->gp_regs->cx);// Apply it for VMCS instead of a real MSR if a specified MSR is either of them.
 
@@ -376,8 +280,82 @@ static void VmmpHandleMsrAccess(GuestContext *guest_context, bool read_access)
 }
 
 
-// LIDT, SIDT, LGDT and SGDT
-static void VmmpHandleGdtrOrIdtrAccess(GuestContext *guest_context)
+static void VmmpHandleMsrReadAccess(GuestContext *guest_context)// RDMSR
+{
+    VmmpHandleMsrAccess(guest_context, true);
+}
+
+
+static void VmmpHandleMsrWriteAccess(GuestContext *guest_context)// WRMSR
+{
+    VmmpHandleMsrAccess(guest_context, false);
+}
+
+
+static ULONG_PTR *VmmpSelectRegister(ULONG index, GuestContext *guest_context)// Selects a register to be used based on the index
+{
+    ULONG_PTR *register_used = nullptr;
+    // clang-format off
+    switch (index)
+    {
+    case 0:
+        register_used = &guest_context->gp_regs->ax;
+        break;
+    case 1:
+        register_used = &guest_context->gp_regs->cx;
+        break;
+    case 2:
+        register_used = &guest_context->gp_regs->dx;
+        break;
+    case 3:
+        register_used = &guest_context->gp_regs->bx;
+        break;
+    case 4:
+        register_used = &guest_context->gp_regs->sp;
+        break;
+    case 5:
+        register_used = &guest_context->gp_regs->bp;
+        break;
+    case 6:
+        register_used = &guest_context->gp_regs->si;
+        break;
+    case 7:
+        register_used = &guest_context->gp_regs->di;
+        break;
+    case 8:
+        register_used = &guest_context->gp_regs->r8;
+        break;
+    case 9:
+        register_used = &guest_context->gp_regs->r9;
+        break;
+    case 10:
+        register_used = &guest_context->gp_regs->r10;
+        break;
+    case 11:
+        register_used = &guest_context->gp_regs->r11;
+        break;
+    case 12:
+        register_used = &guest_context->gp_regs->r12;
+        break;
+    case 13:
+        register_used = &guest_context->gp_regs->r13;
+        break;
+    case 14:
+        register_used = &guest_context->gp_regs->r14;
+        break;
+    case 15:
+        register_used = &guest_context->gp_regs->r15;
+        break;
+    default:
+        KdBreakPoint();
+        break;
+    }
+
+    return register_used;// clang-format on
+}
+
+
+static void VmmpHandleGdtrOrIdtrAccess(GuestContext *guest_context)// LIDT, SIDT, LGDT and SGDT
 {
     const GdtrOrIdtrInstInformation exit_qualification = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmxInstructionInfo)) };
     ULONG_PTR displacement = UtilVmRead(VmcsField::kExitQualification);// Calculate an address to be used for the instruction
@@ -450,8 +428,7 @@ static void VmmpHandleGdtrOrIdtrAccess(GuestContext *guest_context)
 }
 
 
-// LLDT, LTR, SLDT, and STR
-static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_context)
+static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_context)// LLDT, LTR, SLDT, and STR
 {
     const LdtrOrTrInstInformation exit_qualification = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmxInstructionInfo)) };
     ULONG_PTR displacement = UtilVmRead(VmcsField::kExitQualification);// Calculate an address or a register to be used for the instruction
@@ -525,8 +502,7 @@ static void VmmpHandleLdtrOrTrAccess(GuestContext *guest_context)
 }
 
 
-// MOV to / from DRx
-static void VmmpHandleDrAccess(GuestContext *guest_context)
+static void VmmpHandleDrAccess(GuestContext *guest_context)// MOV to / from DRx
 {
     MovDrQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     ULONG_PTR * register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
@@ -609,8 +585,84 @@ static void VmmpHandleDrAccess(GuestContext *guest_context)
 }
 
 
-// IN, INS, OUT, OUTS
-static void VmmpHandleIoPort(GuestContext *guest_context)
+static void VmmpIoWrapper(bool to_memory, bool is_string, SIZE_T size_of_access, unsigned short port, void *address, unsigned long count)
+// Perform IO instruction according with parameters
+{
+    NT_ASSERT(size_of_access == 1 || size_of_access == 2 || size_of_access == 4);
+
+    // Update CR3 with that of the guest since below code is going to access memory.
+    size_t guest_cr3 = UtilVmRead(VmcsField::kGuestCr3);
+    size_t vmm_cr3 = __readcr3();
+    __writecr3(guest_cr3);
+
+    // clang-format off
+    if (to_memory) {
+        if (is_string) {// INS
+            switch (size_of_access)
+            {
+            case 1:
+                __inbytestring(port, reinterpret_cast<UCHAR*>(address), count);
+                break;
+            case 2:
+                __inwordstring(port, reinterpret_cast<USHORT*>(address), count);
+                break;
+            case 4:
+                __indwordstring(port, reinterpret_cast<ULONG*>(address), count);
+                break;
+            }
+        }
+        else {// IN
+            switch (size_of_access)
+            {
+            case 1:
+                *reinterpret_cast<UCHAR*>(address) = __inbyte(port);
+                break;
+            case 2:
+                *reinterpret_cast<USHORT*>(address) = __inword(port);
+                break;
+            case 4:
+                *reinterpret_cast<ULONG*>(address) = __indword(port);
+                break;
+            }
+        }
+    }
+    else {
+        if (is_string) {// OUTS
+            switch (size_of_access)
+            {
+            case 1:
+                __outbytestring(port, reinterpret_cast<UCHAR*>(address), count);
+                break;
+            case 2:
+                __outwordstring(port, reinterpret_cast<USHORT*>(address), count);
+                break;
+            case 4:
+                __outdwordstring(port, reinterpret_cast<ULONG*>(address), count);
+                break;
+            }
+        }
+        else {// OUT
+            switch (size_of_access)
+            {
+            case 1:
+                __outbyte(port, *reinterpret_cast<UCHAR*>(address));
+                break;
+            case 2:
+                __outword(port, *reinterpret_cast<USHORT*>(address));
+                break;
+            case 4:
+                __outdword(port, *reinterpret_cast<ULONG*>(address));
+                break;
+            }
+        }
+    }
+    // clang-format on
+
+    __writecr3(vmm_cr3);
+}
+
+
+static void VmmpHandleIoPort(GuestContext *guest_context)// IN, INS, OUT, OUTS
 {
     const IoInstQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     bool is_in = exit_qualification.fields.direction == 1;  // to memory?
@@ -665,82 +717,7 @@ static void VmmpHandleIoPort(GuestContext *guest_context)
 }
 
 
-// Perform IO instruction according with parameters
-static void VmmpIoWrapper(bool to_memory, bool is_string, SIZE_T size_of_access, unsigned short port, void *address, unsigned long count)
-{
-    NT_ASSERT(size_of_access == 1 || size_of_access == 2 || size_of_access == 4);
-
-    // Update CR3 with that of the guest since below code is going to access memory.
-    size_t guest_cr3 = UtilVmRead(VmcsField::kGuestCr3);
-    size_t vmm_cr3 = __readcr3();
-    __writecr3(guest_cr3);
-
-    // clang-format off
-    if (to_memory) {
-        if (is_string) {// INS
-            switch (size_of_access)
-            {
-            case 1:
-                __inbytestring(port, reinterpret_cast<UCHAR*>(address), count);
-                break;
-            case 2:
-                __inwordstring(port, reinterpret_cast<USHORT*>(address), count);
-                break;
-            case 4:
-                __indwordstring(port, reinterpret_cast<ULONG*>(address), count);
-                break;
-            }
-        } else {// IN
-            switch (size_of_access)
-            {
-            case 1:
-                *reinterpret_cast<UCHAR*>(address) = __inbyte(port);
-                break;
-            case 2:
-                *reinterpret_cast<USHORT*>(address) = __inword(port);
-                break;
-            case 4:
-                *reinterpret_cast<ULONG*>(address) = __indword(port);
-                break;
-            }
-        }
-    } else {
-        if (is_string) {// OUTS
-            switch (size_of_access)
-            {
-            case 1:
-                __outbytestring(port, reinterpret_cast<UCHAR*>(address), count);
-                break;
-            case 2:
-                __outwordstring(port, reinterpret_cast<USHORT*>(address), count);
-                break;
-            case 4:
-                __outdwordstring(port, reinterpret_cast<ULONG*>(address), count);
-                break;
-            }
-        } else {// OUT
-            switch (size_of_access)
-            {
-            case 1:
-                __outbyte(port, *reinterpret_cast<UCHAR*>(address));
-                break;
-            case 2:
-                __outword(port, *reinterpret_cast<USHORT*>(address));
-                break;
-            case 4:
-                __outdword(port, *reinterpret_cast<ULONG*>(address));
-                break;
-            }
-        }
-    }
-    // clang-format on
-
-    __writecr3(vmm_cr3);
-}
-
-
-// MOV to / from CRx
-static void VmmpHandleCrAccess(GuestContext *guest_context)
+static void VmmpHandleCrAccess(GuestContext *guest_context)// MOV to / from CRx
 {
     MovCrQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     PULONG_PTR register_used = VmmpSelectRegister(exit_qualification.fields.gp_register, guest_context);
@@ -812,8 +789,7 @@ static void VmmpHandleCrAccess(GuestContext *guest_context)
 }
 
 
-static void VmmpHandleVmx(GuestContext *guest_context)
-// VMX instructions except for VMCALL
+static void VmmpHandleVmx(GuestContext *guest_context)// VMX instructions except for VMCALL
 {
     // See: CONVENTIONS
     guest_context->flag_reg.fields.cf = true;  // Error without status
@@ -827,224 +803,7 @@ static void VmmpHandleVmx(GuestContext *guest_context)
 }
 
 
-// VMCALL
-static void VmmpHandleVmCall(GuestContext *guest_context)
-{
-    // VMCALL convention for HyperPlatform:
-    //  ecx: hyper-call number (always 32bit)
-    //  edx: arbitrary context parameter (pointer size)
-    // Any unsuccessful VMCALL will inject #UD into a guest
-    HypercallNumber hypercall_number = static_cast<HypercallNumber>(guest_context->gp_regs->cx);
-    void * context = reinterpret_cast<void *>(guest_context->gp_regs->dx);
-
-    switch (hypercall_number)
-    {
-    case HypercallNumber::kTerminateVmm:// Unloading requested. This VMCALL is allowed to execute only from CPL=0
-        if (VmmpGetGuestCpl() == 0) {
-            VmmpHandleVmCallTermination(guest_context, context);
-        } else {
-            VmmpIndicateUnsuccessfulVmcall(guest_context);
-        }
-        break;
-    case HypercallNumber::kPingVmm:// Sample VMCALL handler
-        VmmpIndicateSuccessfulVmcall(guest_context);
-        break;
-    case HypercallNumber::kGetSharedProcessorData:
-        *reinterpret_cast<void **>(context) = guest_context->stack->processor_data->shared_data;
-        VmmpIndicateSuccessfulVmcall(guest_context);
-        break;
-    default:// Unsupported hypercall
-        VmmpIndicateUnsuccessfulVmcall(guest_context);
-    }
-}
-
-
-// INVD
-static void VmmpHandleInvalidateInternalCaches(GuestContext *guest_context)
-{
-    AsmInvalidateInternalCaches();
-    VmmpAdjustGuestInstructionPointer(guest_context);
-}
-
-
-// INVLPG
-static void VmmpHandleInvalidateTlbEntry(GuestContext *guest_context)
-{
-    void * invalidate_address = reinterpret_cast<void *>(UtilVmRead(VmcsField::kExitQualification));
-    __invlpg(invalidate_address);
-    UtilInvvpidIndividualAddress(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1), invalidate_address);//NTDDI_VERSION >= NTDDI_WIN7
-    VmmpAdjustGuestInstructionPointer(guest_context);
-}
-
-
-static void VmmpHandleEptViolation(GuestContext *guest_context)
-// EXIT_REASON_EPT_VIOLATION
-{
-    ProcessorData * processor_data = guest_context->stack->processor_data;
-    EptHandleEptViolation(processor_data->ept_data);
-}
-
-
-static void VmmpHandleEptMisconfig(GuestContext *guest_context)
-// EXIT_REASON_EPT_MISCONFIG
-{
-    UNREFERENCED_PARAMETER(guest_context);
-
-    ULONG_PTR fault_address = UtilVmRead(VmcsField::kGuestPhysicalAddress);
-    EptCommonEntry * ept_pt_entry = EptGetEptPtEntry(guest_context->stack->processor_data->ept_data, fault_address);
-    __debugbreak();
-}
-
-
-static ULONG_PTR *VmmpSelectRegister(ULONG index, GuestContext *guest_context)
-// Selects a register to be used based on the index
-{
-    ULONG_PTR *register_used = nullptr;
-    // clang-format off
-    switch (index) 
-    {
-    case 0:
-        register_used = &guest_context->gp_regs->ax;
-        break;
-    case 1:
-        register_used = &guest_context->gp_regs->cx;
-        break;
-    case 2:
-        register_used = &guest_context->gp_regs->dx;
-        break;
-    case 3:
-        register_used = &guest_context->gp_regs->bx;
-        break;
-    case 4:
-        register_used = &guest_context->gp_regs->sp;
-        break;
-    case 5:
-        register_used = &guest_context->gp_regs->bp;
-        break;
-    case 6:
-        register_used = &guest_context->gp_regs->si;
-        break;
-    case 7:
-        register_used = &guest_context->gp_regs->di;
-        break;
-    case 8:
-        register_used = &guest_context->gp_regs->r8;
-        break;
-    case 9:
-        register_used = &guest_context->gp_regs->r9;
-        break;
-    case 10:
-        register_used = &guest_context->gp_regs->r10;
-        break;
-    case 11:
-        register_used = &guest_context->gp_regs->r11;
-        break;
-    case 12:
-        register_used = &guest_context->gp_regs->r12;
-        break;
-    case 13:
-        register_used = &guest_context->gp_regs->r13;
-        break;
-    case 14:
-        register_used = &guest_context->gp_regs->r14;
-        break;
-    case 15:
-        register_used = &guest_context->gp_regs->r15;
-        break;
-    default:
-        KdBreakPoint();
-        break;
-    }
-
-    return register_used;// clang-format on
-}
-
-
-static void VmmpDumpGuestState() 
-// Dumps guest state VMCS fields
-{
-  // clang-format off
-    LOG_DEBUG_SAFE("Guest EsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestEsSelector));
-    LOG_DEBUG_SAFE("Guest CsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestCsSelector));
-    LOG_DEBUG_SAFE("Guest SsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestSsSelector));
-    LOG_DEBUG_SAFE("Guest DsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestDsSelector));
-    LOG_DEBUG_SAFE("Guest FsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestFsSelector));
-    LOG_DEBUG_SAFE("Guest GsSelector   = %016Ix", UtilVmRead(VmcsField::kGuestGsSelector));
-    LOG_DEBUG_SAFE("Guest LdtrSelector = %016Ix", UtilVmRead(VmcsField::kGuestLdtrSelector));
-    LOG_DEBUG_SAFE("Guest TrSelector   = %016Ix", UtilVmRead(VmcsField::kGuestTrSelector));
-
-    LOG_DEBUG_SAFE("Guest Ia32Debugctl = %016llx", UtilVmRead(VmcsField::kGuestIa32Debugctl));
-
-    LOG_DEBUG_SAFE("Guest EsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestEsLimit));
-    LOG_DEBUG_SAFE("Guest CsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestCsLimit));
-    LOG_DEBUG_SAFE("Guest SsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestSsLimit));
-    LOG_DEBUG_SAFE("Guest DsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestDsLimit));
-    LOG_DEBUG_SAFE("Guest FsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestFsLimit));
-    LOG_DEBUG_SAFE("Guest GsLimit      = %016Ix", UtilVmRead(VmcsField::kGuestGsLimit));
-    LOG_DEBUG_SAFE("Guest LdtrLimit    = %016Ix", UtilVmRead(VmcsField::kGuestLdtrLimit));
-    LOG_DEBUG_SAFE("Guest TrLimit      = %016Ix", UtilVmRead(VmcsField::kGuestTrLimit));
-    LOG_DEBUG_SAFE("Guest GdtrLimit    = %016Ix", UtilVmRead(VmcsField::kGuestGdtrLimit));
-    LOG_DEBUG_SAFE("Guest IdtrLimit    = %016Ix", UtilVmRead(VmcsField::kGuestIdtrLimit));
-    LOG_DEBUG_SAFE("Guest EsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestEsArBytes));
-    LOG_DEBUG_SAFE("Guest CsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestCsArBytes));
-    LOG_DEBUG_SAFE("Guest SsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestSsArBytes));
-    LOG_DEBUG_SAFE("Guest DsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestDsArBytes));
-    LOG_DEBUG_SAFE("Guest FsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestFsArBytes));
-    LOG_DEBUG_SAFE("Guest GsArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestGsArBytes));
-    LOG_DEBUG_SAFE("Guest LdtrArBytes  = %016Ix", UtilVmRead(VmcsField::kGuestLdtrArBytes));
-    LOG_DEBUG_SAFE("Guest TrArBytes    = %016Ix", UtilVmRead(VmcsField::kGuestTrArBytes));
-    LOG_DEBUG_SAFE("Guest SysenterCs   = %016Ix", UtilVmRead(VmcsField::kGuestSysenterCs));
-
-    LOG_DEBUG_SAFE("Guest Cr0          = %016Ix", UtilVmRead(VmcsField::kGuestCr0));
-    LOG_DEBUG_SAFE("Guest Cr3          = %016Ix", UtilVmRead(VmcsField::kGuestCr3));
-    LOG_DEBUG_SAFE("Guest Cr4          = %016Ix", UtilVmRead(VmcsField::kGuestCr4));
-
-    LOG_DEBUG_SAFE("Guest EsBase       = %016Ix", UtilVmRead(VmcsField::kGuestEsBase));
-    LOG_DEBUG_SAFE("Guest CsBase       = %016Ix", UtilVmRead(VmcsField::kGuestCsBase));
-    LOG_DEBUG_SAFE("Guest SsBase       = %016Ix", UtilVmRead(VmcsField::kGuestSsBase));
-    LOG_DEBUG_SAFE("Guest DsBase       = %016Ix", UtilVmRead(VmcsField::kGuestDsBase));
-    LOG_DEBUG_SAFE("Guest FsBase       = %016Ix", UtilVmRead(VmcsField::kGuestFsBase));
-    LOG_DEBUG_SAFE("Guest GsBase       = %016Ix", UtilVmRead(VmcsField::kGuestGsBase));
-
-    LOG_DEBUG_SAFE("Guest LdtrBase     = %016Ix", UtilVmRead(VmcsField::kGuestLdtrBase));
-    LOG_DEBUG_SAFE("Guest TrBase       = %016Ix", UtilVmRead(VmcsField::kGuestTrBase));
-    LOG_DEBUG_SAFE("Guest GdtrBase     = %016Ix", UtilVmRead(VmcsField::kGuestGdtrBase));
-    LOG_DEBUG_SAFE("Guest IdtrBase     = %016Ix", UtilVmRead(VmcsField::kGuestIdtrBase));
-    LOG_DEBUG_SAFE("Guest Dr7          = %016Ix", UtilVmRead(VmcsField::kGuestDr7));
-    LOG_DEBUG_SAFE("Guest Rsp          = %016Ix", UtilVmRead(VmcsField::kGuestRsp));
-    LOG_DEBUG_SAFE("Guest Rip          = %016Ix", UtilVmRead(VmcsField::kGuestRip));
-    LOG_DEBUG_SAFE("Guest Rflags       = %016Ix", UtilVmRead(VmcsField::kGuestRflags));
-    LOG_DEBUG_SAFE("Guest SysenterEsp  = %016Ix", UtilVmRead(VmcsField::kGuestSysenterEsp));
-    LOG_DEBUG_SAFE("Guest SysenterEip  = %016Ix", UtilVmRead(VmcsField::kGuestSysenterEip));
-  // clang-format on
-}
-
-
-static void VmmpAdjustGuestInstructionPointer(GuestContext *guest_context)
-// Advances guest's IP to the next instruction
-{
-    ULONG_PTR exit_inst_length = UtilVmRead(VmcsField::kVmExitInstructionLen);
-    UtilVmWrite(VmcsField::kGuestRip, guest_context->ip + exit_inst_length);
-    
-    if (guest_context->flag_reg.fields.tf) {// Inject #DB if TF is set
-        VmmpInjectInterruption(InterruptionType::kHardwareException, InterruptionVector::kDebugException, false, 0);
-        UtilVmWrite(VmcsField::kVmEntryInstructionLen, exit_inst_length);
-    }
-}
-
-
-void __stdcall VmmVmxFailureHandler(AllRegisters *all_regs)
-// Handle VMRESUME or VMXOFF failure. Fatal error.
-{
-    //ULONG_PTR guest_ip = UtilVmRead(VmcsField::kGuestRip);
-    // See: VM-Instruction Error Numbers
-    ULONG_PTR vmx_error = (all_regs->flags.fields.zf) ? UtilVmRead(VmcsField::kVmInstructionError) : 0;
-    __debugbreak();
-}
-
-
-static void VmmpIndicateSuccessfulVmcall(GuestContext *guest_context)
-// Indicates successful VMCALL
+static void VmmpIndicateSuccessfulVmcall(GuestContext *guest_context)// Indicates successful VMCALL
 {
     // See: CONVENTIONS
     guest_context->flag_reg.fields.cf = false;
@@ -1060,8 +819,7 @@ static void VmmpIndicateSuccessfulVmcall(GuestContext *guest_context)
 }
 
 
-// Indicates unsuccessful VMCALL
-static void VmmpIndicateUnsuccessfulVmcall(GuestContext *guest_context)
+static void VmmpIndicateUnsuccessfulVmcall(GuestContext *guest_context)// Indicates unsuccessful VMCALL
 {
     UNREFERENCED_PARAMETER(guest_context);
 
@@ -1070,13 +828,12 @@ static void VmmpIndicateUnsuccessfulVmcall(GuestContext *guest_context)
 }
 
 
-static void VmmpHandleVmCallTermination(GuestContext *guest_context, void *context)
-// Handles an unloading request
+static void VmmpHandleVmCallTermination(GuestContext *guest_context, void *context)// Handles an unloading request
 {
-  // The processor sets ffff to limits of IDT and GDT when VM-exit occurred.
-  // It is not correct value but fine to ignore since vmresume loads correct values from VMCS.
-  // But here, we are going to skip vmresume and simply return to where VMCALL is executed.
-  // It results in keeping those broken values and ends up with bug check 109, so we should fix them manually.
+    // The processor sets ffff to limits of IDT and GDT when VM-exit occurred.
+    // It is not correct value but fine to ignore since vmresume loads correct values from VMCS.
+    // But here, we are going to skip vmresume and simply return to where VMCALL is executed.
+    // It results in keeping those broken values and ends up with bug check 109, so we should fix them manually.
     ULONG_PTR gdt_limit = UtilVmRead(VmcsField::kGuestGdtrLimit);
     ULONG_PTR gdt_base = UtilVmRead(VmcsField::kGuestGdtrBase);
     ULONG_PTR idt_limit = UtilVmRead(VmcsField::kGuestIdtrLimit);
@@ -1114,27 +871,218 @@ static void VmmpHandleVmCallTermination(GuestContext *guest_context, void *conte
 }
 
 
-static UCHAR VmmpGetGuestCpl()
-// Returns guest's CPL
+static UCHAR VmmpGetGuestCpl()// Returns guest's CPL
 {
     VmxRegmentDescriptorAccessRight ar = { static_cast<unsigned int>(UtilVmRead(VmcsField::kGuestSsArBytes)) };
     return ar.fields.dpl;
 }
 
 
-// Injects interruption to a guest
-static void VmmpInjectInterruption(InterruptionType interruption_type, InterruptionVector vector, bool deliver_error_code, ULONG32 error_code)
+static void VmmpHandleVmCall(GuestContext *guest_context)// VMCALL
 {
-    VmEntryInterruptionInformationField inject = {};
-    inject.fields.valid = true;
-    inject.fields.interruption_type = static_cast<ULONG32>(interruption_type);
-    inject.fields.vector = static_cast<ULONG32>(vector);
-    inject.fields.deliver_error_code = deliver_error_code;
-    UtilVmWrite(VmcsField::kVmEntryIntrInfoField, inject.all);
+    // VMCALL convention for HyperPlatform:
+    //  ecx: hyper-call number (always 32bit)
+    //  edx: arbitrary context parameter (pointer size)
+    // Any unsuccessful VMCALL will inject #UD into a guest
+    HypercallNumber hypercall_number = static_cast<HypercallNumber>(guest_context->gp_regs->cx);
+    void * context = reinterpret_cast<void *>(guest_context->gp_regs->dx);
 
-    if (deliver_error_code) {
-        UtilVmWrite(VmcsField::kVmEntryExceptionErrorCode, error_code);
+    switch (hypercall_number)
+    {
+    case HypercallNumber::kTerminateVmm:// Unloading requested. This VMCALL is allowed to execute only from CPL=0
+        if (VmmpGetGuestCpl() == 0) {
+            VmmpHandleVmCallTermination(guest_context, context);
+        } else {
+            VmmpIndicateUnsuccessfulVmcall(guest_context);
+        }
+        break;
+    case HypercallNumber::kPingVmm:// Sample VMCALL handler
+        VmmpIndicateSuccessfulVmcall(guest_context);
+        break;
+    case HypercallNumber::kGetSharedProcessorData:
+        *reinterpret_cast<void **>(context) = guest_context->stack->processor_data->shared_data;
+        VmmpIndicateSuccessfulVmcall(guest_context);
+        break;
+    default:// Unsupported hypercall
+        VmmpIndicateUnsuccessfulVmcall(guest_context);
     }
 }
+
+
+static void VmmpHandleInvalidateInternalCaches(GuestContext *guest_context)// INVD
+{
+    AsmInvalidateInternalCaches();
+    VmmpAdjustGuestInstructionPointer(guest_context);
+}
+
+
+static void VmmpHandleInvalidateTlbEntry(GuestContext *guest_context)// INVLPG
+{
+    void * invalidate_address = reinterpret_cast<void *>(UtilVmRead(VmcsField::kExitQualification));
+    __invlpg(invalidate_address);
+    UtilInvvpidIndividualAddress(static_cast<USHORT>(KeGetCurrentProcessorNumberEx(nullptr) + 1), invalidate_address);//NTDDI_VERSION >= NTDDI_WIN7
+    VmmpAdjustGuestInstructionPointer(guest_context);
+}
+
+
+static void VmmpHandleEptViolation(GuestContext *guest_context)// EXIT_REASON_EPT_VIOLATION
+{
+    ProcessorData * processor_data = guest_context->stack->processor_data;
+    EptHandleEptViolation(processor_data->ept_data);
+}
+
+
+static void VmmpHandleEptMisconfig(GuestContext *guest_context)// EXIT_REASON_EPT_MISCONFIG
+{
+    UNREFERENCED_PARAMETER(guest_context);
+
+    ULONG_PTR fault_address = UtilVmRead(VmcsField::kGuestPhysicalAddress);
+    EptCommonEntry * ept_pt_entry = EptGetEptPtEntry(guest_context->stack->processor_data->ept_data, fault_address);
+    __debugbreak();
+}
+
+
+static void VmmpHandleTripleFault(GuestContext *guest_context)// Triple fault VM-exit. Fatal error.
+{
+    UNREFERENCED_PARAMETER(guest_context);
+
+    VmmpDumpGuestState();
+    __debugbreak();
+}
+
+
+static void VmmpHandleVmExit(GuestContext *guest_context)// Dispatches VM-exit to a corresponding handler
+{
+    const VmExitInformation exit_reason = { static_cast<ULONG32>(UtilVmRead(VmcsField::kVmExitReason)) };
+
+    switch (exit_reason.fields.reason)
+    {
+    case VmxExitReason::kExceptionOrNmi:
+        VmmpHandleException(guest_context);
+        break;
+    case VmxExitReason::kTripleFault:
+        VmmpHandleTripleFault(guest_context);
+        break;
+    case VmxExitReason::kCpuid:
+        VmmpHandleCpuid(guest_context);
+        break;
+    case VmxExitReason::kInvd:
+        VmmpHandleInvalidateInternalCaches(guest_context);
+        break;
+    case VmxExitReason::kInvlpg:
+        VmmpHandleInvalidateTlbEntry(guest_context);
+        break;
+    case VmxExitReason::kRdtsc:
+        VmmpHandleRdtsc(guest_context);
+        break;
+    case VmxExitReason::kCrAccess:
+        VmmpHandleCrAccess(guest_context);
+        break;
+    case VmxExitReason::kDrAccess:
+        VmmpHandleDrAccess(guest_context);
+        break;
+    case VmxExitReason::kIoInstruction:
+        VmmpHandleIoPort(guest_context);
+        break;
+    case VmxExitReason::kMsrRead:
+        VmmpHandleMsrReadAccess(guest_context);
+        break;
+    case VmxExitReason::kMsrWrite:
+        VmmpHandleMsrWriteAccess(guest_context);
+        break;
+    case VmxExitReason::kMonitorTrapFlag:
+        VmmpHandleMonitorTrap(guest_context);
+        break;
+    case VmxExitReason::kGdtrOrIdtrAccess:
+        VmmpHandleGdtrOrIdtrAccess(guest_context);
+        break;
+    case VmxExitReason::kLdtrOrTrAccess:
+        VmmpHandleLdtrOrTrAccess(guest_context);
+        break;
+    case VmxExitReason::kEptViolation:
+        VmmpHandleEptViolation(guest_context);
+        break;
+    case VmxExitReason::kEptMisconfig:
+        VmmpHandleEptMisconfig(guest_context);
+        break;
+    case VmxExitReason::kVmcall:
+        VmmpHandleVmCall(guest_context);
+        break;
+    case VmxExitReason::kVmclear:
+    case VmxExitReason::kVmlaunch:
+    case VmxExitReason::kVmptrld:
+    case VmxExitReason::kVmptrst:
+    case VmxExitReason::kVmread:
+    case VmxExitReason::kVmresume:
+    case VmxExitReason::kVmwrite:
+    case VmxExitReason::kVmoff:
+    case VmxExitReason::kVmon:
+        VmmpHandleVmx(guest_context);
+        break;
+    case VmxExitReason::kRdtscp:
+        VmmpHandleRdtscp(guest_context);
+        break;
+    case VmxExitReason::kXsetbv:
+        VmmpHandleXsetbv(guest_context);
+        break;
+    default:
+        VmmpHandleUnexpectedExit(guest_context);
+        break;
+    }
+}
+
+
+//以上是私有的函数。
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//一下是导出的函数。
+
+
+void __stdcall VmmVmxFailureHandler(AllRegisters *all_regs)
+/*
+被汇编函数：AsmVmmEntryPoint调用。
+Handle VMRESUME or VMXOFF failure. Fatal error.
+*/
+{
+    //ULONG_PTR guest_ip = UtilVmRead(VmcsField::kGuestRip);
+    // See: VM-Instruction Error Numbers
+    ULONG_PTR vmx_error = (all_regs->flags.fields.zf) ? UtilVmRead(VmcsField::kVmInstructionError) : 0;
+    __debugbreak();
+}
+
+
+#pragma warning(push)
+#pragma warning(disable : 28167)
+bool __stdcall VmmVmExitHandler(VmmInitialStack *stack) 
+//被汇编函数AsmVmmEntryPoint调用。
+// A high level VMX handler called from AsmVmExitHandler().
+// Return true for vmresume, or return false for vmxoff.
+{
+    // Save guest's context and raise IRQL as quick as possible
+    KIRQL guest_irql = KeGetCurrentIrql();
+    ULONG64 guest_cr8 = __readcr8();
+    if (guest_irql < DISPATCH_LEVEL) {
+        KeRaiseIrqlToDpcLevel();
+    }
+    NT_ASSERT(stack->reserved == MAXULONG_PTR);
+
+    // Capture the current guest state
+    GuestContext guest_context = { stack, UtilVmRead(VmcsField::kGuestRflags), UtilVmRead(VmcsField::kGuestRip), guest_cr8, guest_irql, true };
+    guest_context.gp_regs->sp = UtilVmRead(VmcsField::kGuestRsp);
+    VmmpHandleVmExit(&guest_context);// Dispatch the current VM-exit event
+
+    if (!guest_context.vm_continue) {// See: Guidelines for Use of the INVVPID Instruction, and Guidelines for Use of the INVEPT Instruction
+        UtilInveptGlobal();
+        UtilInvvpidAllContext();
+    }
+
+    if (guest_context.irql < DISPATCH_LEVEL) {// Restore guest's context
+        KeLowerIrql(guest_context.irql);
+    }
+
+    __writecr8(guest_context.cr8);
+
+    return guest_context.vm_continue;
+}
+#pragma warning(pop)
 
 }

@@ -98,11 +98,8 @@ static NTSTATUS LogpInitializeBufferInfo(const wchar_t *log_file_path, LogBuffer
     }
     info->resource_initialized = true;
     
-    info->log_buffer1 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG));// Allocate two log buffers on NonPagedPoolNx.
-    ASSERT(info->log_buffer1);
-
-    info->log_buffer2 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG));
-    ASSERT(info->log_buffer2);
+    info->log_buffer1 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG)); ASSERT(info->log_buffer1);
+    info->log_buffer2 = reinterpret_cast<char *>(ExAllocatePoolWithTag(NonPagedPoolNx, kLogpBufferSize, TAG)); ASSERT(info->log_buffer2);
 
     // Initialize these buffers
     RtlFillMemory(info->log_buffer1, kLogpBufferSize, 0xff);  // for diagnostic
@@ -225,8 +222,7 @@ static void LogpFinalizeBufferInfo(LogBufferInfo *info)
     // Closing the log buffer flush thread.
     if (info->buffer_flush_thread_handle) {
         info->buffer_flush_thread_should_be_alive = false;
-        NTSTATUS status = ZwWaitForSingleObject(info->buffer_flush_thread_handle, FALSE, nullptr);
-        ASSERT(NT_SUCCESS(status));
+        NTSTATUS status = ZwWaitForSingleObject(info->buffer_flush_thread_handle, FALSE, nullptr); ASSERT(NT_SUCCESS(status));
         ZwClose(info->buffer_flush_thread_handle);
         info->buffer_flush_thread_handle = nullptr;
     }
@@ -287,8 +283,7 @@ NTSTATUS LogpPrint(ULONG level, const char *function_name, const char *format, .
         return status;
     }
 
-    status = LogpPut(message, attribute);
-    ASSERT(NT_SUCCESS(status));
+    status = LogpPut(message, attribute); ASSERT(NT_SUCCESS(status));
     return status;
 }
 
@@ -451,8 +446,7 @@ static NTSTATUS LogpFlushLogBuffer(LogBufferInfo *info)
         LogpSetPrintedBit(current_log_entry, false);
 
         size_t current_log_entry_length = strlen(current_log_entry);
-        status = ZwWriteFile(info->log_file_handle, nullptr, nullptr, nullptr, &io_status, current_log_entry, static_cast<ULONG>(current_log_entry_length), nullptr, nullptr);
-        ASSERT (NT_SUCCESS(status));
+        status = ZwWriteFile(info->log_file_handle, nullptr, nullptr, nullptr, &io_status, current_log_entry, static_cast<ULONG>(current_log_entry_length), nullptr, nullptr); ASSERT (NT_SUCCESS(status));
         
         if (!printed_out) {// Print it out if requested and the message is not already printed out
             LogpDoDbgPrint(current_log_entry);
@@ -473,8 +467,7 @@ static NTSTATUS LogpWriteMessageToFile(const char *message, const LogBufferInfo 
     NT_ASSERT(KeGetCurrentIrql() == PASSIVE_LEVEL);
 
     IO_STATUS_BLOCK io_status = {};
-    NTSTATUS status = ZwWriteFile(info.log_file_handle, nullptr, nullptr, nullptr, &io_status, const_cast<char *>(message), static_cast<ULONG>(strlen(message)), nullptr, nullptr);
-    ASSERT (NT_SUCCESS(status));
+    NTSTATUS status = ZwWriteFile(info.log_file_handle, nullptr, nullptr, nullptr, &io_status, const_cast<char *>(message), static_cast<ULONG>(strlen(message)), nullptr, nullptr); ASSERT (NT_SUCCESS(status));
     status = ZwFlushBuffersFile(info.log_file_handle, &io_status);
     return status;
 }

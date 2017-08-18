@@ -79,8 +79,7 @@ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemoryRanges()
     }
 
     SIZE_T memory_block_size = sizeof(PhysicalMemoryDescriptor) + sizeof(PhysicalMemoryRun) * (number_of_runs - 1);
-    PhysicalMemoryDescriptor * pm_block = reinterpret_cast<PhysicalMemoryDescriptor *>(ExAllocatePoolWithTag(NonPagedPoolNx, memory_block_size, TAG));
-    ASSERT(pm_block);
+    PhysicalMemoryDescriptor * pm_block = reinterpret_cast<PhysicalMemoryDescriptor *>(ExAllocatePoolWithTag(NonPagedPoolNx, memory_block_size, TAG)); ASSERT(pm_block);
     RtlZeroMemory(pm_block, memory_block_size);
     pm_block->number_of_runs = number_of_runs;
     pm_block->number_of_pages = number_of_pages;
@@ -130,30 +129,26 @@ NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine)(void *), void *contex
 }
 
 
-// VA -> PA
-ULONG64 UtilPaFromVa(void *va)
+ULONG64 UtilPaFromVa(void *va)// VA -> PA
 {
     PHYSICAL_ADDRESS pa = MmGetPhysicalAddress(va);
     return pa.QuadPart;
 }
 
 
-// VA -> PFN
-PFN_NUMBER UtilPfnFromVa(void *va)
+PFN_NUMBER UtilPfnFromVa(void *va)// VA -> PFN
 {
     return UtilPfnFromPa(UtilPaFromVa(va));
 }
 
 
-// PA -> PFN
-PFN_NUMBER UtilPfnFromPa(ULONG64 pa)
+PFN_NUMBER UtilPfnFromPa(ULONG64 pa)// PA -> PFN
 {
     return static_cast<PFN_NUMBER>(pa >> PAGE_SHIFT);
 }
 
 
-// PA -> VA
-void *UtilVaFromPa(ULONG64 pa)
+void *UtilVaFromPa(ULONG64 pa)// PA -> VA
 {
     PHYSICAL_ADDRESS pa2 = {};
     pa2.QuadPart = pa;
@@ -161,15 +156,13 @@ void *UtilVaFromPa(ULONG64 pa)
 }
 
 
-// PNF -> PA
-ULONG64 UtilPaFromPfn(PFN_NUMBER pfn)
+ULONG64 UtilPaFromPfn(PFN_NUMBER pfn)// PNF -> PA
 {
     return pfn << PAGE_SHIFT;
 }
 
 
-// PFN -> VA
-void *UtilVaFromPfn(PFN_NUMBER pfn)
+void *UtilVaFromPfn(PFN_NUMBER pfn)// PFN -> VA
 {
     return UtilVaFromPa(UtilPaFromPfn(pfn));
 }
@@ -230,8 +223,7 @@ ULONG_PTR UtilVmRead(VmcsField field)
 // Reads natural-width VMCS
 {
     size_t field_value = 0;
-    VmxStatus vmx_status = static_cast<VmxStatus>(__vmx_vmread(static_cast<size_t>(field), &field_value));
-    ASSERT(vmx_status == VmxStatus::kOk);
+    VmxStatus vmx_status = static_cast<VmxStatus>(__vmx_vmread(static_cast<size_t>(field), &field_value)); ASSERT(vmx_status == VmxStatus::kOk);
     return field_value;
 }
 

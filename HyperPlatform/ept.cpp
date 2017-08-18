@@ -9,14 +9,6 @@
 
 extern "C"
 {
-// Followings are how 64bits of a physical address is used to locate EPT entries:
-//
-// EPT Page map level 4 selector           9 bits
-// EPT Page directory pointer selector     9 bits
-// EPT Page directory selector             9 bits
-// EPT Page table selector                 9 bits
-// EPT Byte within page                   12 bits
-
 const auto kEptpNumberOfPreallocatedEntries = 50;// How many EPT entries are preallocated. When the number exceeds it, the hypervisor issues a bugcheck.
 const auto kEptpNumOfMaxVariableRangeMtrrs = 255;// Architecture defined number of variable range MTRRs
 const auto kEptpNumOfFixedRangeMtrrs = 1 + 2 + 8;// Architecture defined number of fixed range MTRRs (1 for 64k, 2 for 16k, 8 for 4k)
@@ -32,36 +24,31 @@ MtrrData g_eptp_mtrr_entries[kEptpMtrrEntriesSize];
 UCHAR g_eptp_mtrr_default_type;
 
 
-static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)
-// Return an address of PXE
+static ULONG64 EptpAddressToPxeIndex(ULONG64 physical_address)// Return an address of PXE
 {
     return (physical_address >> 39ull) & 0x1ffull;
 }
 
 
-static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)
-// Return an address of PPE
+static ULONG64 EptpAddressToPpeIndex(ULONG64 physical_address)// Return an address of PPE
 {
     return (physical_address >> 30ull) & 0x1ffull;
 }
 
 
-static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)
-// Return an address of PDE
+static ULONG64 EptpAddressToPdeIndex(ULONG64 physical_address)// Return an address of PDE
 {
     return (physical_address >> 21ull) & 0x1ffull;
 }
 
 
-static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)
-// Return an address of PTE
+static ULONG64 EptpAddressToPteIndex(ULONG64 physical_address)// Return an address of PTE
 {
     return (physical_address >> 12ull) & 0x1ffull;
 }
 
 
-static memory_type EptpGetMemoryType(ULONG64 physical_address)
-// Returns a memory type based on MTRRs
+static memory_type EptpGetMemoryType(ULONG64 physical_address)// Returns a memory type based on MTRRs
 {
     UCHAR result_type = MAXUCHAR;// Indicate that MTRR is not defined (as a default)
     
@@ -106,25 +93,20 @@ static memory_type EptpGetMemoryType(ULONG64 physical_address)
 }
 
 
-static EptCommonEntry *EptpAllocateEptEntryFromPool()
-// Return a new EPT entry either by creating new one
+static EptCommonEntry *EptpAllocateEptEntryFromPool()// Return a new EPT entry either by creating new one
 {
     const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
     static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
-    EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG));
-    ASSERT(entry);
+    EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG)); ASSERT(entry);
     RtlZeroMemory(entry, kAllocSize);
     return entry;
 }
 
 
-static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)
-// Return a new EPT entry from pre-allocated ones.
+static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)// Return a new EPT entry from pre-allocated ones.
 {
-    LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count);
-    ASSERT(count <= kEptpNumberOfPreallocatedEntries);
-
+    LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count); ASSERT(count <= kEptpNumberOfPreallocatedEntries);
     return ept_data->preallocated_entries[count - 1];
 }
 
@@ -163,8 +145,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
         ULONG64 pxe_index = EptpAddressToPxeIndex(physical_address);
         EptCommonEntry * ept_pml4_entry = &table[pxe_index];
         if (!ept_pml4_entry->all) {
-            EptCommonEntry * ept_pdpt = EptpAllocateEptEntry(ept_data);
-            ASSERT(ept_pdpt);
+            EptCommonEntry * ept_pdpt = EptpAllocateEptEntry(ept_data); ASSERT(ept_pdpt);
             EptpInitTableEntry(ept_pml4_entry, table_level, UtilPaFromVa(ept_pdpt));
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pml4_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
@@ -174,8 +155,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
         ULONG64 ppe_index = EptpAddressToPpeIndex(physical_address);
         EptCommonEntry * ept_pdpt_entry = &table[ppe_index];
         if (!ept_pdpt_entry->all) {
-            EptCommonEntry * ept_pdt = EptpAllocateEptEntry(ept_data);
-            ASSERT(ept_pdt);
+            EptCommonEntry * ept_pdt = EptpAllocateEptEntry(ept_data); ASSERT(ept_pdt);
             EptpInitTableEntry(ept_pdpt_entry, table_level, UtilPaFromVa(ept_pdt));
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdpt_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
@@ -185,8 +165,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
         ULONG64 pde_index = EptpAddressToPdeIndex(physical_address);
         EptCommonEntry * ept_pdt_entry = &table[pde_index];
         if (!ept_pdt_entry->all) {
-            EptCommonEntry * ept_pt = EptpAllocateEptEntry(ept_data);
-            ASSERT(ept_pt);
+            EptCommonEntry * ept_pt = EptpAllocateEptEntry(ept_data); ASSERT(ept_pt);
             EptpInitTableEntry(ept_pdt_entry, table_level, UtilPaFromVa(ept_pt));
         }
         return EptpConstructTables(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdt_entry->fields.physial_address)), table_level - 1, physical_address, ept_data);
@@ -194,8 +173,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
     case 1:// table == PT (4 KB)
     {
         ULONG64 pte_index = EptpAddressToPteIndex(physical_address);
-        EptCommonEntry * ept_pt_entry = &table[pte_index];
-        NT_ASSERT(!ept_pt_entry->all);
+        EptCommonEntry * ept_pt_entry = &table[pte_index]; NT_ASSERT(!ept_pt_entry->all);
         EptpInitTableEntry(ept_pt_entry, table_level, physical_address);
         return ept_pt_entry;
     }
@@ -226,7 +204,7 @@ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address)
 // Returns an EPT entry corresponds to the physical_address
 {
-    if (!table) {
+    if (!table) {//有这个，下面的三个断言可去掉。
         return nullptr;
     }
 
@@ -234,35 +212,22 @@ static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_leve
     {
     case 4:// table == PML4
     {
-        ULONG64 pxe_index = EptpAddressToPxeIndex(physical_address);
-        EptCommonEntry * ept_pml4_entry = &table[pxe_index];
-        if (!ept_pml4_entry->all) {
-            return nullptr;
-        }
+        EptCommonEntry * ept_pml4_entry = &table[EptpAddressToPxeIndex(physical_address)]; //ASSERT(ept_pml4_entry->all);
         return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pml4_entry->fields.physial_address)), table_level - 1, physical_address);
     }
     case 3:// table == PDPT
     {
-        ULONG64 ppe_index = EptpAddressToPpeIndex(physical_address);
-        EptCommonEntry * ept_pdpt_entry = &table[ppe_index];
-        if (!ept_pdpt_entry->all) {
-            return nullptr;
-        }
+        EptCommonEntry * ept_pdpt_entry = &table[EptpAddressToPpeIndex(physical_address)]; //ASSERT(ept_pdpt_entry->all);
         return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdpt_entry->fields.physial_address)), table_level - 1, physical_address);
     }
     case 2:// table == PDT
     {
-        ULONG64 pde_index = EptpAddressToPdeIndex(physical_address);
-        EptCommonEntry * ept_pdt_entry = &table[pde_index];
-        if (!ept_pdt_entry->all) {
-            return nullptr;
-        }
+        EptCommonEntry * ept_pdt_entry = &table[EptpAddressToPdeIndex(physical_address)]; //ASSERT(ept_pdt_entry->all);
         return EptpGetEptPtEntry(reinterpret_cast<EptCommonEntry *>(UtilVaFromPfn(ept_pdt_entry->fields.physial_address)), table_level - 1, physical_address);
     }
     case 1:// table == PT
     {
-        ULONG64 pte_index = EptpAddressToPteIndex(physical_address);
-        EptCommonEntry * ept_pt_entry = &table[pte_index];
+        EptCommonEntry * ept_pt_entry = &table[EptpAddressToPteIndex(physical_address)];
         return ept_pt_entry;
     }
     default:
@@ -323,8 +288,7 @@ static void EptpDestructTables(EptCommonEntry *table, ULONG table_level)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-bool EptIsEptAvailable()
-// Checks if the system supports EPT technology sufficient enough
+bool EptIsEptAvailable()// Checks if the system supports EPT technology sufficient enough
 {
     PAGED_CODE();
 
@@ -352,15 +316,13 @@ bool EptIsEptAvailable()
 }
 
 
-ULONG64 EptGetEptPointer(EptData *ept_data)
-// Returns an EPT pointer from ept_data
+ULONG64 EptGetEptPointer(EptData *ept_data)// Returns an EPT pointer from ept_data
 {
     return ept_data->ept_pointer->all;
 }
 
 
-void EptInitializeMtrrEntries()
-// Reads and stores all MTRRs to set a correct memory type for EPT
+void EptInitializeMtrrEntries()// Reads and stores all MTRRs to set a correct memory type for EPT
 {
     PAGED_CODE();
 
@@ -456,8 +418,7 @@ void EptInitializeMtrrEntries()
 }
 
 
-void EptHandleEptViolation(EptData *ept_data)
-// Deal with EPT violation VM-exit.
+void EptHandleEptViolation(EptData *ept_data)// Deal with EPT violation VM-exit.
 {
     EptViolationQualification exit_qualification = { UtilVmRead(VmcsField::kExitQualification) };
     ULONG64 fault_pa = UtilVmRead(VmcsField::kGuestPhysicalAddress);
@@ -481,8 +442,7 @@ void EptHandleEptViolation(EptData *ept_data)
 }
 
 
-EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address)
-// Returns an EPT entry corresponds to the physical_address
+EptCommonEntry *EptGetEptPtEntry(EptData *ept_data, ULONG64 physical_address)// Returns an EPT entry corresponds to the physical_address
 {
     return EptpGetEptPtEntry(ept_data->ept_pml4, 4, physical_address);
 }
@@ -497,22 +457,18 @@ void EptTermination(EptData *ept_data)// Frees all EPT stuff
 }
 
 
-EptData *EptInitialization()
-// Builds EPT, allocates pre-allocated entires, initializes and returns EptData
+EptData *EptInitialization()// Builds EPT, allocates pre-allocated entires, initializes and returns EptData
 {
     PAGED_CODE();
 
-    EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG));// Allocate ept_data
-    ASSERT(ept_data);
+    EptData * ept_data = reinterpret_cast<EptData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(EptData), TAG)); ASSERT(ept_data);
     RtlZeroMemory(ept_data, sizeof(EptData));
 
-    EptPointer * ept_poiner = reinterpret_cast<EptPointer *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));// Allocate EptPointer
-    ASSERT(ept_poiner);
+    EptPointer * ept_poiner = reinterpret_cast<EptPointer *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG)); ASSERT(ept_poiner);
     RtlZeroMemory(ept_poiner, PAGE_SIZE);
 
     // Allocate EPT_PML4 and initialize EptPointer
-    EptCommonEntry * ept_pml4 = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG));
-    ASSERT(ept_pml4);
+    EptCommonEntry * ept_pml4 = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG)); ASSERT(ept_pml4);
     RtlZeroMemory(ept_pml4, PAGE_SIZE);
     ept_poiner->fields.memory_type = static_cast<ULONG64>(EptpGetMemoryType(UtilPaFromVa(ept_pml4)));
     ept_poiner->fields.page_walk_length = 3;
@@ -533,18 +489,13 @@ EptData *EptInitialization()
     EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr);
     
     SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
-    EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));// Allocate preallocated_entries
-    ASSERT(preallocated_entries);
+    EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG)); ASSERT(preallocated_entries);
     RtlZeroMemory(preallocated_entries, preallocated_entries_size);
-
-    // And fill preallocated_entries with newly created entries
     for (SIZE_T i = 0ul; i < kEptpNumberOfPreallocatedEntries; ++i)
     {
-        preallocated_entries[i] = EptpAllocateEptEntry(nullptr);
-        ASSERT(preallocated_entries[i]);
+        preallocated_entries[i] = EptpAllocateEptEntry(nullptr); ASSERT(preallocated_entries[i]);
     }
 
-    // Initialization completed
     ept_data->ept_pointer = ept_poiner;
     ept_data->ept_pml4 = ept_pml4;
     ept_data->preallocated_entries = preallocated_entries;

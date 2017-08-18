@@ -16,11 +16,7 @@
 
 extern "C"
 {
-_IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpIsVmxAvailable();
 _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS VmpSetLockBitCallback(_In_opt_ void *context);
-_IRQL_requires_max_(PASSIVE_LEVEL) static SharedProcessorData *InitializeSharedData();
-_IRQL_requires_max_(PASSIVE_LEVEL) static void *BuildMsrBitmap();
-_IRQL_requires_max_(PASSIVE_LEVEL) static UCHAR *BuildIoBitmaps();
 _IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS VmpStartVm(_In_opt_ void *context);
 _IRQL_requires_max_(PASSIVE_LEVEL) static void VmpInitializeVm(_In_ ULONG_PTR guest_stack_pointer, _In_ ULONG_PTR guest_instruction_pointer, _In_opt_ void *context);
 _IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpEnterVmxMode(_Inout_ ProcessorData *processor_data);
@@ -41,11 +37,7 @@ _IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpIsHyperPlatformInstalled();
 #if defined(ALLOC_PRAGMA)
 #pragma alloc_text(PAGE, VmInitialization)
 #pragma alloc_text(PAGE, VmTermination)
-#pragma alloc_text(PAGE, VmpIsVmxAvailable)
 #pragma alloc_text(PAGE, VmpSetLockBitCallback)
-#pragma alloc_text(PAGE, InitializeSharedData)
-#pragma alloc_text(PAGE, BuildMsrBitmap)
-#pragma alloc_text(PAGE, BuildIoBitmaps)
 #pragma alloc_text(PAGE, VmpStartVm)
 #pragma alloc_text(PAGE, VmpInitializeVm)
 #pragma alloc_text(PAGE, VmpEnterVmxMode)
@@ -111,8 +103,7 @@ static bool VmpIsVmxAvailable()
 }
 
 
-static NTSTATUS VmpSetLockBitCallback(void *context)
-// Sets 1 to the lock bit of the IA32_FEATURE_CONTROL MSR
+static NTSTATUS VmpSetLockBitCallback(void *context)// Sets 1 to the lock bit of the IA32_FEATURE_CONTROL MSR
 {
     UNREFERENCED_PARAMETER(context);
     PAGED_CODE();
@@ -137,8 +128,7 @@ static void * BuildMsrBitmap()// Build MSR bitmap
 {
     PAGED_CODE();
 
-    void * msr_bitmap = ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG);
-    ASSERT(msr_bitmap);
+    void * msr_bitmap = ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE, TAG); ASSERT(msr_bitmap);
     RtlZeroMemory(msr_bitmap, PAGE_SIZE);
 
     // Activate VM-exit for RDMSR against all MSRs
@@ -173,36 +163,26 @@ static UCHAR * BuildIoBitmaps()// Build IO bitmaps
 {
     PAGED_CODE();
 
-    UCHAR * io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE * 2, TAG));// Allocate two IO bitmaps as one contiguous 4K+4K page
-    ASSERT(io_bitmaps);
+    UCHAR * io_bitmaps = reinterpret_cast<UCHAR *>(ExAllocatePoolWithTag(NonPagedPoolNx, PAGE_SIZE * 2, TAG)); ASSERT(io_bitmaps);
     RtlZeroMemory(io_bitmaps, PAGE_SIZE * 2);
-
     return io_bitmaps;
 }
 
 
-static SharedProcessorData * InitializeSharedData()
-// Initialize shared processor data
+static SharedProcessorData * InitializeSharedData()// Initialize shared processor data
 {
     PAGED_CODE();
 
-    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG));
-    ASSERT(shared_data);
+    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG)); ASSERT(shared_data);
     RtlZeroMemory(shared_data, sizeof(SharedProcessorData));
-
-    shared_data->msr_bitmap = BuildMsrBitmap();// Setup MSR bitmap
-    ASSERT(shared_data->msr_bitmap);
-
-    shared_data->io_bitmap_a = BuildIoBitmaps();// Setup IO bitmaps
-    ASSERT(shared_data->io_bitmap_a);
+    shared_data->msr_bitmap = BuildMsrBitmap(); ASSERT(shared_data->msr_bitmap);
+    shared_data->io_bitmap_a = BuildIoBitmaps(); ASSERT(shared_data->io_bitmap_a);
     shared_data->io_bitmap_b = (UCHAR *)shared_data->io_bitmap_a + PAGE_SIZE;
-
     return shared_data;
 }
 
 
-NTSTATUS VmInitialization()
-// Checks if a VMM can be installed, and so, installs it
+NTSTATUS VmInitialization()// Checks if a VMM can be installed, and so, installs it
 {
     PAGED_CODE();
 
@@ -214,8 +194,7 @@ NTSTATUS VmInitialization()
         return STATUS_HV_FEATURE_UNAVAILABLE;
     }
 
-    static SharedProcessorData * shared_data = InitializeSharedData();
-    ASSERT(shared_data);
+    static SharedProcessorData * shared_data = InitializeSharedData(); ASSERT(shared_data);
 
     EptInitializeMtrrEntries();// Read and store all MTRRs to set a correct memory type for EPT
 
@@ -268,12 +247,10 @@ static void VmpInitializeVm(ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instr
     ASSERT(processor_data->vmm_stack_limit);
     RtlZeroMemory(processor_data->vmm_stack_limit, KERNEL_STACK_SIZE);
 
-    processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG));
-    ASSERT(processor_data->vmcs_region);
+    processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG)); ASSERT(processor_data->vmcs_region);
     RtlZeroMemory(processor_data->vmcs_region, kVmxMaxVmcsSize);
 
-    processor_data->vmxon_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG));
-    ASSERT(processor_data->vmxon_region);
+    processor_data->vmxon_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG)); ASSERT(processor_data->vmxon_region);
     RtlZeroMemory(processor_data->vmxon_region, kVmxMaxVmcsSize);
 
     // Initialize stack memory for VMM like this:

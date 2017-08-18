@@ -1137,4 +1137,4 @@ static void VmmpInjectInterruption(InterruptionType interruption_type, Interrupt
     }
 }
 
-}  // extern "C"
+}

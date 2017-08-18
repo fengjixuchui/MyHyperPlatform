@@ -16,49 +16,29 @@
 
 extern "C"
 {
-_IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS VmpSetLockBitCallback(_In_opt_ void *context);
-_IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS VmpStartVm(_In_opt_ void *context);
-_IRQL_requires_max_(PASSIVE_LEVEL) static void VmpInitializeVm(_In_ ULONG_PTR guest_stack_pointer, _In_ ULONG_PTR guest_instruction_pointer, _In_opt_ void *context);
-_IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpEnterVmxMode(_Inout_ ProcessorData *processor_data);
-_IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpInitializeVmcs(_Inout_ ProcessorData *processor_data);
-_IRQL_requires_max_(PASSIVE_LEVEL) 
-static bool VmpSetupVmcs(_In_ const ProcessorData *processor_data, _In_ ULONG_PTR guest_stack_pointer, _In_ ULONG_PTR guest_instruction_pointer, _In_ ULONG_PTR vmm_stack_pointer);
-_IRQL_requires_max_(PASSIVE_LEVEL) static void VmpLaunchVm();
-_IRQL_requires_max_(PASSIVE_LEVEL) static ULONG VmpGetSegmentAccessRight(_In_ USHORT segment_selector);
-_IRQL_requires_max_(PASSIVE_LEVEL) static ULONG_PTR VmpGetSegmentBase(_In_ ULONG_PTR gdt_base, _In_ USHORT segment_selector);
-_IRQL_requires_max_(PASSIVE_LEVEL) static SegmentDescriptor *VmpGetSegmentDescriptor(_In_ ULONG_PTR descriptor_table_base, _In_ USHORT segment_selector);
-_IRQL_requires_max_(PASSIVE_LEVEL) static ULONG_PTR VmpGetSegmentBaseByDescriptor(_In_ const SegmentDescriptor *segment_descriptor);
-_IRQL_requires_max_(PASSIVE_LEVEL) static ULONG VmpAdjustControlValue(_In_ Msr msr, _In_ ULONG requested_value);
-_IRQL_requires_max_(PASSIVE_LEVEL) static NTSTATUS VmpStopVm(_In_opt_ void *context);
-_IRQL_requires_max_(PASSIVE_LEVEL) static void VmpFreeProcessorData(_In_opt_ ProcessorData *processor_data);
-_IRQL_requires_max_(PASSIVE_LEVEL) static void VmpFreeSharedData(_In_ ProcessorData *processor_data);
-_IRQL_requires_max_(PASSIVE_LEVEL) static bool VmpIsHyperPlatformInstalled();
 
-#if defined(ALLOC_PRAGMA)
-#pragma alloc_text(PAGE, VmInitialization)
-#pragma alloc_text(PAGE, VmTermination)
-#pragma alloc_text(PAGE, VmpSetLockBitCallback)
-#pragma alloc_text(PAGE, VmpStartVm)
-#pragma alloc_text(PAGE, VmpInitializeVm)
-#pragma alloc_text(PAGE, VmpEnterVmxMode)
-#pragma alloc_text(PAGE, VmpInitializeVmcs)
-#pragma alloc_text(PAGE, VmpSetupVmcs)
-#pragma alloc_text(PAGE, VmpLaunchVm)
-#pragma alloc_text(PAGE, VmpGetSegmentAccessRight)
-#pragma alloc_text(PAGE, VmpGetSegmentBase)
-#pragma alloc_text(PAGE, VmpGetSegmentDescriptor)
-#pragma alloc_text(PAGE, VmpGetSegmentBaseByDescriptor)
-#pragma alloc_text(PAGE, VmpAdjustControlValue)
-#pragma alloc_text(PAGE, VmpStopVm)
-#pragma alloc_text(PAGE, VmpFreeProcessorData)
-#pragma alloc_text(PAGE, VmpFreeSharedData)
-#pragma alloc_text(PAGE, VmpIsHyperPlatformInstalled)
-#pragma alloc_text(PAGE, VmHotplugCallback)
-#endif
+static NTSTATUS VmpSetLockBitCallback(void *context)// Sets 1 to the lock bit of the IA32_FEATURE_CONTROL MSR
+{
+    UNREFERENCED_PARAMETER(context);
+    PAGED_CODE();
+
+    Ia32FeatureControlMsr vmx_feature_control = { __readmsr(0x03A) };
+    if (vmx_feature_control.fields.lock) {
+        return STATUS_SUCCESS;
+    }
+    vmx_feature_control.fields.lock = true;
+    __writemsr(0x03A, vmx_feature_control.all);
+    vmx_feature_control.all = __readmsr(0x03A);
+    if (!vmx_feature_control.fields.lock) {
+        LOG_ERROR("The lock bit is still clear.");
+        return STATUS_DEVICE_CONFIGURATION_ERROR;
+    }
+
+    return STATUS_SUCCESS;
+}
 
 
-static bool VmpIsVmxAvailable()
-// Checks if the system supports virtualization
+static bool VmpIsVmxAvailable()// Checks if the system supports virtualization
 {
     PAGED_CODE();
 
@@ -100,27 +80,6 @@ static bool VmpIsVmxAvailable()
     }
 
     return true;
-}
-
-
-static NTSTATUS VmpSetLockBitCallback(void *context)// Sets 1 to the lock bit of the IA32_FEATURE_CONTROL MSR
-{
-    UNREFERENCED_PARAMETER(context);
-    PAGED_CODE();
-
-    Ia32FeatureControlMsr vmx_feature_control = { __readmsr(0x03A) };
-    if (vmx_feature_control.fields.lock) {
-        return STATUS_SUCCESS;
-    }
-    vmx_feature_control.fields.lock = true;
-    __writemsr(0x03A, vmx_feature_control.all);
-    vmx_feature_control.all = __readmsr(0x03A);
-    if (!vmx_feature_control.fields.lock) {
-        LOG_ERROR("The lock bit is still clear.");
-        return STATUS_DEVICE_CONFIGURATION_ERROR;
-    }
-
-    return STATUS_SUCCESS;
 }
 
 
@@ -182,122 +141,23 @@ static SharedProcessorData * InitializeSharedData()// Initialize shared processo
 }
 
 
-NTSTATUS VmInitialization()// Checks if a VMM can be installed, and so, installs it
+static bool VmpIsHyperPlatformInstalled()// Tests if HyperPlatform is already installed
 {
     PAGED_CODE();
 
-    if (VmpIsHyperPlatformInstalled()) {
-        return STATUS_CANCELLED;
+    int cpu_info[4] = {};
+    __cpuid(cpu_info, 1);
+    CpuFeaturesEcx cpu_features = { static_cast<ULONG_PTR>(cpu_info[2]) };
+    if (!cpu_features.fields.not_used) {
+        return false;
     }
 
-    if (!VmpIsVmxAvailable()) {
-        return STATUS_HV_FEATURE_UNAVAILABLE;
-    }
-
-    static SharedProcessorData * shared_data = InitializeSharedData(); ASSERT(shared_data);
-
-    EptInitializeMtrrEntries();// Read and store all MTRRs to set a correct memory type for EPT
-
-    NTSTATUS status = UtilForEachProcessor(VmpStartVm, shared_data);// Virtualize all processors
-    if (!NT_SUCCESS(status)) {
-        UtilForEachProcessor(VmpStopVm, nullptr);
-        return status;
-    }
-
-    return status;
+    __cpuid(cpu_info, kHyperVCpuidInterface);
+    return cpu_info[0] == 'PpyH';
 }
 
 
-static NTSTATUS VmpStartVm(void *context)// Virtualize the current processor
-{
-    PAGED_CODE();
-
-    bool ok = AsmInitializeVm(VmpInitializeVm, context);
-    NT_ASSERT(VmpIsHyperPlatformInstalled() == ok);
-    if (!ok) 
-    {
-        LOG_INFO("Initializing VMX for the processor %d fail.", KeGetCurrentProcessorNumberEx(nullptr));//NTDDI_VERSION >= NTDDI_WIN7
-        return STATUS_UNSUCCESSFUL;
-    }
-
-    return STATUS_SUCCESS;
-}
-
-
-static void VmpInitializeVm(ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instruction_pointer, void *context) 
-// Allocates structures for virtualization, initializes VMCS and virtualizes the current processor
-{
-    PAGED_CODE();
-
-    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(context);
-    if (!shared_data) {
-        return;
-    }
-    
-    ProcessorData * processor_data = reinterpret_cast<ProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(ProcessorData), TAG));// Allocate related structures
-    ASSERT(processor_data);
-    RtlZeroMemory(processor_data, sizeof(ProcessorData));
-    processor_data->shared_data = shared_data;
-    InterlockedIncrement(&processor_data->shared_data->reference_count);
-    
-    processor_data->ept_data = EptInitialization();// Set up EPT
-    ASSERT(processor_data->ept_data);
-    
-    processor_data->vmm_stack_limit = AllocateContiguousMemory(KERNEL_STACK_SIZE);// Allocate other processor data fields
-    ASSERT(processor_data->vmm_stack_limit);
-    RtlZeroMemory(processor_data->vmm_stack_limit, KERNEL_STACK_SIZE);
-
-    processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG)); ASSERT(processor_data->vmcs_region);
-    RtlZeroMemory(processor_data->vmcs_region, kVmxMaxVmcsSize);
-
-    processor_data->vmxon_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG)); ASSERT(processor_data->vmxon_region);
-    RtlZeroMemory(processor_data->vmxon_region, kVmxMaxVmcsSize);
-
-    // Initialize stack memory for VMM like this:
-    //
-    // (High)
-    // +------------------+  <- vmm_stack_region_base      (eg, AED37000)
-    // | processor_data   |  <- vmm_stack_data             (eg, AED36FFC)
-    // +------------------+
-    // | MAXULONG_PTR     |  <- vmm_stack_base (initial SP)(eg, AED36FF8)
-    // +------------------+    v
-    // |                  |    v
-    // | (VMM Stack)      |    v (grow)
-    // |                  |    v
-    // +------------------+  <- vmm_stack_limit            (eg, AED34000)
-    // (Low)
-    ULONG_PTR vmm_stack_region_base = reinterpret_cast<ULONG_PTR>(processor_data->vmm_stack_limit) + KERNEL_STACK_SIZE;
-    ULONG_PTR vmm_stack_data = vmm_stack_region_base - sizeof(void *);
-    ULONG_PTR vmm_stack_base = vmm_stack_data - sizeof(void *);
-    *reinterpret_cast<ULONG_PTR *>(vmm_stack_base) = MAXULONG_PTR;
-    *reinterpret_cast<ProcessorData **>(vmm_stack_data) = processor_data;
-
-    // Set up VMCS
-    if (!VmpEnterVmxMode(processor_data)) {
-        goto ReturnFalse;
-    }
-    if (!VmpInitializeVmcs(processor_data)) {
-        goto ReturnFalseWithVmxOff;
-    }
-    if (!VmpSetupVmcs(processor_data, guest_stack_pointer, guest_instruction_pointer, vmm_stack_base)) {
-        goto ReturnFalseWithVmxOff;
-    }
-
-    VmpLaunchVm();// Do virtualize the processor
-
-  // Here is not be executed with successful vmlaunch.
-  // Instead, the context jumps to an address specified by guest_instruction_pointer.
-
-ReturnFalseWithVmxOff:;
-    __vmx_off();
-
-ReturnFalse:;
-    VmpFreeProcessorData(processor_data);
-}
-
-
-static bool VmpEnterVmxMode(ProcessorData *processor_data)
-// See: VMM SETUP & TEAR DOWN
+static bool VmpEnterVmxMode(ProcessorData *processor_data)// See: VMM SETUP & TEAR DOWN
 {
     PAGED_CODE();
 
@@ -341,8 +201,7 @@ static bool VmpEnterVmxMode(ProcessorData *processor_data)
 }
 
 
-static bool VmpInitializeVmcs(ProcessorData *processor_data)
-// See: VMM SETUP & TEAR DOWN
+static bool VmpInitializeVmcs(ProcessorData *processor_data)// See: VMM SETUP & TEAR DOWN
 {
     PAGED_CODE();
 
@@ -359,6 +218,95 @@ static bool VmpInitializeVmcs(ProcessorData *processor_data)
     }
 
     return true;// The launch state of current VMCS is "clear"
+}
+
+
+static ULONG VmpGetSegmentAccessRight(USHORT segment_selector)// Returns access right of the segment specified by the SegmentSelector for VMX
+{
+    PAGED_CODE();
+
+    VmxRegmentDescriptorAccessRight access_right = {};
+    SegmentSelector ss = { segment_selector };
+    if (segment_selector) {
+        ULONG_PTR native_access_right = AsmLoadAccessRightsByte(ss.all);
+        native_access_right >>= 8;
+        access_right.all = static_cast<ULONG>(native_access_right);
+        access_right.fields.reserved1 = 0;
+        access_right.fields.reserved2 = 0;
+        access_right.fields.unusable = false;
+    }
+    else {
+        access_right.fields.unusable = true;
+    }
+
+    return access_right.all;
+}
+
+
+static SegmentDescriptor *VmpGetSegmentDescriptor(ULONG_PTR descriptor_table_base, USHORT segment_selector)
+// Returns the segment descriptor corresponds to the SegmentSelector
+{
+    PAGED_CODE();
+
+    SegmentSelector ss = { segment_selector };
+    return reinterpret_cast<SegmentDescriptor *>(descriptor_table_base + ss.fields.index * sizeof(SegmentDescriptor));
+}
+
+
+static ULONG_PTR VmpGetSegmentBaseByDescriptor(const SegmentDescriptor *segment_descriptor)// Returns a base address of segment_descriptor
+{
+    PAGED_CODE();
+
+    // Calculate a 32bit base address
+    SIZE_T base_high = segment_descriptor->fields.base_high << (6 * 4);
+    SIZE_T base_middle = segment_descriptor->fields.base_mid << (4 * 4);
+    SIZE_T base_low = segment_descriptor->fields.base_low;
+    SIZE_T base = (base_high | base_middle | base_low) & MAXULONG;
+
+    if (!segment_descriptor->fields.system) {// Get upper 32bit of the base address if needed
+        const SegmentDesctiptorX64 * desc64 = reinterpret_cast<const SegmentDesctiptorX64 *>(segment_descriptor);
+        ULONG64 base_upper32 = desc64->base_upper32;
+        base |= (base_upper32 << 32);
+    }
+
+    return base;
+}
+
+
+static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, USHORT segment_selector)
+// Returns a base address of the segment specified by SegmentSelector
+{
+    PAGED_CODE();
+
+    SegmentSelector ss = { segment_selector };
+    if (!ss.all) {
+        return 0;
+    }
+
+    if (ss.fields.ti) {
+        SegmentDescriptor * local_segment_descriptor = VmpGetSegmentDescriptor(gdt_base, AsmReadLDTR());
+        ULONG_PTR ldt_base = VmpGetSegmentBaseByDescriptor(local_segment_descriptor);
+        SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(ldt_base, segment_selector);
+        return VmpGetSegmentBaseByDescriptor(segment_descriptor);
+    }
+    else {
+        SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(gdt_base, segment_selector);
+        return VmpGetSegmentBaseByDescriptor(segment_descriptor);
+    }
+}
+
+
+static ULONG VmpAdjustControlValue(Msr msr, ULONG requested_value)// Adjust the requested control value with consulting a value of related MSR
+{
+    PAGED_CODE();
+
+    LARGE_INTEGER msr_value = {};
+    msr_value.QuadPart = __readmsr((ULONG)msr);
+
+    ULONG adjusted_value = requested_value;
+    adjusted_value &= msr_value.HighPart;// bit == 0 in high word ==> must be zero
+    adjusted_value |= msr_value.LowPart;// bit == 1 in low word  ==> must be one
+    return adjusted_value;
 }
 
 
@@ -551,129 +499,25 @@ static void VmpLaunchVm() // Executes vmlaunch
 }
 
 
-static ULONG VmpGetSegmentAccessRight(USHORT segment_selector)
-// Returns access right of the segment specified by the SegmentSelector for VMX
+static void VmpFreeSharedData(ProcessorData *processor_data)// Decrement reference count of shared data and free it if no reference
 {
     PAGED_CODE();
 
-    VmxRegmentDescriptorAccessRight access_right = {};
-    SegmentSelector ss = { segment_selector };
-    if (segment_selector) {
-        ULONG_PTR native_access_right = AsmLoadAccessRightsByte(ss.all);
-        native_access_right >>= 8;
-        access_right.all = static_cast<ULONG>(native_access_right);
-        access_right.fields.reserved1 = 0;
-        access_right.fields.reserved2 = 0;
-        access_right.fields.unusable = false;
-    } else {
-        access_right.fields.unusable = true;
+    if (!processor_data->shared_data) {
+        return;
     }
 
-    return access_right.all;
-}
-
-
-static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, USHORT segment_selector)
-// Returns a base address of the segment specified by SegmentSelector
-{
-    PAGED_CODE();
-
-    SegmentSelector ss = { segment_selector };
-    if (!ss.all) {
-        return 0;
+    if (InterlockedDecrement(&processor_data->shared_data->reference_count) != 0) {
+        return;
     }
 
-    if (ss.fields.ti) {
-        SegmentDescriptor * local_segment_descriptor = VmpGetSegmentDescriptor(gdt_base, AsmReadLDTR());
-        ULONG_PTR ldt_base = VmpGetSegmentBaseByDescriptor(local_segment_descriptor);
-        SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(ldt_base, segment_selector);
-        return VmpGetSegmentBaseByDescriptor(segment_descriptor);
-    } else {
-        SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(gdt_base, segment_selector);
-        return VmpGetSegmentBaseByDescriptor(segment_descriptor);
+    if (processor_data->shared_data->io_bitmap_a) {
+        ExFreePoolWithTag(processor_data->shared_data->io_bitmap_a, TAG);
     }
-}
-
-
-static SegmentDescriptor *VmpGetSegmentDescriptor(ULONG_PTR descriptor_table_base, USHORT segment_selector)
-// Returns the segment descriptor corresponds to the SegmentSelector
-{
-    PAGED_CODE();
-
-    SegmentSelector ss = { segment_selector };
-    return reinterpret_cast<SegmentDescriptor *>(descriptor_table_base + ss.fields.index * sizeof(SegmentDescriptor));
-}
-
-
-static ULONG_PTR VmpGetSegmentBaseByDescriptor(const SegmentDescriptor *segment_descriptor)
-// Returns a base address of segment_descriptor
-{
-    PAGED_CODE();
-
-    // Calculate a 32bit base address
-    SIZE_T base_high = segment_descriptor->fields.base_high << (6 * 4);
-    SIZE_T base_middle = segment_descriptor->fields.base_mid << (4 * 4);
-    SIZE_T base_low = segment_descriptor->fields.base_low;
-    SIZE_T base = (base_high | base_middle | base_low) & MAXULONG;
-    
-    if (!segment_descriptor->fields.system) {// Get upper 32bit of the base address if needed
-        const SegmentDesctiptorX64 * desc64 = reinterpret_cast<const SegmentDesctiptorX64 *>(segment_descriptor);
-        ULONG64 base_upper32 = desc64->base_upper32;
-        base |= (base_upper32 << 32);
+    if (processor_data->shared_data->msr_bitmap) {
+        ExFreePoolWithTag(processor_data->shared_data->msr_bitmap, TAG);
     }
-
-    return base;
-}
-
-
-static ULONG VmpAdjustControlValue(Msr msr, ULONG requested_value)
-// Adjust the requested control value with consulting a value of related MSR
-{
-    PAGED_CODE();
-
-    LARGE_INTEGER msr_value = {};
-    msr_value.QuadPart = __readmsr((ULONG)msr);
-
-    ULONG adjusted_value = requested_value;
-    adjusted_value &= msr_value.HighPart;// bit == 0 in high word ==> must be zero
-    adjusted_value |= msr_value.LowPart;// bit == 1 in low word  ==> must be one
-    return adjusted_value;
-}
-
-
-void VmTermination()// Terminates VM
-{
-    PAGED_CODE();
-
-    NTSTATUS status = UtilForEachProcessor(VmpStopVm, nullptr);
-    if (NT_SUCCESS(status)) {
-        LOG_INFO("The VMM has been uninstalled.");
-    } else {
-        LOG_WARN("The VMM has not been uninstalled (%08x).", status);
-    }
-
-    NT_ASSERT(!VmpIsHyperPlatformInstalled());
-}
-
-
-static NTSTATUS VmpStopVm(void *context)
-// Stops virtualization through a hypercall and frees all related memory
-{
-    UNREFERENCED_PARAMETER(context);
-    PAGED_CODE();
-    
-    ProcessorData *processor_data = nullptr;
-    NTSTATUS status = UtilVmCall(HypercallNumber::kTerminateVmm, &processor_data);// Stop virtualization and get an address of the management structure
-    if (!NT_SUCCESS(status)) {
-        return status;
-    }
-
-    Cr4 cr4 = { __readcr4() };
-    cr4.fields.vmxe = false;
-    __writecr4(cr4.all);// Clear CR4.VMXE, as there is no reason to leave the bit after vmxoff
-
-    VmpFreeProcessorData(processor_data);
-    return STATUS_SUCCESS;
+    ExFreePoolWithTag(processor_data->shared_data, TAG);
 }
 
 
@@ -703,48 +547,136 @@ static void VmpFreeProcessorData(ProcessorData *processor_data)// Frees all rela
 }
 
 
-static void VmpFreeSharedData(ProcessorData *processor_data)
-// Decrement reference count of shared data and free it if no reference
+static NTSTATUS VmpStopVm(void *context)// Stops virtualization through a hypercall and frees all related memory
 {
+    UNREFERENCED_PARAMETER(context);
     PAGED_CODE();
-
-    if (!processor_data->shared_data) {
-        return;
+    
+    ProcessorData *processor_data = nullptr;
+    NTSTATUS status = UtilVmCall(HypercallNumber::kTerminateVmm, &processor_data);// Stop virtualization and get an address of the management structure
+    if (!NT_SUCCESS(status)) {
+        return status;
     }
 
-    if (InterlockedDecrement(&processor_data->shared_data->reference_count) != 0) {
-        return;
-    }
+    Cr4 cr4 = { __readcr4() };
+    cr4.fields.vmxe = false;
+    __writecr4(cr4.all);// Clear CR4.VMXE, as there is no reason to leave the bit after vmxoff
 
-    if (processor_data->shared_data->io_bitmap_a) {
-        ExFreePoolWithTag(processor_data->shared_data->io_bitmap_a, TAG);
-    }
-    if (processor_data->shared_data->msr_bitmap) {
-        ExFreePoolWithTag(processor_data->shared_data->msr_bitmap, TAG);
-    }
-    ExFreePoolWithTag(processor_data->shared_data, TAG);
+    VmpFreeProcessorData(processor_data);
+    return STATUS_SUCCESS;
 }
 
 
-static bool VmpIsHyperPlatformInstalled()
-// Tests if HyperPlatform is already installed
+static void VmpInitializeVm(ULONG_PTR guest_stack_pointer, ULONG_PTR guest_instruction_pointer, void *context)
+// Allocates structures for virtualization, initializes VMCS and virtualizes the current processor
 {
     PAGED_CODE();
 
-    int cpu_info[4] = {};
-    __cpuid(cpu_info, 1);
-    CpuFeaturesEcx cpu_features = { static_cast<ULONG_PTR>(cpu_info[2]) };
-    if (!cpu_features.fields.not_used) {
-        return false;
+    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(context);
+    if (!shared_data) {
+        return;
     }
 
-    __cpuid(cpu_info, kHyperVCpuidInterface);
-    return cpu_info[0] == 'PpyH';
+    ProcessorData * processor_data = reinterpret_cast<ProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(ProcessorData), TAG));// Allocate related structures
+    ASSERT(processor_data);
+    RtlZeroMemory(processor_data, sizeof(ProcessorData));
+    processor_data->shared_data = shared_data;
+    InterlockedIncrement(&processor_data->shared_data->reference_count);
+
+    processor_data->ept_data = EptInitialization();// Set up EPT
+    ASSERT(processor_data->ept_data);
+
+    processor_data->vmm_stack_limit = AllocateContiguousMemory(KERNEL_STACK_SIZE);// Allocate other processor data fields
+    ASSERT(processor_data->vmm_stack_limit);
+    RtlZeroMemory(processor_data->vmm_stack_limit, KERNEL_STACK_SIZE);
+
+    processor_data->vmcs_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG)); ASSERT(processor_data->vmcs_region);
+    RtlZeroMemory(processor_data->vmcs_region, kVmxMaxVmcsSize);
+
+    processor_data->vmxon_region = reinterpret_cast<VmControlStructure *>(ExAllocatePoolWithTag(NonPagedPoolNx, kVmxMaxVmcsSize, TAG)); ASSERT(processor_data->vmxon_region);
+    RtlZeroMemory(processor_data->vmxon_region, kVmxMaxVmcsSize);
+
+    // Initialize stack memory for VMM like this:
+    //
+    // (High)
+    // +------------------+  <- vmm_stack_region_base      (eg, AED37000)
+    // | processor_data   |  <- vmm_stack_data             (eg, AED36FFC)
+    // +------------------+
+    // | MAXULONG_PTR     |  <- vmm_stack_base (initial SP)(eg, AED36FF8)
+    // +------------------+    v
+    // |                  |    v
+    // | (VMM Stack)      |    v (grow)
+    // |                  |    v
+    // +------------------+  <- vmm_stack_limit            (eg, AED34000)
+    // (Low)
+    ULONG_PTR vmm_stack_region_base = reinterpret_cast<ULONG_PTR>(processor_data->vmm_stack_limit) + KERNEL_STACK_SIZE;
+    ULONG_PTR vmm_stack_data = vmm_stack_region_base - sizeof(void *);
+    ULONG_PTR vmm_stack_base = vmm_stack_data - sizeof(void *);
+    *reinterpret_cast<ULONG_PTR *>(vmm_stack_base) = MAXULONG_PTR;
+    *reinterpret_cast<ProcessorData **>(vmm_stack_data) = processor_data;
+
+    // Set up VMCS
+    if (!VmpEnterVmxMode(processor_data)) {
+        goto ReturnFalse;
+    }
+    if (!VmpInitializeVmcs(processor_data)) {
+        goto ReturnFalseWithVmxOff;
+    }
+    if (!VmpSetupVmcs(processor_data, guest_stack_pointer, guest_instruction_pointer, vmm_stack_base)) {
+        goto ReturnFalseWithVmxOff;
+    }
+
+    VmpLaunchVm();// Do virtualize the processor
+
+                  // Here is not be executed with successful vmlaunch.
+                  // Instead, the context jumps to an address specified by guest_instruction_pointer.
+
+ReturnFalseWithVmxOff:;
+    __vmx_off();
+
+ReturnFalse:;
+    VmpFreeProcessorData(processor_data);
 }
 
 
-NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_num)
-// Virtualizes the specified processor
+static NTSTATUS VmpStartVm(void *context)// Virtualize the current processor
+{
+    PAGED_CODE();
+
+    bool ok = AsmInitializeVm(VmpInitializeVm, context);
+    NT_ASSERT(VmpIsHyperPlatformInstalled() == ok);
+    if (!ok)
+    {
+        LOG_INFO("Initializing VMX for the processor %d fail.", KeGetCurrentProcessorNumberEx(nullptr));//NTDDI_VERSION >= NTDDI_WIN7
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+
+//以上是私有的函数。
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//一下是导出的函数。
+
+
+void VmTermination()// Terminates VM
+{
+    PAGED_CODE();
+
+    NTSTATUS status = UtilForEachProcessor(VmpStopVm, nullptr);
+    if (NT_SUCCESS(status)) {
+        LOG_INFO("The VMM has been uninstalled.");
+    }
+    else {
+        LOG_WARN("The VMM has not been uninstalled (%08x).", status);
+    }
+
+    NT_ASSERT(!VmpIsHyperPlatformInstalled());
+}
+
+
+NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_num)// Virtualizes the specified processor
 {
     PAGED_CODE();
 
@@ -771,4 +703,30 @@ NTSTATUS VmHotplugCallback(const PROCESSOR_NUMBER &proc_num)
     return status;
 }
 
-}  // extern "C"
+
+NTSTATUS VmInitialization()// Checks if a VMM can be installed, and so, installs it
+{
+    PAGED_CODE();
+
+    if (VmpIsHyperPlatformInstalled()) {
+        return STATUS_CANCELLED;
+    }
+
+    if (!VmpIsVmxAvailable()) {
+        return STATUS_HV_FEATURE_UNAVAILABLE;
+    }
+
+    static SharedProcessorData * shared_data = InitializeSharedData(); ASSERT(shared_data);
+
+    EptInitializeMtrrEntries();// Read and store all MTRRs to set a correct memory type for EPT
+
+    NTSTATUS status = UtilForEachProcessor(VmpStartVm, shared_data);// Virtualize all processors
+    if (!NT_SUCCESS(status)) {
+        UtilForEachProcessor(VmpStopVm, nullptr);
+        return status;
+    }
+
+    return status;
+}
+
+}

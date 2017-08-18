@@ -93,37 +93,23 @@ static memory_type EptpGetMemoryType(ULONG64 physical_address)// Returns a memor
 }
 
 
-static EptCommonEntry *EptpAllocateEptEntryFromPool()// Return a new EPT entry either by creating new one
+static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data)// Return a new EPT entry either by creating new one or from pre-allocated ones
 {
-    const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
-    static_assert(kAllocSize == PAGE_SIZE, "Size check");
+    if (ept_data) {// Return a new EPT entry from pre-allocated ones.
+        LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count); ASSERT(count <= kEptpNumberOfPreallocatedEntries);
+        return ept_data->preallocated_entries[count - 1];
+    } else {// Return a new EPT entry either by creating new one
+        const SIZE_T kAllocSize = 512 * sizeof(EptCommonEntry);
+        static_assert(kAllocSize == PAGE_SIZE, "Size check");
 
-    EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG)); ASSERT(entry);
-    RtlZeroMemory(entry, kAllocSize);
-    return entry;
-}
-
-
-static EptCommonEntry * EptpAllocateEptEntryFromPreAllocated(EptData *ept_data)// Return a new EPT entry from pre-allocated ones.
-{
-    LONG count = InterlockedIncrement(&ept_data->preallocated_entries_count); ASSERT(count <= kEptpNumberOfPreallocatedEntries);
-    return ept_data->preallocated_entries[count - 1];
-}
-
-
-static EptCommonEntry *EptpAllocateEptEntry(EptData *ept_data)
-// Return a new EPT entry either by creating new one or from pre-allocated ones
-{
-    if (ept_data) {
-        return EptpAllocateEptEntryFromPreAllocated(ept_data);
-    } else {
-        return EptpAllocateEptEntryFromPool();
+        EptCommonEntry * entry = reinterpret_cast<EptCommonEntry *>(ExAllocatePoolWithTag(NonPagedPoolNx, kAllocSize, TAG)); ASSERT(entry);
+        RtlZeroMemory(entry, kAllocSize);
+        return entry;
     }
 }
 
 
-static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)
-// Initialize an EPT entry with a "pass through" attribute
+static void EptpInitTableEntry(EptCommonEntry *entry, ULONG table_level, ULONG64 physical_address)// Initialize an EPT entry with a "pass through" attribute
 {
     entry->fields.read_access = true;
     entry->fields.write_access = true;
@@ -184,8 +170,7 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
 }
 
 
-static bool EptpIsDeviceMemory(ULONG64 physical_address)
-// Returns if the physical_address is device memory (which could not have a corresponding PFN entry)
+static bool EptpIsDeviceMemory(ULONG64 physical_address)// Returns if the physical_address is device memory (which could not have a corresponding PFN entry)
 {
     for (PFN_COUNT i = 0ul; i < g_utilp_physical_memory_ranges->number_of_runs; ++i)
     {
@@ -201,8 +186,7 @@ static bool EptpIsDeviceMemory(ULONG64 physical_address)
 }
 
 
-static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address)
-// Returns an EPT entry corresponds to the physical_address
+static EptCommonEntry *EptpGetEptPtEntry(EptCommonEntry *table, ULONG table_level, ULONG64 physical_address)// Returns an EPT entry corresponds to the physical_address
 {
     if (!table) {//有这个，下面的三个断言可去掉。
         return nullptr;
@@ -255,8 +239,7 @@ static void EptpFreeUnusedPreAllocatedEntries(EptCommonEntry **preallocated_entr
 }
 
 
-static void EptpDestructTables(EptCommonEntry *table, ULONG table_level)
-// Frees all used EPT entries by walking through whole EPT
+static void EptpDestructTables(EptCommonEntry *table, ULONG table_level)// Frees all used EPT entries by walking through whole EPT
 {
     for (int i = 0ul; i < 512; ++i)
     {

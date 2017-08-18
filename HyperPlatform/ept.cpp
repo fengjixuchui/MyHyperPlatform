@@ -522,19 +522,15 @@ EptData *EptInitialization()
     for (PFN_COUNT run_index = 0ul; run_index < g_utilp_physical_memory_ranges->number_of_runs; ++run_index)
     {
         PhysicalMemoryRun * run = &g_utilp_physical_memory_ranges->run[run_index];
-        ULONG_PTR base_addr = run->base_page * PAGE_SIZE;
         for (ULONG_PTR page_index = 0ull; page_index < run->page_count; ++page_index)
         {
-            ULONG_PTR indexed_addr = base_addr + page_index * PAGE_SIZE;
-            EptCommonEntry * ept_pt_entry = EptpConstructTables(ept_pml4, 4, indexed_addr, nullptr);
-            ASSERT(ept_pt_entry);
+            EptpConstructTables(ept_pml4, 4, run->base_page * PAGE_SIZE + page_index * PAGE_SIZE, nullptr);
         }
     }
 
     // Initialize an EPT entry for APIC_BASE. It is required to allocated it now for some reasons, or else, system hangs.
     Ia32ApicBaseMsr apic_msr = { __readmsr(0x01B) };
-    EptCommonEntry * temp = EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr);
-    ASSERT(temp);
+    EptpConstructTables(ept_pml4, 4, apic_msr.fields.apic_base * PAGE_SIZE, nullptr);
     
     SIZE_T preallocated_entries_size = sizeof(EptCommonEntry *) * kEptpNumberOfPreallocatedEntries;
     EptCommonEntry ** preallocated_entries = reinterpret_cast<EptCommonEntry **>(ExAllocatePoolWithTag(NonPagedPoolNx, preallocated_entries_size, TAG));// Allocate preallocated_entries
@@ -544,9 +540,8 @@ EptData *EptInitialization()
     // And fill preallocated_entries with newly created entries
     for (SIZE_T i = 0ul; i < kEptpNumberOfPreallocatedEntries; ++i)
     {
-        EptCommonEntry * ept_entry = EptpAllocateEptEntry(nullptr);
-        ASSERT(ept_entry);
-        preallocated_entries[i] = ept_entry;
+        preallocated_entries[i] = EptpAllocateEptEntry(nullptr);
+        ASSERT(preallocated_entries[i]);
     }
 
     // Initialization completed

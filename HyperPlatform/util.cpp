@@ -73,23 +73,13 @@ PFN_NUMBER UtilPfnFromPa(ULONG64 pa)// PA -> PFN
 }
 
 
-void *UtilVaFromPa(ULONG64 pa)// PA -> VA
+void * UtilVaFromPfn(PFN_NUMBER pfn)// PFN -> VA
 {
+    ULONG64 pa = pfn << PAGE_SHIFT;
+
     PHYSICAL_ADDRESS pa2 = {};
     pa2.QuadPart = pa;
     return MmGetVirtualForPhysical(pa2);
-}
-
-
-ULONG64 UtilPaFromPfn(PFN_NUMBER pfn)// PNF -> PA
-{
-    return pfn << PAGE_SHIFT;
-}
-
-
-void *UtilVaFromPfn(PFN_NUMBER pfn)// PFN -> VA
-{
-    return UtilVaFromPa(UtilPaFromPfn(pfn));
 }
 
 

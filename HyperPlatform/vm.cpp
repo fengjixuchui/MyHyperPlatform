@@ -132,7 +132,7 @@ static SharedProcessorData * InitializeSharedData()// Initialize shared processo
 {
     PAGED_CODE();
 
-    SharedProcessorData * shared_data = reinterpret_cast<SharedProcessorData *>(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG)); ASSERT(shared_data);
+    SharedProcessorData * shared_data = (SharedProcessorData *)(ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(SharedProcessorData), TAG)); ASSERT(shared_data);
     RtlZeroMemory(shared_data, sizeof(SharedProcessorData));
     shared_data->msr_bitmap = BuildMsrBitmap(); ASSERT(shared_data->msr_bitmap);
     shared_data->io_bitmap_a = BuildIoBitmaps(); ASSERT(shared_data->io_bitmap_a);
@@ -234,8 +234,7 @@ static ULONG VmpGetSegmentAccessRight(USHORT segment_selector)// Returns access 
         access_right.fields.reserved1 = 0;
         access_right.fields.reserved2 = 0;
         access_right.fields.unusable = false;
-    }
-    else {
+    } else {
         access_right.fields.unusable = true;
     }
 
@@ -273,8 +272,7 @@ static ULONG_PTR VmpGetSegmentBaseByDescriptor(const SegmentDescriptor *segment_
 }
 
 
-static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, USHORT segment_selector)
-// Returns a base address of the segment specified by SegmentSelector
+static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, USHORT segment_selector)// Returns a base address of the segment specified by SegmentSelector
 {
     PAGED_CODE();
 
@@ -288,8 +286,7 @@ static ULONG_PTR VmpGetSegmentBase(ULONG_PTR gdt_base, USHORT segment_selector)
         ULONG_PTR ldt_base = VmpGetSegmentBaseByDescriptor(local_segment_descriptor);
         SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(ldt_base, segment_selector);
         return VmpGetSegmentBaseByDescriptor(segment_descriptor);
-    }
-    else {
+    } else {
         SegmentDescriptor * segment_descriptor = VmpGetSegmentDescriptor(gdt_base, segment_selector);
         return VmpGetSegmentBaseByDescriptor(segment_descriptor);
     }

@@ -14,47 +14,10 @@
 
 extern "C"
 {
-NTSTATUS UtilpInitializePhysicalMemoryRanges();
-_IRQL_requires_max_(PASSIVE_LEVEL) static PhysicalMemoryDescriptor *UtilpBuildPhysicalMemoryRanges();
-
-#if defined(ALLOC_PRAGMA)
-#pragma alloc_text(PAGE, UtilTermination)
-#pragma alloc_text(INIT, UtilpInitializePhysicalMemoryRanges)
-#pragma alloc_text(INIT, UtilpBuildPhysicalMemoryRanges)
-#pragma alloc_text(PAGE, UtilForEachProcessor)
-#endif
-
 PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 
 
-void UtilTermination() 
-// Terminates utility functions
-{
-    PAGED_CODE();
-
-    if (g_utilp_physical_memory_ranges) {
-        ExFreePoolWithTag(g_utilp_physical_memory_ranges, TAG);
-    }
-}
-
-
-NTSTATUS UtilpInitializePhysicalMemoryRanges()
-// Initializes the physical memory ranges
-{
-    PAGED_CODE();
-
-    g_utilp_physical_memory_ranges = UtilpBuildPhysicalMemoryRanges();
-    if (!g_utilp_physical_memory_ranges)
-    {
-        return STATUS_UNSUCCESSFUL;
-    }
-
-    return STATUS_SUCCESS;
-}
-
-
-static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemoryRanges()
-// Builds the physical memory ranges
+static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemoryRanges()// Builds the physical memory ranges
 {
     PAGED_CODE();
 
@@ -97,38 +60,6 @@ static PhysicalMemoryDescriptor * UtilpBuildPhysicalMemoryRanges()
 }
 
 
-NTSTATUS UtilForEachProcessor(NTSTATUS (*callback_routine)(void *), void *context) 
-// Execute a given callback routine on all processors in PASSIVE_LEVEL.
-// Returns STATUS_SUCCESS when all callback returned STATUS_SUCCESS as well.
-// When one of callbacks returns anything but STATUS_SUCCESS, this function stops to call remaining callbacks and returns the value.
-{
-    PAGED_CODE();
-
-    for (ULONG processor_index = 0; processor_index < KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS); processor_index++)
-    {
-        PROCESSOR_NUMBER processor_number = {};
-        NTSTATUS status = KeGetProcessorNumberFromIndex(processor_index, &processor_number);
-        if (!NT_SUCCESS(status)) {
-            return status;
-        }
-
-        // Switch the current processor
-        GROUP_AFFINITY affinity = {};
-        affinity.Group = processor_number.Group;
-        affinity.Mask = 1ull << processor_number.Number;
-        GROUP_AFFINITY previous_affinity = {};
-        KeSetSystemGroupAffinityThread(&affinity, &previous_affinity);
-        status = callback_routine(context);// Execute callback
-        KeRevertToUserGroupAffinityThread(&previous_affinity);
-        if (!NT_SUCCESS(status)) {
-            return status;
-        }
-    }
-
-    return STATUS_SUCCESS;
-}
-
-
 ULONG64 UtilPaFromVa(void *va)// VA -> PA
 {
     PHYSICAL_ADDRESS pa = MmGetPhysicalAddress(va);
@@ -168,8 +99,7 @@ void *UtilVaFromPfn(PFN_NUMBER pfn)// PFN -> VA
 }
 
 
-void * AllocateContiguousMemory(SIZE_T number_of_bytes)
-// Allocates continuous physical memory
+void * AllocateContiguousMemory(SIZE_T number_of_bytes)// Allocates continuous physical memory
 {
     PHYSICAL_ADDRESS highest_acceptable_address = {};
     highest_acceptable_address.QuadPart = -1;
@@ -188,8 +118,7 @@ void * AllocateContiguousMemory(SIZE_T number_of_bytes)
 }
 
 
-NTSTATUS UtilVmCall(HypercallNumber hypercall_number, void *context)
-// Executes VMCALL
+NTSTATUS UtilVmCall(HypercallNumber hypercall_number, void *context)// Executes VMCALL
 {
     __try {
         VmxStatus vmx_status = static_cast<VmxStatus>(AsmVmxCall(static_cast<ULONG>(hypercall_number), context));
@@ -202,8 +131,7 @@ NTSTATUS UtilVmCall(HypercallNumber hypercall_number, void *context)
 }
 
 
-void UtilDumpGpRegisters(const AllRegisters *all_regs, ULONG_PTR stack_pointer)
-// Debug prints registers
+void UtilDumpGpRegisters(const AllRegisters *all_regs, ULONG_PTR stack_pointer)// Debug prints registers
 {
     UNREFERENCED_PARAMETER(all_regs);
     UNREFERENCED_PARAMETER(stack_pointer);
@@ -219,8 +147,7 @@ void UtilDumpGpRegisters(const AllRegisters *all_regs, ULONG_PTR stack_pointer)
 }
 
 
-ULONG_PTR UtilVmRead(VmcsField field)
-// Reads natural-width VMCS
+ULONG_PTR UtilVmRead(VmcsField field)// Reads natural-width VMCS
 {
     size_t field_value = 0;
     VmxStatus vmx_status = static_cast<VmxStatus>(__vmx_vmread(static_cast<size_t>(field), &field_value)); ASSERT(vmx_status == VmxStatus::kOk);
@@ -228,23 +155,20 @@ ULONG_PTR UtilVmRead(VmcsField field)
 }
 
 
-// Writes natural-width VMCS
-VmxStatus UtilVmWrite(VmcsField field, ULONG_PTR field_value)
+VmxStatus UtilVmWrite(VmcsField field, ULONG_PTR field_value)// Writes natural-width VMCS
 {
     return static_cast<VmxStatus>(__vmx_vmwrite(static_cast<size_t>(field), field_value));
 }
 
 
-VmxStatus UtilInveptGlobal()
-// Executes the INVEPT instruction and invalidates EPT entry cache
+VmxStatus UtilInveptGlobal()// Executes the INVEPT instruction and invalidates EPT entry cache
 {
     InvEptDescriptor desc = {};
     return static_cast<VmxStatus>(AsmInvept(InvEptType::kGlobalInvalidation, &desc));
 }
 
 
-VmxStatus UtilInvvpidIndividualAddress(USHORT vpid, void *address)
-// Executes the INVVPID instruction (type 0)
+VmxStatus UtilInvvpidIndividualAddress(USHORT vpid, void *address)// Executes the INVVPID instruction (type 0)
 {
     InvVpidDescriptor desc = {};
     desc.vpid = vpid;
@@ -253,20 +177,74 @@ VmxStatus UtilInvvpidIndividualAddress(USHORT vpid, void *address)
 }
 
 
-VmxStatus UtilInvvpidAllContext()
-// Executes the INVVPID instruction (type 2)
+VmxStatus UtilInvvpidAllContext()// Executes the INVVPID instruction (type 2)
 {
     InvVpidDescriptor desc = {};
     return static_cast<VmxStatus>(AsmInvvpid(InvVpidType::kAllContextInvalidation, &desc));
 }
 
 
-VmxStatus UtilInvvpidSingleContextExceptGlobal(USHORT vpid)
-// Executes the INVVPID instruction (type 3)
+VmxStatus UtilInvvpidSingleContextExceptGlobal(USHORT vpid)// Executes the INVVPID instruction (type 3)
 {
     InvVpidDescriptor desc = {};
     desc.vpid = vpid;
     return static_cast<VmxStatus>(AsmInvvpid(InvVpidType::kSingleContextInvalidationExceptGlobal, &desc));
 }
 
-}  // extern "C"
+
+NTSTATUS UtilForEachProcessor(NTSTATUS(*callback_routine)(void *), void *context)
+// Execute a given callback routine on all processors in PASSIVE_LEVEL.
+// Returns STATUS_SUCCESS when all callback returned STATUS_SUCCESS as well.
+// When one of callbacks returns anything but STATUS_SUCCESS, this function stops to call remaining callbacks and returns the value.
+{
+    PAGED_CODE();
+
+    for (ULONG processor_index = 0; processor_index < KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS); processor_index++)
+    {
+        PROCESSOR_NUMBER processor_number = {};
+        NTSTATUS status = KeGetProcessorNumberFromIndex(processor_index, &processor_number);
+        if (!NT_SUCCESS(status)) {
+            return status;
+        }
+
+        // Switch the current processor
+        GROUP_AFFINITY affinity = {};
+        affinity.Group = processor_number.Group;
+        affinity.Mask = 1ull << processor_number.Number;
+        GROUP_AFFINITY previous_affinity = {};
+        KeSetSystemGroupAffinityThread(&affinity, &previous_affinity);
+        status = callback_routine(context);// Execute callback
+        KeRevertToUserGroupAffinityThread(&previous_affinity);
+        if (!NT_SUCCESS(status)) {
+            return status;
+        }
+    }
+
+    return STATUS_SUCCESS;
+}
+
+
+void UtilTermination() // Terminates utility functions
+{
+    PAGED_CODE();
+
+    if (g_utilp_physical_memory_ranges) {
+        ExFreePoolWithTag(g_utilp_physical_memory_ranges, TAG);
+    }
+}
+
+
+NTSTATUS UtilpInitializePhysicalMemoryRanges()// Initializes the physical memory ranges
+{
+    PAGED_CODE();
+
+    g_utilp_physical_memory_ranges = UtilpBuildPhysicalMemoryRanges();
+    if (!g_utilp_physical_memory_ranges)
+    {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+}

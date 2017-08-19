@@ -77,16 +77,6 @@ PFN_NUMBER UtilPfnFromVa(_In_ void *va);
 /// @return A page frame number of \a pa, or 0
 PFN_NUMBER UtilPfnFromPa(_In_ ULONG64 pa);
 
-/// PA -> VA
-/// @param pa   A physical address to get its virtual address
-/// @return A virtual address \a pa, or 0
-void *UtilVaFromPa(_In_ ULONG64 pa);
-
-/// PNF -> PA
-/// @param pfn   A page frame number to get its physical address
-/// @return A physical address of \a pfn
-ULONG64 UtilPaFromPfn(_In_ PFN_NUMBER pfn);
-
 /// PNF -> VA
 /// @param pfn   A page frame number to get its virtual address
 /// @return A virtual address of \a pfn

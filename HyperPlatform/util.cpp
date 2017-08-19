@@ -67,12 +67,6 @@ ULONG64 UtilPaFromVa(void *va)// VA -> PA
 }
 
 
-PFN_NUMBER UtilPfnFromVa(void *va)// VA -> PFN
-{
-    return UtilPfnFromPa(UtilPaFromVa(va));
-}
-
-
 PFN_NUMBER UtilPfnFromPa(ULONG64 pa)// PA -> PFN
 {
     return static_cast<PFN_NUMBER>(pa >> PAGE_SHIFT);

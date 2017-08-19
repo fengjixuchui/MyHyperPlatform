@@ -8,46 +8,36 @@
 
 #include "ia32_type.h"
 
+struct PhysicalMemoryRun {/// Represents ranges of addresses
+    ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)
+    ULONG_PTR page_count;  //!< A number of pages
+};
+static_assert(sizeof(PhysicalMemoryRun) == 0x10, "Size check");
+
+struct PhysicalMemoryDescriptor {/// Represents a physical memory ranges of the system
+    PFN_COUNT number_of_runs;    //!< A number of PhysicalMemoryDescriptor::run
+    PFN_NUMBER number_of_pages;  //!< A physical memory size in pages
+    PhysicalMemoryRun run[1];    //!< ranges of addresses
+};
+static_assert(sizeof(PhysicalMemoryDescriptor) == 0x20, "Size check");
+
+/// Indicates a result of VMX-instructions
+/// This convention was taken from the VMX-intrinsic functions by Microsoft.
+enum class VmxStatus : unsigned __int8 {
+    kOk = 0,                  //!< Operation succeeded
+    kErrorWithStatus = 1,     //!< Operation failed with extended status available
+    kErrorWithoutStatus = 2,  //!< Operation failed without status available
+};
+
+enum class HypercallNumber : unsigned __int32 {/// Available command numbers for VMCALL
+    kTerminateVmm,            //!< Terminates VMM
+    kPingVmm,                 //!< Sends ping to the VMM
+    kGetSharedProcessorData,  //!< Terminates VMM
+};
+
 extern "C"
 {
-    _Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) NTKERNELAPI _When_(return != NULL, _Post_writable_byte_size_(NumberOfBytes)) PVOID MmAllocateContiguousNodeMemory(
-        _In_ SIZE_T NumberOfBytes,
-        _In_ PHYSICAL_ADDRESS LowestAcceptableAddress,
-        _In_ PHYSICAL_ADDRESS HighestAcceptableAddress,
-        _In_opt_ PHYSICAL_ADDRESS BoundaryAddressMultiple, _In_ ULONG Protect,
-        _In_ NODE_REQUIREMENT PreferredNode);//Available starting with Windows 8
-
-    /// Represents ranges of addresses
-    struct PhysicalMemoryRun {
-        ULONG_PTR base_page;   //!< A base address / PAGE_SIZE (ie, 0x1 for 0x1000)
-        ULONG_PTR page_count;  //!< A number of pages
-    };
-    static_assert(sizeof(PhysicalMemoryRun) == 0x10, "Size check");
-
-    /// Represents a physical memory ranges of the system
-    struct PhysicalMemoryDescriptor {
-        PFN_COUNT number_of_runs;    //!< A number of PhysicalMemoryDescriptor::run
-        PFN_NUMBER number_of_pages;  //!< A physical memory size in pages
-        PhysicalMemoryRun run[1];    //!< ranges of addresses
-    };
-    static_assert(sizeof(PhysicalMemoryDescriptor) == 0x20, "Size check");
-
-    /// Indicates a result of VMX-instructions
-    /// This convention was taken from the VMX-intrinsic functions by Microsoft.
-    enum class VmxStatus : unsigned __int8 {
-        kOk = 0,                  //!< Operation succeeded
-        kErrorWithStatus = 1,     //!< Operation failed with extended status available
-        kErrorWithoutStatus = 2,  //!< Operation failed without status available
-    };
-
-    enum class HypercallNumber : unsigned __int32 {/// Available command numbers for VMCALL
-        kTerminateVmm,            //!< Terminates VMM
-        kPingVmm,                 //!< Sends ping to the VMM
-        kGetSharedProcessorData,  //!< Terminates VMM
-    };
-
     NTSTATUS UtilpInitializePhysicalMemoryRanges();
-
     _IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();/// Frees all resources allocated for the sake of the Util functions
 
     extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
@@ -64,13 +54,6 @@ _IRQL_requires_max_(APC_LEVEL) NTSTATUS UtilForEachProcessor(_In_ NTSTATUS (*cal
 /// @warning
 /// It cannot be used for a virtual address managed by a prototype PTE.
 ULONG64 UtilPaFromVa(_In_ void *va);
-
-/// VA -> PFN
-/// @param va   A virtual address to get its physical address
-/// @return A page frame number of \a va, or 0
-/// @warning
-/// It cannot be used for a virtual address managed by a prototype PTE.
-PFN_NUMBER UtilPfnFromVa(_In_ void *va);
 
 /// PA -> PFN
 /// @param pa   A physical address to get its page frame number

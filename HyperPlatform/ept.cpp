@@ -14,12 +14,6 @@ const auto kEptpNumOfMaxVariableRangeMtrrs = 255;// Architecture defined number 
 const auto kEptpNumOfFixedRangeMtrrs = 1 + 2 + 8;// Architecture defined number of fixed range MTRRs (1 for 64k, 2 for 16k, 8 for 4k)
 const auto kEptpMtrrEntriesSize = kEptpNumOfMaxVariableRangeMtrrs + kEptpNumOfFixedRangeMtrrs;// A size of array to store all possible MTRRs
 
-#if defined(ALLOC_PRAGMA)
-#pragma alloc_text(PAGE, EptIsEptAvailable)
-#pragma alloc_text(PAGE, EptInitialization)
-#pragma alloc_text(PAGE, EptInitializeMtrrEntries)
-#endif
-
 MtrrData g_eptp_mtrr_entries[kEptpMtrrEntriesSize];
 UCHAR g_eptp_mtrr_default_type;
 
@@ -167,22 +161,6 @@ static EptCommonEntry *EptpConstructTables(EptCommonEntry *table, ULONG table_le
         KdBreakPoint();
         return nullptr;
     }
-}
-
-
-static bool EptpIsDeviceMemory(ULONG64 physical_address)// Returns if the physical_address is device memory (which could not have a corresponding PFN entry)
-{
-    for (PFN_COUNT i = 0ul; i < g_utilp_physical_memory_ranges->number_of_runs; ++i)
-    {
-        PhysicalMemoryRun * current_run = &g_utilp_physical_memory_ranges->run[i];
-        ULONG64 base_addr = static_cast<ULONG64>(current_run->base_page) * PAGE_SIZE;
-        ULONG64 endAddr = base_addr + current_run->page_count * PAGE_SIZE - 1;
-        if (UtilIsInBounds(physical_address, base_addr, endAddr)) {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 
@@ -417,8 +395,7 @@ void EptHandleEptViolation(EptData *ept_data)// Deal with EPT violation VM-exit.
         return;
     }
 
-    // EPT entry miss. It should be device memory.
-    NT_VERIFY(EptpIsDeviceMemory(fault_pa));//debug°æ±¾ÌØÓÐ¡£
+    // EPT entry miss.
     EptpConstructTables(ept_data->ept_pml4, 4, fault_pa, ept_data);
 
     UtilInveptGlobal();

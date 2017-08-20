@@ -99,9 +99,7 @@ static void * BuildMsrBitmap()// Build MSR bitmap
     RTL_BITMAP bitmap_read_low_header = {};
     RtlInitializeBitMap(&bitmap_read_low_header, reinterpret_cast<PULONG>(bitmap_read_low), 1024 * CHAR_BIT);
     RtlClearBits(&bitmap_read_low_header, 0xe7, 2);// Ignore IA32_MPERF (000000e7) and IA32_APERF (000000e8)
-
-    // Checks MSRs that cause #GP from 0 to 0xfff, and ignore all of them
-    for (ULONG msr = 0ul; msr < 0x1000; ++msr)
+    for (ULONG msr = 0ul; msr < 0x1000; ++msr)// Checks MSRs that cause #GP from 0 to 0xfff, and ignore all of them
     {
         __try {
             __readmsr(msr);

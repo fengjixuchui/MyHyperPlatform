@@ -397,7 +397,6 @@ void EptHandleEptViolation(EptData *ept_data)// Deal with EPT violation VM-exit.
 
     // EPT entry miss.
     EptpConstructTables(ept_data->ept_pml4, 4, fault_pa, ept_data);
-
     UtilInveptGlobal();
 }
 

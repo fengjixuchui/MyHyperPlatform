@@ -294,12 +294,11 @@ void EptInitializeMtrrEntries()// Reads and stores all MTRRs to set a correct me
     Ia32MtrrDefaultTypeMsr default_type = { __readmsr(0x2FF) };// IA32_MTRR_DEF_TYPE
     g_eptp_mtrr_default_type = default_type.fields.type;// Get and store the default memory type
 
+    //为何如此，见intel手册的11.11.2.2   Fixed Range MTRRs
     if (mtrr_capabilities.fields.MTRRs && default_type.fields.FE)// Read fixed range MTRRs if supported
     {
-        // The kIa32MtrrFix64k00000 manages 8 ranges of memory.
-        // The first range starts at 0x0, and each range manages a 64k (0x10000) range.
         ULONG64 offset = 0;
-        Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };//IA32_MTRR_FIX64K_00000 详细的见：11.11.2.2   Fixed Range MTRRs
+        Ia32MtrrFixedRangeMsr fixed_range = { __readmsr(0x250) };//IA32_MTRR_FIX64K_00000 
         for (UCHAR memory_type : fixed_range.fields.types)
         {
             g_eptp_mtrr_entries[index].enabled = true;
@@ -311,11 +310,7 @@ void EptInitializeMtrrEntries()// Reads and stores all MTRRs to set a correct me
             index++;
             offset += 0x10000;// Each entry manages 64k (0x10000) length.
         }
-        NT_ASSERT(offset == 0x80000); ASSERT(8 == index);
 
-        // kIa32MtrrFix16k80000 manages 8 ranges of memory.
-        // The first range starts at 0x80000, and each range manages a 16k (0x4000) range.
-        // Also, subsequent memory ranges are managed by other MSR, kIa32MtrrFix16kA0000, which manages 8 ranges of memory starting at 0xA0000 in the same fashion.
         offset = 0;
         for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix16k80000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix16kA0000); msr++)
         {
@@ -332,12 +327,7 @@ void EptInitializeMtrrEntries()// Reads and stores all MTRRs to set a correct me
                 offset += 0x4000;// Each entry manages 16k (0x4000) length.
             }
         }
-        NT_ASSERT(0x80000 + offset == 0xC0000);
 
-        // kIa32MtrrFix4kC0000 manages 8 ranges of memory.
-        // The first range starts at 0xC0000, and each range manages a 4k (0x1000) range.
-        // Also, subsequent memory ranges are managed by other MSRs such as kIa32MtrrFix4kC8000, kIa32MtrrFix4kD0000, and kIa32MtrrFix4kF8000.
-        // Each MSR manages 8 ranges of memory in the same fashion up to 0x100000.
         offset = 0;
         for (ULONG msr = static_cast<ULONG>(Msr::kIa32MtrrFix4kC0000); msr <= static_cast<ULONG>(Msr::kIa32MtrrFix4kF8000); msr++)
         {
@@ -354,7 +344,6 @@ void EptInitializeMtrrEntries()// Reads and stores all MTRRs to set a correct me
                 offset += 0x1000;// Each entry manages 4k (0x1000) length.
             }
         }
-        NT_ASSERT(0xC0000 + offset == 0x100000);
     }
 
     for (ULONG i = 0; i < mtrr_capabilities.fields.VCNT; i++)// Read all variable range MTRRs

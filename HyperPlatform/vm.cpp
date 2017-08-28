@@ -655,15 +655,12 @@ static NTSTATUS VmpStartVm(void *context)// Virtualize the current processor
 //一下是导出的函数。
 
 
-void VmTermination()// Terminates VM
+void VmTermination()
 {
     PAGED_CODE();
 
     NTSTATUS status = UtilForEachProcessor(VmpStopVm, nullptr);
-    if (NT_SUCCESS(status)) {
-        LOG_INFO("The VMM has been uninstalled.");
-    }
-    else {
+    if (!NT_SUCCESS(status)) {
         LOG_WARN("The VMM has not been uninstalled (%08x).", status);
     }
 

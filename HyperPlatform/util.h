@@ -38,7 +38,7 @@ enum class HypercallNumber : unsigned __int32 {/// Available command numbers for
 extern "C"
 {
     NTSTATUS UtilpInitializePhysicalMemoryRanges();
-    _IRQL_requires_max_(PASSIVE_LEVEL) void UtilTermination();/// Frees all resources allocated for the sake of the Util functions
+    void UtilTermination();/// Frees all resources allocated for the sake of the Util functions
 
     extern PhysicalMemoryDescriptor *g_utilp_physical_memory_ranges;
 
@@ -46,7 +46,7 @@ extern "C"
 /// @param callback_routine   A function to execute
 /// @param context  An arbitrary parameter for \a callback_routine
 /// @return STATUS_SUCCESS when \a returned STATUS_SUCCESS on all processors
-_IRQL_requires_max_(APC_LEVEL) NTSTATUS UtilForEachProcessor(_In_ NTSTATUS (*callback_routine)(void *), _In_opt_ void *context);
+NTSTATUS UtilForEachProcessor(_In_ NTSTATUS (*callback_routine)(void *), _In_opt_ void *context);
 
 /// VA -> PA
 /// @param va   A virtual address to get its physical address
@@ -68,7 +68,7 @@ void *UtilVaFromPfn(_In_ PFN_NUMBER pfn);
 /// Allocates continuous physical memory
 /// @param number_of_bytes  A size to allocate
 /// @return A base address of an allocated memory or nullptr
-_Must_inspect_result_ _IRQL_requires_max_(DISPATCH_LEVEL) void *AllocateContiguousMemory(_In_ SIZE_T number_of_bytes);
+void *AllocateContiguousMemory(_In_ SIZE_T number_of_bytes);
 
 /// Executes VMCALL
 /// @param hypercall_number   A command number

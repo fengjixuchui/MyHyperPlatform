@@ -60,4 +60,4 @@ static void HotplugCallbackpCallbackRoutine(PVOID callback_context, PKE_PROCESSO
     }
 }
 
-}  // extern "C"
+}

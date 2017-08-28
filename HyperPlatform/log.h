@@ -82,16 +82,16 @@ extern "C"
     /// In that case, a driver must call LogRegisterReinitialization() for completing initialization.
     ///
     /// \a flag is a OR-ed value of kLogPutLevel* and kLogOpt*. For example, kLogPutLevelDebug | kLogOptDisableFunctionName.
-    _IRQL_requires_max_(PASSIVE_LEVEL) NTSTATUS LogInitialization(_In_ ULONG flag, _In_opt_ const wchar_t *file_path);
+    NTSTATUS LogInitialization(_In_ ULONG flag, _In_opt_ const wchar_t *file_path);
 
     /// Registers re-initialization.
     /// @param driver_object  A driver object being loaded
     ///
     /// A driver must call this function, or call LogTermination() and return non STATUS_SUCCESS from DriverEntry() if LogInitialization() returned
     /// STATUS_REINITIALIZATION_NEEDED. If this function is called, DriverEntry() must return STATUS_SUCCESS.
-    _IRQL_requires_max_(PASSIVE_LEVEL) void LogRegisterReinitialization(_In_ PDRIVER_OBJECT driver_object);
+    void LogRegisterReinitialization(_In_ PDRIVER_OBJECT driver_object);
 
-    _IRQL_requires_max_(PASSIVE_LEVEL) void LogTermination();/// Terminates the log system. Should be called from a DriverUnload routine.
+    void LogTermination();/// Terminates the log system. Should be called from a DriverUnload routine.
 
     /// Logs a message; use HYPERPLATFORM_LOG_*() macros instead.
     /// @param level   Severity of a message

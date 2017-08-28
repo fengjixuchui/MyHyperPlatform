@@ -83,4 +83,4 @@ static void PowerCallbackpCallbackRoutine(PVOID callback_context, PVOID argument
     }
 }
 
-}  // extern "C"
+}
